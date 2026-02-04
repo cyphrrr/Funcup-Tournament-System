@@ -66,38 +66,10 @@ services:
       timeout: 10s
       retries: 3
 
-  # n8n (Automation)
-  n8n:
-    image: n8nio/n8n:latest
-    container_name: biw-n8n
-    restart: unless-stopped
-    ports:
-      - "5678:5678"
-    environment:
-      - N8N_PORT=5678
-      - N8N_PROTOCOL=http
-      - N8N_HOST=0.0.0.0
-      - N8N_BASIC_AUTH_ACTIVE=true
-      - N8N_BASIC_AUTH_USER=${N8N_USER:-admin}
-      - N8N_BASIC_AUTH_PASSWORD=${N8N_PASSWORD:-n8n2026!}
-      - WEBHOOK_URL=http://n8n:5678/
-    volumes:
-      - n8n_data:/home/node/.n8n
-      - ./n8n-flows:/home/node/.n8n/workflows:ro
-    networks:
-      - biw-network
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:5678/healthz"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
 networks:
   biw-network:
     driver: bridge
 
 volumes:
   postgres_data:
-    driver: local
-  n8n_data:
     driver: local
