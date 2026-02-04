@@ -725,6 +725,10 @@ def update_ko_match(match_id: int, update: schemas.KOMatchUpdate, db: Session = 
     if match.is_bye:
         raise HTTPException(status_code=400, detail="Cannot update bye match")
 
+    if update.home_team_id is not None:
+        match.home_team_id = update.home_team_id
+    if update.away_team_id is not None:
+        match.away_team_id = update.away_team_id
     if update.home_goals is not None:
         match.home_goals = update.home_goals
     if update.away_goals is not None:

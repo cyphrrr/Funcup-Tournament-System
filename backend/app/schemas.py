@@ -148,6 +148,8 @@ class KOMatchRead(BaseModel):
 
 
 class KOMatchUpdate(BaseModel):
+    home_team_id: int | None = None
+    away_team_id: int | None = None
     home_goals: int | None = None
     away_goals: int | None = None
     status: str | None = None
