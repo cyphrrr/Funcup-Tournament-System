@@ -1,0 +1,39 @@
+version: '3.8'
+
+# Development-Version mit SQLite und Live-Reload
+
+services:
+  # Backend (FastAPI mit Hot Reload)
+  backend:
+    build: ./backend
+    container_name: biw-backend-dev
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=sqlite:///./biw.db
+      - ADMIN_USER=admin
+      - ADMIN_PASSWORD=biw2026!
+      - API_KEY=biw-n8n-secret-key-change-me
+      - JWT_SECRET=super-secret-jwt-key-change-in-production
+    volumes:
+      - ./backend:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    networks:
+      - biw-network
+
+  # Frontend (Nginx)
+  frontend:
+    image: nginx:alpine
+    container_name: biw-frontend-dev
+    restart: unless-stopped
+    ports:
+      - "5500:80"
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+    networks:
+      - biw-network
+
+networks:
+  biw-network:
+    driver: bridge

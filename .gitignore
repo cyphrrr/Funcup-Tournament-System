@@ -1,0 +1,55 @@
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+env/
+
+# SQLite (nur für Dev)
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+logs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+.dockerignore
+
+# SSL Certificates (nicht committen!)
+ssl/*.pem
+ssl/*.key
+ssl/*.crt
+
+# Backup files
+*.backup
+*.bak
+
+# Node modules (falls n8n lokal)
+node_modules/
+
+# Test coverage
+.coverage
+htmlcov/
+.pytest_cache/

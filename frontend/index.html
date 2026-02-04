@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <title>BIW Pokal</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root{
+      --bg:#f3f4f6;--card:#fff;--text:#111827;--muted:#6b7280;--primary:#2563eb;--border:#e5e7eb;--accent:#eef2ff;--success:#16a34a;--danger:#dc2626;
+    }
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{margin:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--text)}
+    header{position:sticky;top:0;z-index:50;background:var(--card);border-bottom:1px solid var(--border);padding:1rem 2rem}
+    header h1{margin:0;font-size:1.5rem}
+    header p{margin:.25rem 0 0;color:var(--muted)}
+
+    /* Burger Menu */
+    .burger-btn{background:none;border:none;cursor:pointer;padding:.5rem;display:flex;flex-direction:column;gap:4px;z-index:100}
+    .burger-btn span{display:block;width:24px;height:3px;background:var(--text);border-radius:2px;transition:all .3s}
+    .burger-btn.open span:nth-child(1){transform:rotate(45deg) translate(5px,5px)}
+    .burger-btn.open span:nth-child(2){opacity:0}
+    .burger-btn.open span:nth-child(3){transform:rotate(-45deg) translate(7px,-6px)}
+
+    /* Menu Overlay */
+    .menu-overlay{position:fixed;top:0;right:0;width:100%;height:100vh;background:rgba(0,0,0,.5);z-index:90;opacity:0;pointer-events:none;transition:opacity .3s}
+    .menu-overlay.open{opacity:1;pointer-events:auto}
+
+    /* Menu Panel */
+    nav{position:fixed;top:0;right:-100%;width:280px;height:100vh;background:var(--card);z-index:100;transition:right .3s;padding:5rem 2rem 2rem;box-shadow:-4px 0 24px rgba(0,0,0,.1)}
+    nav.open{right:0}
+    nav ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.5rem}
+    nav a{text-decoration:none;color:var(--text);padding:.75rem 1rem;border-radius:8px;font-weight:500;display:block;transition:background .2s}
+    nav a:hover{background:var(--accent)}
+    nav a.active{background:var(--accent);color:var(--primary);font-weight:700}
+    main{max-width:1200px;margin:0 auto;padding:2.5rem 2rem}
+    h2{margin-bottom:1rem}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:2rem;box-shadow:0 8px 24px rgba(0,0,0,.06)}
+    .card-header{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:.75rem}
+    .card-title{font-weight:700;font-size:1.1rem}
+    .card-sub{color:var(--muted);font-size:.9rem}
+    table{width:100%;border-collapse:collapse;margin-top:.75rem;font-size:.9rem}
+    th,td{padding:.55rem .65rem;border-bottom:1px solid var(--border);text-align:center}
+    th{color:var(--muted);font-weight:600}
+    tr.leader{font-weight:700;color:var(--primary)}
+
+    /* Two-column layout for start page */
+    .start-grid{display:grid;grid-template-columns:2fr 1fr;gap:2rem;align-items:start}
+    @media(max-width:768px){.start-grid{grid-template-columns:1fr}}
+
+    /* Compact standings */
+    .compact-standings{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:1rem;margin-bottom:1rem;font-size:.85rem}
+    .compact-standings h3{margin:0 0 .75rem;font-size:.95rem;font-weight:600}
+    .compact-standings table{margin:0;font-size:.85rem}
+    .compact-standings th{font-size:.75rem;padding:.4rem .5rem}
+    .compact-standings td{padding:.4rem .5rem}
+    .compact-standings .pos{font-weight:700;color:var(--primary);width:30px}
+  </style>
+</head>
+<body>
+  <header>
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div style="display:flex;align-items:center;gap:1rem">
+        <img src="img/logo.png" alt="BIW Pokal Logo" style="height:48px;width:auto">
+        <div>
+          <h1>BIW Pokal</h1>
+          <p>Lokale Turnierübersicht</p>
+        </div>
+      </div>
+      <button class="burger-btn" id="burger-btn" aria-label="Menü öffnen">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Menu Overlay -->
+  <div class="menu-overlay" id="menu-overlay"></div>
+
+  <!-- Navigation Menu -->
+  <nav id="nav-menu">
+    <ul>
+      <li><a href="index.html" class="active">Start</a></li>
+      <li><a href="turnier.html">Gruppenphase</a></li>
+      <li><a href="ko.html">KO‑Phase</a></li>
+      <li><a href="ewige-tabelle.html">Ewige Tabelle</a></li>
+      <li><a href="regeln.html">Regeln</a></li>
+      <li><a href="archiv.html">Archiv</a></li>
+      <li id="admin-link" style="display:none"><a href="admin.html" style="color:var(--primary);font-weight:600">🔐 Admin</a></li>
+    </ul>
+  </nav>
+
+  <main>
+    <section id="start">
+      <h2>Überblick</h2>
+      <div id="status" style="margin-bottom:1.5rem">prüfe…</div>
+
+      <div class="start-grid">
+        <!-- News Spalte (2/3) -->
+        <div id="start-news-container">
+          <h3 style="margin:0 0 1rem;font-size:1.2rem">Aktuelle News</h3>
+          <div id="start-news"><em>Lade News...</em></div>
+        </div>
+
+        <!-- Tabellen Spalte (1/3) -->
+        <div>
+          <h3 style="margin:0 0 1rem;font-size:1.2rem">Tabellen</h3>
+          <div id="start-standings"><em>Lade Tabellen...</em></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+<script>
+const API = '';
+const statusDiv = document.getElementById('status');
+let teamCache = {}; // team_id → name
+
+// Health Check
+fetch(`${API}/health`).then(r => r.json())
+  .then(() => statusDiv.innerHTML = '<span style="color:var(--success)">✓ Backend verbunden</span>')
+  .catch(() => statusDiv.innerHTML = '<span style="color:var(--danger)">✗ Backend nicht erreichbar</span>');
+
+// Team-Namen laden
+async function loadTeams(seasonId) {
+  const groups = await fetch(`${API}/api/seasons/${seasonId}/groups-with-teams`).then(r => r.json());
+  groups.forEach(g => g.teams.forEach(t => teamCache[t.id] = t.name));
+}
+
+function teamName(id) {
+  return teamCache[id] || `Team ${id}`;
+}
+
+// Render Matches Block für News
+async function renderMatchesBlock(matchIds, isKO = false) {
+  try {
+    const endpoint = isKO ? 'ko-matches/batch' : 'matches/batch';
+    const matches = await fetch(`${API}/api/${endpoint}?match_ids=${matchIds}`).then(r => r.json());
+
+    if (matches.length === 0) return '<em style="color:var(--muted)">Keine Matches gefunden</em>';
+
+    let html = '<div style="background:var(--accent);border-radius:8px;padding:1rem;margin:1rem 0">';
+    html += '<table style="width:100%;font-size:.9rem">';
+
+    matches.forEach(m => {
+      const homeTeam = teamName(m.home_team_id);
+      const awayTeam = teamName(m.away_team_id);
+      const score = m.status === 'played'
+        ? `<strong>${m.home_goals}:${m.away_goals}</strong>`
+        : '<span style="color:var(--muted)">-:-</span>';
+
+      html += `
+        <tr>
+          <td style="text-align:right;padding:.4rem">${homeTeam}</td>
+          <td style="text-align:center;padding:.4rem;width:60px">${score}</td>
+          <td style="text-align:left;padding:.4rem">${awayTeam}</td>
+        </tr>`;
+    });
+
+    html += '</table></div>';
+    return html;
+  } catch (e) {
+    return '<em style="color:var(--danger)">Fehler beim Laden der Matches</em>';
+  }
+}
+
+// News laden
+async function loadNews() {
+  try {
+    const news = await fetch(`${API}/api/news`).then(r => r.json());
+
+    if (news.length === 0) {
+      document.getElementById('start-news').innerHTML = '<p style="color:var(--muted)">Noch keine News vorhanden.</p>';
+      return;
+    }
+
+    const container = document.getElementById('start-news');
+    container.innerHTML = '';
+
+    for (const n of news) {
+      const date = new Date(n.created_at).toLocaleDateString('de-DE', {
+        day: '2-digit', month: 'long', year: 'numeric'
+      });
+
+      // Simple Markdown: **bold**, *italic*, newlines
+      let content = n.content
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.+?)\*/g, '<em>$1</em>')
+        .replace(/\n/g, '<br>');
+
+      // Render [matches:...] and [ko-matches:...] blocks
+      const matchPattern = /\[matches:([0-9,\s]+)\]/g;
+      const koMatchPattern = /\[ko-matches:([0-9,\s]+)\]/g;
+      const matchBlocks = [];
+      let match;
+
+      while ((match = matchPattern.exec(content)) !== null) {
+        const matchIds = match[1].trim();
+        matchBlocks.push({ placeholder: match[0], matchIds, isKO: false });
+      }
+
+      while ((match = koMatchPattern.exec(content)) !== null) {
+        const matchIds = match[1].trim();
+        matchBlocks.push({ placeholder: match[0], matchIds, isKO: true });
+      }
+
+      // Replace placeholders with rendered matches
+      for (const block of matchBlocks) {
+        const renderedMatches = await renderMatchesBlock(block.matchIds, block.isKO);
+        content = content.replace(block.placeholder, renderedMatches);
+      }
+
+      const newsCard = document.createElement('div');
+      newsCard.className = 'card';
+      newsCard.innerHTML = `
+        <div class="card-header">
+          <div class="card-title">${n.title}</div>
+          <div class="card-sub">${date} · ${n.author}</div>
+        </div>
+        <div style="line-height:1.6">${content}</div>`;
+
+      container.appendChild(newsCard);
+    }
+  } catch (e) {
+    document.getElementById('start-news').innerHTML = '<p style="color:var(--danger)">News konnten nicht geladen werden.</p>';
+  }
+}
+
+// Kompakte Tabellen für Startseite laden
+async function loadStartStandings() {
+  const container = document.getElementById('start-standings');
+
+  try {
+    // Hole aktive Saison
+    const seasons = await fetch(`${API}/api/seasons`).then(r => r.json());
+    const activeSeason = seasons.find(s => s.status === 'active') || seasons[0];
+
+    if (!activeSeason) {
+      container.innerHTML = '<p style="color:var(--muted);font-size:.85rem">Keine Saison verfügbar</p>';
+      return;
+    }
+
+    // Teams cachen
+    await loadTeams(activeSeason.id);
+
+    // Gruppen laden
+    const groups = await fetch(`${API}/api/seasons/${activeSeason.id}/groups-with-teams`).then(r => r.json());
+
+    if (groups.length === 0) {
+      container.innerHTML = '<p style="color:var(--muted);font-size:.85rem">Keine Gruppen vorhanden</p>';
+      return;
+    }
+
+    container.innerHTML = '';
+
+    for (const g of groups) {
+      const standings = await fetch(`${API}/api/groups/${g.group.id}/standings`).then(r => r.json());
+
+      if (standings.length === 0) continue;
+
+      const div = document.createElement('div');
+      div.className = 'compact-standings';
+
+      div.innerHTML = `
+        <h3>Gruppe ${g.group.name}</h3>
+        <table>
+          <thead>
+            <tr>
+              <th class="pos">#</th>
+              <th style="text-align:left">Team</th>
+              <th>Pkt</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${standings.map((row, idx) => `
+              <tr ${idx === 0 ? 'class="leader"' : ''}>
+                <td class="pos">${idx + 1}</td>
+                <td style="text-align:left"><a href="team.html?id=${row.team_id}" style="color:inherit;text-decoration:none;font-weight:${idx === 0 ? '700' : '500'}">${teamName(row.team_id)}</a></td>
+                <td style="font-weight:600">${row.points}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+
+      container.appendChild(div);
+    }
+  } catch (e) {
+    container.innerHTML = '<p style="color:var(--danger);font-size:.85rem">Fehler beim Laden</p>';
+  }
+}
+
+loadNews();
+loadStartStandings();
+
+// Check if user is logged in (show admin link)
+if (localStorage.getItem('biw_token')) {
+  document.getElementById('admin-link').style.display = 'block';
+}
+
+// Burger Menu Toggle
+const burgerBtn = document.getElementById('burger-btn');
+const navMenu = document.getElementById('nav-menu');
+const menuOverlay = document.getElementById('menu-overlay');
+
+function toggleMenu() {
+  burgerBtn.classList.toggle('open');
+  navMenu.classList.toggle('open');
+  menuOverlay.classList.toggle('open');
+}
+
+burgerBtn.addEventListener('click', toggleMenu);
+menuOverlay.addEventListener('click', toggleMenu);
+
+// Close menu on navigation
+navMenu.querySelectorAll('a').forEach(link => {
+  link.addEventListener('click', () => {
+    if (navMenu.classList.contains('open')) {
+      toggleMenu();
+    }
+  });
+});
+</script>
+</body>
+</html>

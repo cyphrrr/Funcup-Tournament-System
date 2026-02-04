@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <title>Regelwerk – BIW Pokal</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root{
+      --bg:#f3f4f6;--card:#fff;--text:#111827;--muted:#6b7280;--primary:#2563eb;--border:#e5e7eb;--accent:#eef2ff;--success:#16a34a;--danger:#dc2626;
+    }
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{margin:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--text)}
+    header{position:sticky;top:0;z-index:50;background:var(--card);border-bottom:1px solid var(--border);padding:1rem 2rem}
+    header h1{margin:0;font-size:1.5rem}
+    header p{margin:.25rem 0 0;color:var(--muted)}
+
+    /* Burger Menu */
+    .burger-btn{background:none;border:none;cursor:pointer;padding:.5rem;display:flex;flex-direction:column;gap:4px;z-index:100}
+    .burger-btn span{display:block;width:24px;height:3px;background:var(--text);border-radius:2px;transition:all .3s}
+    .burger-btn.open span:nth-child(1){transform:rotate(45deg) translate(5px,5px)}
+    .burger-btn.open span:nth-child(2){opacity:0}
+    .burger-btn.open span:nth-child(3){transform:rotate(-45deg) translate(7px,-6px)}
+
+    /* Menu Overlay */
+    .menu-overlay{position:fixed;top:0;right:0;width:100%;height:100vh;background:rgba(0,0,0,.5);z-index:90;opacity:0;pointer-events:none;transition:opacity .3s}
+    .menu-overlay.open{opacity:1;pointer-events:auto}
+
+    /* Menu Panel */
+    nav{position:fixed;top:0;right:-100%;width:280px;height:100vh;background:var(--card);z-index:100;transition:right .3s;padding:5rem 2rem 2rem;box-shadow:-4px 0 24px rgba(0,0,0,.1)}
+    nav.open{right:0}
+    nav ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.5rem}
+    nav a{text-decoration:none;color:var(--text);padding:.75rem 1rem;border-radius:8px;font-weight:500;display:block;transition:background .2s}
+    nav a:hover{background:var(--accent)}
+    nav a.active{background:var(--accent);color:var(--primary);font-weight:700}
+    main{max-width:900px;margin:0 auto;padding:2.5rem 2rem}
+    h2{margin:2rem 0 1rem;font-size:1.5rem}
+    h3{margin:1.5rem 0 .75rem;font-size:1.2rem;color:var(--primary)}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:2rem;margin-bottom:2rem;box-shadow:0 8px 24px rgba(0,0,0,.06);line-height:1.7}
+    .card h3{margin-top:0}
+    .card ul{margin:.5rem 0;padding-left:1.5rem}
+    .card li{margin:.5rem 0}
+    .card strong{color:var(--text);font-weight:600}
+    .intro{font-size:1.1rem;color:var(--muted);margin-bottom:2rem;line-height:1.6}
+  </style>
+</head>
+<body>
+  <header>
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div style="display:flex;align-items:center;gap:1rem">
+        <img src="img/logo.png" alt="BIW Pokal Logo" style="height:48px;width:auto">
+        <div>
+          <h1>BIW Pokal</h1>
+          <p>Die Besten im Westen</p>
+        </div>
+      </div>
+      <button class="burger-btn" id="burger-btn" aria-label="Menü öffnen">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Menu Overlay -->
+  <div class="menu-overlay" id="menu-overlay"></div>
+
+  <!-- Navigation Menu -->
+  <nav id="nav-menu">
+    <ul>
+      <li><a href="index.html">Start</a></li>
+      <li><a href="turnier.html">Gruppenphase</a></li>
+      <li><a href="ko.html">KO‑Phase</a></li>
+      <li><a href="ewige-tabelle.html">Ewige Tabelle</a></li>
+      <li><a href="regeln.html" class="active">Regeln</a></li>
+      <li><a href="archiv.html">Archiv</a></li>
+      <li id="admin-link" style="display:none"><a href="admin.html" style="color:var(--primary);font-weight:600">🔐 Admin</a></li>
+    </ul>
+  </nav>
+
+  <main>
+    <section>
+      <h2>Regelwerk</h2>
+      <p class="intro">
+        Das offizielle Regelwerk des BIW Pokals – Die Besten im Westen.
+      </p>
+
+      <div class="card">
+        <h3>Spielformat</h3>
+        <ul>
+          <li><strong>Spielbeginn:</strong> Ab Woche 39</li>
+          <li><strong>Gruppenphase:</strong> 16 Gruppen mit je 4 Teams</li>
+          <li><strong>KO-Phase:</strong> Drei KO-Runden für Erst-, Zweit- und Drittplatzierte</li>
+          <li><strong>Finale:</strong> Am 1. Spieltag der darauffolgenden Saison</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h3>Gruppenauslosung</h3>
+        <ul>
+          <li><strong>Lostöpfe:</strong> Rankingabhängige Einteilung in 4 Lostöpfe</li>
+          <li><strong>Titelverteidiger:</strong> Automatisch Gruppenkopf Gruppe A</li>
+          <li><strong>LL-Runden-Gewinner:</strong> Erhält Platz in Lostopf 1 und Gruppe B</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h3>Teilnehmervoraussetzungen</h3>
+        <ul>
+          <li>Nur Teams aus <strong>Nordrhein-Westfalen</strong> zugelassen</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h3>Spielregeln</h3>
+        <ul>
+          <li><strong>Heimrecht:</strong> Kann zwischen Gegnern getauscht werden</li>
+          <li><strong>Anstoßzeit:</strong> Alle Spiele um 10 Uhr mit Abschluss bis 12 Uhr</li>
+          <li><strong>Versäumte Spiele:</strong> Versäumte oder nicht angenommene Freundschaftsspiele führen zu 0:2-Niederlage</li>
+          <li><strong>Ausschluss:</strong> Zweimaliger Verstoß innerhalb von 2 Saisons führt zu Ausschluss</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h3>Platzierungskriterien</h3>
+        <p>Die Platzierung in der Gruppenphase wird nach folgenden Kriterien ermittelt:</p>
+        <ol>
+          <li>Gewonnene Punkte</li>
+          <li>Tordifferenz</li>
+          <li>Erzielte Tore</li>
+          <li>Direkter Vergleich</li>
+        </ol>
+      </div>
+
+      <div class="card">
+        <h3>KO-Spiele</h3>
+        <ul>
+          <li><strong>Bei Unentschieden:</strong> Entscheidet die schlechtere Ranking-Position</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h3>Pokalsieger-Teilnahme</h3>
+        <ul>
+          <li>Gewinner tritt als <strong>NRW-Vertreter</strong> im Pokal der Pokalsieger an</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h3>Organisatorisches</h3>
+        <ul>
+          <li>Aus organisatorischen Gründen nehmen aufgenommene Teilnehmer auch an den folgenden Pokalen teil</li>
+        </ul>
+      </div>
+    </section>
+  </main>
+
+<script>
+// Check if user is logged in (show admin link)
+if (localStorage.getItem('biw_token')) {
+  document.getElementById('admin-link').style.display = 'block';
+}
+
+// Burger Menu Toggle
+const burgerBtn = document.getElementById('burger-btn');
+const navMenu = document.getElementById('nav-menu');
+const menuOverlay = document.getElementById('menu-overlay');
+
+function toggleMenu() {
+  burgerBtn.classList.toggle('open');
+  navMenu.classList.toggle('open');
+  menuOverlay.classList.toggle('open');
+}
+
+burgerBtn.addEventListener('click', toggleMenu);
+menuOverlay.addEventListener('click', toggleMenu);
+
+// Close menu on navigation
+navMenu.querySelectorAll('a').forEach(link => {
+  link.addEventListener('click', () => {
+    if (navMenu.classList.contains('open')) {
+      toggleMenu();
+    }
+  });
+});
+</script>
+</body>
+</html>

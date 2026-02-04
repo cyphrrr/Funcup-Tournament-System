@@ -1,0 +1,103 @@
+version: '3.8'
+
+services:
+  # Backend (FastAPI)
+  backend:
+    build: ./backend
+    container_name: biw-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://biw_user:biw_password@postgres:5432/biw_pokal
+      - ADMIN_USER=${ADMIN_USER:-admin}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-biw2026!}
+      - API_KEY=${API_KEY:-biw-n8n-secret-key-change-me}
+      - JWT_SECRET=${JWT_SECRET:-super-secret-jwt-key-change-in-production}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - biw-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Postgres Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: biw-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=biw_user
+      - POSTGRES_PASSWORD=biw_password
+      - POSTGRES_DB=biw_pokal
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - biw-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U biw_user -d biw_pokal"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Frontend (Nginx)
+  frontend:
+    image: nginx:alpine
+    container_name: biw-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - backend
+    networks:
+      - biw-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # n8n (Automation)
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: biw-n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - N8N_HOST=0.0.0.0
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=${N8N_USER:-admin}
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_PASSWORD:-n8n2026!}
+      - WEBHOOK_URL=http://n8n:5678/
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./n8n-flows:/home/node/.n8n/workflows:ro
+    networks:
+      - biw-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:5678/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  biw-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+  n8n_data:
+    driver: local

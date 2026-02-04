@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <title>Archiv – BIW Pokal</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root{
+      --bg:#f3f4f6;--card:#fff;--text:#111827;--muted:#6b7280;--primary:#2563eb;--border:#e5e7eb;--accent:#eef2ff;--success:#16a34a;--danger:#dc2626;--warning:#f59e0b;
+    }
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{margin:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--text)}
+    header{position:sticky;top:0;z-index:50;background:var(--card);border-bottom:1px solid var(--border);padding:1rem 2rem}
+    header h1{margin:0;font-size:1.5rem}
+    header p{margin:.25rem 0 0;color:var(--muted)}
+
+    /* Burger Menu */
+    .burger-btn{background:none;border:none;cursor:pointer;padding:.5rem;display:flex;flex-direction:column;gap:4px;z-index:100}
+    .burger-btn span{display:block;width:24px;height:3px;background:var(--text);border-radius:2px;transition:all .3s}
+    .burger-btn.open span:nth-child(1){transform:rotate(45deg) translate(5px,5px)}
+    .burger-btn.open span:nth-child(2){opacity:0}
+    .burger-btn.open span:nth-child(3){transform:rotate(-45deg) translate(7px,-6px)}
+
+    /* Menu Overlay */
+    .menu-overlay{position:fixed;top:0;right:0;width:100%;height:100vh;background:rgba(0,0,0,.5);z-index:90;opacity:0;pointer-events:none;transition:opacity .3s}
+    .menu-overlay.open{opacity:1;pointer-events:auto}
+
+    /* Menu Panel */
+    nav{position:fixed;top:0;right:-100%;width:280px;height:100vh;background:var(--card);z-index:100;transition:right .3s;padding:5rem 2rem 2rem;box-shadow:-4px 0 24px rgba(0,0,0,.1)}
+    nav.open{right:0}
+    nav ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.5rem}
+    nav a{text-decoration:none;color:var(--text);padding:.75rem 1rem;border-radius:8px;font-weight:500;display:block;transition:background .2s}
+    nav a:hover{background:var(--accent)}
+    nav a.active{background:var(--accent);color:var(--primary);font-weight:700}
+
+    main{max-width:1200px;margin:0 auto;padding:2.5rem 2rem}
+    h2{margin-bottom:1.5rem}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:2rem;box-shadow:0 8px 24px rgba(0,0,0,.06)}
+    .card-header{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:.75rem}
+    .card-title{font-weight:700;font-size:1.1rem}
+    .card-sub{color:var(--muted);font-size:.9rem}
+    table{width:100%;border-collapse:collapse;margin-top:.75rem;font-size:.9rem}
+    th,td{padding:.55rem .65rem;border-bottom:1px solid var(--border);text-align:center}
+    th{color:var(--muted);font-weight:600}
+    tr.leader{font-weight:700;color:var(--primary)}
+
+    /* Season Card */
+    .season-card{background:var(--card);border:1px solid var(--border);border-radius:12px;margin-bottom:1.5rem;overflow:hidden;transition:box-shadow .2s}
+    .season-card:hover{box-shadow:0 8px 24px rgba(0,0,0,.1)}
+    .season-header{padding:1.25rem 1.5rem;cursor:pointer;display:flex;justify-content:space-between;align-items:center;user-select:none}
+    .season-header:hover{background:var(--accent)}
+    .season-info{display:flex;align-items:center;gap:1rem}
+    .season-name{font-size:1.2rem;font-weight:700}
+    .season-meta{display:flex;gap:1rem;align-items:center;font-size:.85rem;color:var(--muted)}
+    .season-badge{padding:.25rem .6rem;border-radius:6px;font-size:.75rem;font-weight:600}
+    .season-badge.active{background:#dcfce7;color:#166534}
+    .season-badge.archived{background:#f3f4f6;color:#6b7280}
+    .season-badge.planned{background:#dbeafe;color:#1e40af}
+    .season-toggle{font-size:1.2rem;color:var(--muted);transition:transform .3s}
+    .season-toggle.open{transform:rotate(180deg)}
+
+    .season-content{display:none;padding:0 1.5rem 1.5rem;border-top:1px solid var(--border)}
+    .season-content.open{display:block}
+
+    /* Compact Table */
+    .compact-table{font-size:.85rem}
+    .compact-table th{font-size:.75rem}
+    .compact-table td{padding:.4rem .5rem}
+
+    /* KO Bracket Compact */
+    .ko-bracket-compact{display:flex;gap:1.5rem;overflow-x:auto;padding:1rem 0;font-size:.85rem}
+    .ko-round-compact{min-width:150px;display:flex;flex-direction:column;gap:.5rem}
+    .ko-round-header-compact{text-align:center;font-size:.8rem;font-weight:600;color:var(--muted);margin-bottom:.5rem}
+    .ko-match-compact{background:var(--accent);border:1px solid var(--border);border-radius:6px;padding:.5rem;font-size:.8rem}
+    .ko-match-compact.played{border-left:3px solid var(--success)}
+    .ko-team-compact{display:flex;justify-content:space-between;padding:.2rem 0}
+    .ko-team-compact.winner{font-weight:700;color:var(--success)}
+
+    /* Champion Badge */
+    .champion-badge{background:linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);color:#78350f;padding:.5rem 1rem;border-radius:8px;font-weight:700;display:inline-flex;align-items:center;gap:.5rem;font-size:.9rem;margin-bottom:1rem}
+
+    /* Empty State */
+    .empty-state{text-align:center;padding:3rem;color:var(--muted)}
+    .loading{text-align:center;padding:2rem;color:var(--muted)}
+  </style>
+</head>
+<body>
+  <header>
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div style="display:flex;align-items:center;gap:1rem">
+        <img src="img/logo.png" alt="BIW Pokal Logo" style="height:48px;width:auto">
+        <div>
+          <h1>BIW Pokal</h1>
+          <p>Archiv – Alle Saisons</p>
+        </div>
+      </div>
+      <button class="burger-btn" id="burger-btn" aria-label="Menü öffnen">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Menu Overlay -->
+  <div class="menu-overlay" id="menu-overlay"></div>
+
+  <!-- Navigation Menu -->
+  <nav id="nav-menu">
+    <ul>
+      <li><a href="index.html">Start</a></li>
+      <li><a href="turnier.html">Gruppenphase</a></li>
+      <li><a href="ko.html">KO‑Phase</a></li>
+      <li><a href="ewige-tabelle.html">Ewige Tabelle</a></li>
+      <li><a href="regeln.html">Regeln</a></li>
+      <li><a href="archiv.html" class="active">Archiv</a></li>
+      <li id="admin-link" style="display:none"><a href="admin.html" style="color:var(--primary);font-weight:600">🔐 Admin</a></li>
+    </ul>
+  </nav>
+
+  <main>
+    <section>
+      <h2>Saison-Archiv</h2>
+      <p style="color:var(--muted);margin-bottom:2rem">Alle BIW Pokal Saisons – Klick auf eine Saison für Details</p>
+
+      <div id="seasons-container" class="loading">
+        <em>Lade Saisons...</em>
+      </div>
+    </section>
+  </main>
+
+<script>
+const API = '';
+let teamCache = {};
+
+// Check if user is logged in (show admin link)
+if (localStorage.getItem('biw_token')) {
+  document.getElementById('admin-link').style.display = 'block';
+}
+
+// Burger Menu Toggle
+const burgerBtn = document.getElementById('burger-btn');
+const navMenu = document.getElementById('nav-menu');
+const menuOverlay = document.getElementById('menu-overlay');
+
+function toggleMenu() {
+  burgerBtn.classList.toggle('open');
+  navMenu.classList.toggle('open');
+  menuOverlay.classList.toggle('open');
+}
+
+burgerBtn.addEventListener('click', toggleMenu);
+menuOverlay.addEventListener('click', toggleMenu);
+
+navMenu.querySelectorAll('a').forEach(link => {
+  link.addEventListener('click', () => {
+    if (navMenu.classList.contains('open')) {
+      toggleMenu();
+    }
+  });
+});
+
+// Team Cache
+async function loadTeams(seasonId) {
+  const groups = await fetch(`${API}/api/seasons/${seasonId}/groups-with-teams`).then(r => r.json());
+  groups.forEach(g => g.teams.forEach(t => teamCache[t.id] = t.name));
+}
+
+function teamName(id) {
+  return teamCache[id] || `Team ${id}`;
+}
+
+function roundName(roundNum, totalRounds) {
+  const remaining = totalRounds - roundNum + 1;
+  if (remaining === 1) return '🏆 Finale';
+  if (remaining === 2) return 'Halbfinale';
+  if (remaining === 3) return 'Viertelfinale';
+  if (remaining === 4) return 'Achtelfinale';
+  return `Runde ${roundNum}`;
+}
+
+function toggleSeason(seasonId) {
+  const content = document.getElementById(`season-content-${seasonId}`);
+  const toggle = document.getElementById(`season-toggle-${seasonId}`);
+
+  if (content.classList.contains('open')) {
+    content.classList.remove('open');
+    toggle.classList.remove('open');
+  } else {
+    // Close all others
+    document.querySelectorAll('.season-content').forEach(el => el.classList.remove('open'));
+    document.querySelectorAll('.season-toggle').forEach(el => el.classList.remove('open'));
+
+    // Open this one
+    content.classList.add('open');
+    toggle.classList.add('open');
+
+    // Load data if not loaded yet
+    if (!content.dataset.loaded) {
+      loadSeasonDetails(seasonId);
+      content.dataset.loaded = 'true';
+    }
+  }
+}
+
+async function loadSeasonDetails(seasonId) {
+  const container = document.getElementById(`season-content-${seasonId}`);
+  container.innerHTML = '<div class="loading"><em>Lade Details...</em></div>';
+
+  try {
+    // Load teams
+    await loadTeams(seasonId);
+
+    // Load groups
+    const groups = await fetch(`${API}/api/seasons/${seasonId}/groups-with-teams`).then(r => r.json());
+
+    let html = '<h3 style="margin:1rem 0 .75rem;font-size:1rem">Gruppenphase</h3>';
+
+    if (groups.length === 0) {
+      html += '<p style="color:var(--muted)">Keine Gruppen vorhanden</p>';
+    } else {
+      for (const g of groups) {
+        html += `<div class="card" style="margin-bottom:1rem">
+          <div class="card-header">
+            <div class="card-title">Gruppe ${g.group.name}</div>
+          </div>`;
+
+        const standings = await fetch(`${API}/api/groups/${g.group.id}/standings`).then(r => r.json());
+
+        if (standings.length > 0) {
+          html += '<table class="compact-table"><thead><tr><th>#</th><th style="text-align:left">Team</th><th>Sp</th><th>S</th><th>U</th><th>N</th><th>T+</th><th>T-</th><th>Pkt</th></tr></thead><tbody>';
+
+          standings.forEach((row, idx) => {
+            const cls = idx === 0 ? 'class="leader"' : '';
+            html += `<tr ${cls}>
+              <td style="font-weight:700;color:var(--primary)">${idx + 1}</td>
+              <td style="text-align:left">${teamName(row.team_id)}</td>
+              <td>${row.played}</td>
+              <td>${row.won}</td>
+              <td>${row.draw}</td>
+              <td>${row.lost}</td>
+              <td>${row.goals_for}</td>
+              <td>${row.goals_against}</td>
+              <td style="font-weight:600">${row.points}</td>
+            </tr>`;
+          });
+
+          html += '</tbody></table>';
+        } else {
+          html += '<p style="color:var(--muted);font-size:.85rem;margin-top:.5rem">Noch keine Spiele ausgetragen</p>';
+        }
+
+        html += '</div>';
+      }
+    }
+
+    // KO-Phase
+    try {
+      const bracket = await fetch(`${API}/api/seasons/${seasonId}/ko-bracket`).then(r => {
+        if (r.status === 404) return null;
+        return r.json();
+      });
+
+      if (bracket) {
+        html += '<h3 style="margin:1.5rem 0 .75rem;font-size:1rem">KO-Phase</h3>';
+        html += renderCompactBracket(bracket);
+
+        // Check for champion
+        const finalMatch = bracket.matches.find(m => m.round === bracket.total_rounds);
+        if (finalMatch && finalMatch.status === 'played') {
+          const winnerId = finalMatch.home_goals > finalMatch.away_goals ? finalMatch.home_team_id : finalMatch.away_team_id;
+          const winnerName = teamName(winnerId);
+          html = `<div class="champion-badge">🏆 Pokalsieger: ${winnerName}</div>` + html;
+        }
+      } else {
+        html += '<h3 style="margin:1.5rem 0 .75rem;font-size:1rem">KO-Phase</h3>';
+        html += '<p style="color:var(--muted)">Noch nicht gestartet</p>';
+      }
+    } catch (e) {
+      html += '<h3 style="margin:1.5rem 0 .75rem;font-size:1rem">KO-Phase</h3>';
+      html += '<p style="color:var(--muted)">Noch nicht gestartet</p>';
+    }
+
+    container.innerHTML = html;
+  } catch (e) {
+    container.innerHTML = `<p style="color:var(--danger)">Fehler beim Laden: ${e.message}</p>`;
+  }
+}
+
+function renderCompactBracket(bracket) {
+  const rounds = {};
+  bracket.matches.forEach(m => {
+    if (!rounds[m.round]) rounds[m.round] = [];
+    rounds[m.round].push(m);
+  });
+
+  let html = '<div class="ko-bracket-compact">';
+
+  Object.keys(rounds).sort((a,b) => a-b).forEach(roundNum => {
+    const roundLabel = roundName(parseInt(roundNum), bracket.total_rounds);
+    html += `<div class="ko-round-compact">
+      <div class="ko-round-header-compact">${roundLabel}</div>`;
+
+    rounds[roundNum].sort((a,b) => a.position - b.position).forEach(m => {
+      if (m.is_bye) {
+        html += `<div class="ko-match-compact" style="opacity:.6">
+          <div style="text-align:center;font-size:.75rem">${teamName(m.home_team_id)} – Freilos</div>
+        </div>`;
+      } else if (!m.home_team_id && !m.away_team_id) {
+        html += `<div class="ko-match-compact"><div style="text-align:center;color:var(--muted);font-size:.75rem">TBD</div></div>`;
+      } else {
+        const cls = m.status === 'played' ? 'played' : '';
+        const hasResult = m.home_goals !== null && m.away_goals !== null;
+        const homeWin = hasResult && m.home_goals > m.away_goals;
+        const awayWin = hasResult && m.away_goals > m.home_goals;
+
+        html += `<div class="ko-match-compact ${cls}">
+          <div class="ko-team-compact ${homeWin ? 'winner' : ''}">
+            <span>${m.home_team_id ? teamName(m.home_team_id) : '?'}</span>
+            <span>${hasResult ? m.home_goals : ''}</span>
+          </div>
+          <div class="ko-team-compact ${awayWin ? 'winner' : ''}">
+            <span>${m.away_team_id ? teamName(m.away_team_id) : '?'}</span>
+            <span>${hasResult ? m.away_goals : ''}</span>
+          </div>
+        </div>`;
+      }
+    });
+
+    html += '</div>';
+  });
+
+  html += '</div>';
+  return html;
+}
+
+async function loadSeasons() {
+  const container = document.getElementById('seasons-container');
+
+  try {
+    const seasons = await fetch(`${API}/api/seasons`).then(r => r.json());
+
+    if (seasons.length === 0) {
+      container.innerHTML = '<div class="empty-state">Noch keine Saisons vorhanden</div>';
+      return;
+    }
+
+    // Sort by ID descending (newest first)
+    seasons.sort((a, b) => b.id - a.id);
+
+    let html = '';
+
+    for (const season of seasons) {
+      const badgeClass = season.status === 'active' ? 'active' : season.status === 'archived' ? 'archived' : 'planned';
+      const badgeText = season.status === 'active' ? 'Aktiv' : season.status === 'archived' ? 'Archiviert' : 'Geplant';
+
+      // Count teams
+      const groups = await fetch(`${API}/api/seasons/${season.id}/groups-with-teams`).then(r => r.json());
+      const teamCount = groups.reduce((sum, g) => sum + g.teams.length, 0);
+
+      html += `
+        <div class="season-card">
+          <div class="season-header" onclick="toggleSeason(${season.id})">
+            <div class="season-info">
+              <div>
+                <div class="season-name">${season.name}</div>
+                <div class="season-meta">
+                  <span class="season-badge ${badgeClass}">${badgeText}</span>
+                  <span>${teamCount} Teams</span>
+                  <span>${groups.length} Gruppen</span>
+                </div>
+              </div>
+            </div>
+            <div class="season-toggle" id="season-toggle-${season.id}">▼</div>
+          </div>
+          <div class="season-content" id="season-content-${season.id}"></div>
+        </div>`;
+    }
+
+    container.innerHTML = html;
+  } catch (e) {
+    container.innerHTML = `<div class="empty-state" style="color:var(--danger)">Fehler: ${e.message}</div>`;
+  }
+}
+
+// Load seasons on page load
+loadSeasons();
+</script>
+</body>
+</html>

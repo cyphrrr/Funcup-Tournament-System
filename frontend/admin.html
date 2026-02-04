@@ -1,0 +1,1366 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <title>BIW Pokal – Admin</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root{--bg:#f3f4f6;--card:#fff;--text:#111827;--muted:#6b7280;--primary:#2563eb;--border:#e5e7eb;--accent:#eef2ff;--success:#16a34a;--danger:#dc2626;--warning:#f59e0b}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text)}
+    
+    /* Layout */
+    .admin-layout{display:flex;min-height:100vh}
+    .sidebar{width:220px;background:var(--text);color:#fff;padding:1.5rem 1rem;position:fixed;height:100vh}
+    .sidebar h1{font-size:1.1rem;margin:0 0 .5rem;display:flex;align-items:center;gap:.5rem}
+    .sidebar h1 span{font-size:1.3rem}
+    .sidebar p{font-size:.75rem;color:#9ca3af;margin:0 0 2rem}
+    .sidebar nav a{display:block;padding:.6rem .8rem;color:#d1d5db;text-decoration:none;border-radius:6px;margin-bottom:.25rem;font-size:.9rem}
+    .sidebar nav a:hover{background:rgba(255,255,255,.1)}
+    .sidebar nav a.active{background:var(--primary);color:#fff}
+    .main{margin-left:220px;flex:1;padding:2rem}
+    
+    /* Components */
+    .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.25rem;margin-bottom:1.5rem}
+    .card h2{margin:0 0 1rem;font-size:1.1rem;display:flex;align-items:center;gap:.5rem}
+    .card h3{margin:1.5rem 0 .75rem;font-size:.95rem;color:var(--muted)}
+    
+    /* Forms */
+    .form-row{display:flex;gap:1rem;margin-bottom:1rem;align-items:flex-end}
+    .form-group{flex:1}
+    .form-group label{display:block;font-size:.8rem;color:var(--muted);margin-bottom:.3rem}
+    input,select,textarea{width:100%;padding:.5rem .75rem;border:1px solid var(--border);border-radius:6px;font-size:.9rem}
+    input:focus,select:focus,textarea:focus{outline:none;border-color:var(--primary)}
+    textarea{resize:vertical;min-height:100px}
+    
+    /* Buttons */
+    .btn{padding:.5rem 1rem;border:none;border-radius:6px;cursor:pointer;font-size:.85rem;font-weight:500}
+    .btn-primary{background:var(--primary);color:#fff}
+    .btn-success{background:var(--success);color:#fff}
+    .btn-danger{background:var(--danger);color:#fff}
+    .btn-secondary{background:var(--border);color:var(--text)}
+    .btn:hover{opacity:.9}
+    .btn:disabled{opacity:.5;cursor:not-allowed}
+    .btn-sm{padding:.35rem .7rem;font-size:.8rem}
+    
+    /* Table */
+    table{width:100%;border-collapse:collapse;font-size:.85rem}
+    th,td{padding:.6rem .75rem;text-align:left;border-bottom:1px solid var(--border)}
+    th{color:var(--muted);font-weight:600;font-size:.75rem;text-transform:uppercase}
+    tr:hover{background:var(--accent)}
+    
+    /* Tabs */
+    .tabs{display:flex;gap:.5rem;margin-bottom:1.5rem;border-bottom:1px solid var(--border);padding-bottom:.5rem}
+    .tab{padding:.5rem 1rem;border:none;background:none;cursor:pointer;font-size:.9rem;color:var(--muted);border-radius:6px 6px 0 0}
+    .tab.active{color:var(--primary);font-weight:600;background:var(--accent)}
+    .tab:hover{color:var(--text)}
+    
+    /* Match Card */
+    .match-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:1rem;margin-bottom:.75rem}
+    .match-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem}
+    .match-teams{display:flex;align-items:center;gap:1rem}
+    .match-team{min-width:120px}
+    .match-vs{color:var(--muted);font-size:.8rem}
+    .match-score{display:flex;gap:.5rem;align-items:center}
+    .match-score input{width:50px;text-align:center}
+    .match-status{font-size:.75rem;padding:.2rem .5rem;border-radius:4px}
+    .match-status.played{background:#dcfce7;color:#166534}
+    .match-status.scheduled{background:#dbeafe;color:#1e40af}
+    .match-status.pending{background:#f3f4f6;color:#6b7280}
+    
+    /* Toast */
+    .toast{position:fixed;bottom:2rem;right:2rem;padding:.75rem 1.25rem;border-radius:8px;color:#fff;font-size:.9rem;z-index:1000;animation:slideIn .3s}
+    .toast.success{background:var(--success)}
+    .toast.error{background:var(--danger)}
+    @keyframes slideIn{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}
+    
+    /* Section visibility */
+    .section{display:none}
+    .section.active{display:block}
+    
+    /* Stats */
+    .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1rem;margin-bottom:1.5rem}
+    .stat{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:1rem;text-align:center}
+    .stat-value{font-size:1.5rem;font-weight:700;color:var(--primary)}
+    .stat-label{font-size:.75rem;color:var(--muted);margin-top:.25rem}
+  </style>
+</head>
+<body>
+  <!-- Login Modal -->
+  <div id="login-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:100">
+    <div class="card" style="width:340px;margin:0">
+      <h2 style="text-align:center">🔐 Admin Login</h2>
+      <div class="form-group" style="margin-bottom:1rem">
+        <label>Benutzer</label>
+        <input type="text" id="login-user" placeholder="admin">
+      </div>
+      <div class="form-group" style="margin-bottom:1rem">
+        <label>Passwort</label>
+        <input type="password" id="login-pass" placeholder="••••••">
+      </div>
+      <button class="btn btn-primary" style="width:100%" onclick="doLogin()">Anmelden</button>
+      <p id="login-error" style="color:var(--danger);text-align:center;margin-top:1rem;display:none"></p>
+    </div>
+  </div>
+
+  <div class="admin-layout" style="display:none" id="admin-main">
+    <aside class="sidebar">
+      <h1><span>⚽</span> BIW Admin</h1>
+      <p>Turnierverwaltung</p>
+      <nav>
+        <a href="#dashboard" class="active" data-section="dashboard">📊 Dashboard</a>
+        <a href="#matches" data-section="matches">🎮 Ergebnisse</a>
+        <a href="#teams" data-section="teams">👥 Teams</a>
+        <a href="#seasons" data-section="seasons">📅 Saisons</a>
+        <a href="#news" data-section="news">📰 News</a>
+      </nav>
+      <div style="position:absolute;bottom:1rem;left:1rem;right:1rem">
+        <a href="index.html" style="color:#9ca3af;font-size:.8rem;text-decoration:none;display:block;margin-bottom:.5rem">← Zurück zur Übersicht</a>
+        <a href="#" onclick="logout();return false" style="color:#ef4444;font-size:.8rem;text-decoration:none">🚪 Abmelden</a>
+      </div>
+    </aside>
+    
+    <main class="main">
+      <!-- Dashboard -->
+      <div id="dashboard" class="section active">
+        <h1>Dashboard</h1>
+        <div class="stats" id="stats">
+          <div class="stat"><div class="stat-value" id="stat-seasons">-</div><div class="stat-label">Saisons</div></div>
+          <div class="stat"><div class="stat-value" id="stat-teams">-</div><div class="stat-label">Teams</div></div>
+          <div class="stat"><div class="stat-value" id="stat-matches">-</div><div class="stat-label">Matches gespielt</div></div>
+          <div class="stat"><div class="stat-value" id="stat-pending">-</div><div class="stat-label">Ausstehend</div></div>
+        </div>
+        <div class="card">
+          <h2>🚀 Schnellaktionen</h2>
+          <div style="display:flex;gap:1rem;flex-wrap:wrap">
+            <button class="btn btn-primary" onclick="showSection('matches')">Ergebnis eintragen</button>
+            <button class="btn btn-secondary" onclick="showSection('teams')">Team hinzufügen</button>
+            <button class="btn btn-secondary" onclick="showSection('news')">News schreiben</button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Matches -->
+      <div id="matches" class="section">
+        <h1>Ergebnisse verwalten</h1>
+        <div class="card">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Saison</label>
+              <select id="match-season" onchange="loadMatchesForSeason()">
+                <option value="">Wählen...</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Phase</label>
+              <select id="match-phase" onchange="loadMatchesForPhase()">
+                <option value="group">Gruppenphase</option>
+                <option value="ko">KO-Phase</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        
+        <div id="matches-list"></div>
+      </div>
+      
+      <!-- Teams -->
+      <div id="teams" class="section">
+        <h1>Teams verwalten</h1>
+        <div class="card">
+          <h2>➕ Neues Team</h2>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Saison</label>
+              <select id="team-season">
+                <option value="">Wählen...</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Teamname</label>
+              <input type="text" id="team-name" placeholder="z.B. FC Beispiel">
+            </div>
+            <button class="btn btn-success" onclick="addTeam()">Hinzufügen</button>
+          </div>
+
+          <h3>Bulk Import (ein Team pro Zeile)</h3>
+          <textarea id="team-bulk" placeholder="Team 1&#10;Team 2&#10;Team 3"></textarea>
+          <button class="btn btn-primary" style="margin-top:.5rem" onclick="bulkAddTeams()">Alle importieren</button>
+        </div>
+
+        <div class="card">
+          <h2>📋 Teams in Saison</h2>
+          <div id="teams-list"></div>
+        </div>
+
+        <!-- Team Edit Modal -->
+        <div id="edit-team-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center" onclick="if(event.target===this) closeEditTeamModal()">
+          <div style="background:var(--card);border-radius:12px;padding:1.5rem;width:500px;max-width:90%" onclick="event.stopPropagation()">
+            <h3 style="margin:0 0 1rem">Team bearbeiten</h3>
+            <input type="hidden" id="edit-team-id">
+            <div class="form-group" style="margin-bottom:1rem">
+              <label>Name</label>
+              <input type="text" id="edit-team-name" placeholder="z.B. FC Schalke 04">
+            </div>
+            <div class="form-group" style="margin-bottom:1rem">
+              <label>Logo-URL</label>
+              <input type="text" id="edit-team-logo" placeholder="https://example.com/logo.png">
+            </div>
+            <div class="form-group" style="margin-bottom:1rem">
+              <label>Onlineliga-Link</label>
+              <input type="text" id="edit-team-onlineliga" placeholder="https://onlineliga.de/team/...">
+            </div>
+            <div style="display:flex;gap:.5rem;justify-content:flex-end">
+              <button class="btn btn-secondary" onclick="closeEditTeamModal()">Abbrechen</button>
+              <button class="btn btn-success" onclick="saveTeamEdit()">💾 Speichern</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Seasons -->
+      <div id="seasons" class="section">
+        <h1>Saisons verwalten</h1>
+        <div class="card">
+          <h2>➕ Neue Saison</h2>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Name</label>
+              <input type="text" id="season-name" placeholder="z.B. Saison 2026">
+            </div>
+            <div class="form-group">
+              <label>Teilnehmeranzahl</label>
+              <input type="number" id="season-count" value="16" min="4" max="64">
+            </div>
+            <button class="btn btn-success" onclick="createSeason()">Erstellen</button>
+          </div>
+        </div>
+        
+        <div class="card">
+          <h2>📅 Alle Saisons</h2>
+
+          <!-- Edit Modal (hidden) -->
+          <div id="edit-season-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center" onclick="if(event.target===this) closeEditSeasonModal()">
+            <div style="background:var(--card);border-radius:12px;padding:1.5rem;width:400px;max-width:90%" onclick="event.stopPropagation()">
+              <h3 style="margin:0 0 1rem">Saison bearbeiten</h3>
+              <input type="hidden" id="edit-season-id">
+              <div class="form-group" style="margin-bottom:1rem">
+                <label>Name</label>
+                <input type="text" id="edit-season-name" placeholder="z.B. Saison 2026">
+              </div>
+              <div class="form-group" style="margin-bottom:1rem">
+                <label>Status</label>
+                <select id="edit-season-status">
+                  <option value="planned">Geplant</option>
+                  <option value="active">Aktiv</option>
+                  <option value="archived">Archiviert</option>
+                </select>
+              </div>
+              <div style="display:flex;gap:.5rem;justify-content:flex-end">
+                <button class="btn btn-secondary" onclick="closeEditSeasonModal()">Abbrechen</button>
+                <button class="btn btn-success" onclick="saveSeasonEdit()">💾 Speichern</button>
+              </div>
+            </div>
+          </div>
+
+          <table>
+            <thead><tr><th>ID</th><th>Name</th><th>Teams</th><th>Status</th><th>Aktionen</th></tr></thead>
+            <tbody id="seasons-list"></tbody>
+          </table>
+        </div>
+      </div>
+      
+      <!-- News -->
+      <div id="news" class="section">
+        <h1>News verwalten</h1>
+        <div class="card">
+          <h2>✏️ Neuer Artikel</h2>
+          <div class="form-group" style="margin-bottom:1rem">
+            <label>Titel</label>
+            <input type="text" id="news-title" placeholder="Überschrift">
+          </div>
+          <div class="form-group" style="margin-bottom:1rem">
+            <label>Inhalt</label>
+
+            <!-- Match Inserter Tool -->
+            <div style="margin-bottom:.75rem;padding:.75rem;background:var(--bg);border-radius:6px;border:1px solid var(--border)">
+              <div style="display:flex;gap:.5rem;align-items:flex-end;flex-wrap:wrap">
+                <div style="flex:1;min-width:140px">
+                  <label style="font-size:.8rem;margin-bottom:.25rem;display:block">Saison</label>
+                  <select id="match-insert-season" style="width:100%;padding:.4rem;font-size:.85rem">
+                    <option value="">Wählen...</option>
+                  </select>
+                </div>
+                <div style="flex:1;min-width:140px">
+                  <label style="font-size:.8rem;margin-bottom:.25rem;display:block">Gruppe/Phase</label>
+                  <select id="match-insert-group" style="width:100%;padding:.4rem;font-size:.85rem">
+                    <option value="">Erst Saison wählen</option>
+                  </select>
+                </div>
+                <div id="match-insert-matchday-container" style="flex:1;min-width:120px;display:none">
+                  <label style="font-size:.8rem;margin-bottom:.25rem;display:block">Spieltag</label>
+                  <select id="match-insert-matchday" style="width:100%;padding:.4rem;font-size:.85rem">
+                    <option value="">Alle</option>
+                  </select>
+                </div>
+                <button class="btn btn-sm btn-primary" onclick="insertMatches()" style="padding:.4rem .8rem">
+                  ➕ Einfügen
+                </button>
+              </div>
+            </div>
+
+            <textarea id="news-content" placeholder="Artikel schreiben... (Markdown wird unterstützt)" style="min-height:150px"></textarea>
+            <div style="margin-top:.5rem;padding:.75rem;background:var(--accent);border-radius:6px;font-size:.85rem">
+              <strong>Formatierung:</strong><br>
+              <code style="background:var(--card);padding:.2rem .4rem;border-radius:4px;margin-right:.5rem">**fett**</code>
+              <code style="background:var(--card);padding:.2rem .4rem;border-radius:4px;margin-right:.5rem">*kursiv*</code><br>
+              <strong style="margin-top:.5rem;display:inline-block">Matches einbetten:</strong><br>
+              <code style="background:var(--card);padding:.2rem .4rem;border-radius:4px">[matches:12,13,14,15]</code> → Gruppenphase-Matches<br>
+              <code style="background:var(--card);padding:.2rem .4rem;border-radius:4px">[ko-matches:5,6,7]</code> → KO-Phase-Matches<br>
+              <span style="color:var(--muted);font-size:.8rem">Tipp: Nutze das Tool oben oder kopiere IDs aus "Ergebnisse"</span>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Autor</label>
+              <input type="text" id="news-author" placeholder="Admin" value="Admin">
+            </div>
+            <div class="form-group">
+              <label>Status</label>
+              <select id="news-published">
+                <option value="1">Veröffentlicht</option>
+                <option value="0">Entwurf</option>
+              </select>
+            </div>
+          </div>
+          <input type="hidden" id="news-edit-id" value="">
+          <button class="btn btn-success" onclick="saveNews()">💾 Speichern</button>
+          <button class="btn btn-secondary" onclick="clearNewsForm()" style="margin-left:.5rem">Abbrechen</button>
+        </div>
+        
+        <div class="card">
+          <h2>📰 Alle Artikel</h2>
+          <div id="news-list"></div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+<script>
+const API = '';
+let teamCache = {};
+let currentSeason = null;
+let authToken = localStorage.getItem('biw_token');
+
+// ========== AUTH ==========
+function showLogin() {
+  document.getElementById('login-overlay').style.display = 'flex';
+  document.getElementById('admin-main').style.display = 'none';
+}
+
+function hideLogin() {
+  document.getElementById('login-overlay').style.display = 'none';
+  document.getElementById('admin-main').style.display = 'flex';
+}
+
+async function doLogin() {
+  const user = document.getElementById('login-user').value;
+  const pass = document.getElementById('login-pass').value;
+  const errEl = document.getElementById('login-error');
+  
+  try {
+    const res = await fetch(`${API}/api/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: user, password: pass })
+    });
+    
+    if (!res.ok) {
+      errEl.textContent = 'Ungültige Anmeldedaten';
+      errEl.style.display = 'block';
+      return;
+    }
+    
+    const data = await res.json();
+    authToken = data.access_token;
+    localStorage.setItem('biw_token', authToken);
+    localStorage.setItem('biw_user', data.username);
+    hideLogin();
+    loadDashboard();
+  } catch (e) {
+    errEl.textContent = 'Verbindungsfehler';
+    errEl.style.display = 'block';
+  }
+}
+
+function logout() {
+  localStorage.removeItem('biw_token');
+  localStorage.removeItem('biw_user');
+  authToken = null;
+  showLogin();
+}
+
+function authHeaders() {
+  return authToken ? { 'Authorization': `Bearer ${authToken}` } : {};
+}
+
+async function authFetch(url, options = {}) {
+  const headers = { ...authHeaders(), ...(options.headers || {}) };
+  const res = await fetch(url, { ...options, headers });
+  
+  if (res.status === 401) {
+    logout();
+    throw new Error('Session abgelaufen');
+  }
+  
+  return res;
+}
+
+// Check auth on load
+async function checkAuth() {
+  if (!authToken) {
+    showLogin();
+    return;
+  }
+  
+  try {
+    const res = await fetch(`${API}/api/me`, { headers: authHeaders() });
+    if (res.ok) {
+      hideLogin();
+      loadDashboard();
+    } else {
+      showLogin();
+    }
+  } catch (e) {
+    showLogin();
+  }
+}
+
+// Enter key on login
+document.getElementById('login-pass')?.addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') doLogin();
+});
+
+// Navigation
+document.querySelectorAll('.sidebar nav a').forEach(link => {
+  link.addEventListener('click', (e) => {
+    e.preventDefault();
+    showSection(link.dataset.section);
+  });
+});
+
+function showSection(name) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.sidebar nav a').forEach(a => a.classList.remove('active'));
+  document.getElementById(name)?.classList.add('active');
+  document.querySelector(`[data-section="${name}"]`)?.classList.add('active');
+  
+  // Load data
+  if (name === 'matches') loadMatchSeasons();
+  if (name === 'teams') loadTeamSeasons();
+  if (name === 'seasons') loadSeasons();
+  if (name === 'news') {
+    loadNews();
+    loadMatchInserterSeasons();
+  }
+}
+
+function toast(msg, type = 'success') {
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+
+// ========== DASHBOARD ==========
+async function loadDashboard() {
+  try {
+    const seasons = await fetch(`${API}/api/seasons`).then(r => r.json());
+    document.getElementById('stat-seasons').textContent = seasons.length;
+    
+    let totalTeams = 0, played = 0, pending = 0;
+    for (const s of seasons) {
+      const groups = await fetch(`${API}/api/seasons/${s.id}/groups-with-teams`).then(r => r.json());
+      groups.forEach(g => {
+        totalTeams += g.teams.length;
+        g.matches.forEach(m => {
+          if (m.status === 'played') played++;
+          else pending++;
+        });
+      });
+    }
+    document.getElementById('stat-teams').textContent = totalTeams;
+    document.getElementById('stat-matches').textContent = played;
+    document.getElementById('stat-pending').textContent = pending;
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+// ========== MATCHES ==========
+async function loadMatchSeasons() {
+  const seasons = await fetch(`${API}/api/seasons`).then(r => r.json());
+  const select = document.getElementById('match-season');
+  select.innerHTML = '<option value="">Wählen...</option>' + 
+    seasons.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+}
+
+async function loadMatchesForSeason() {
+  const seasonId = document.getElementById('match-season').value;
+  if (!seasonId) {
+    document.getElementById('matches-list').innerHTML = '';
+    return;
+  }
+  currentSeason = seasonId;
+  
+  // Cache teams
+  const groups = await fetch(`${API}/api/seasons/${seasonId}/groups-with-teams`).then(r => r.json());
+  groups.forEach(g => g.teams.forEach(t => teamCache[t.id] = t.name));
+  
+  loadMatchesForPhase();
+}
+
+async function loadMatchesForPhase() {
+  const seasonId = document.getElementById('match-season').value;
+  const phase = document.getElementById('match-phase').value;
+  if (!seasonId) return;
+  
+  const container = document.getElementById('matches-list');
+  container.innerHTML = '<em>Lade...</em>';
+  
+  if (phase === 'group') {
+    await loadGroupMatches(seasonId, container);
+  } else {
+    await loadKOMatches(seasonId, container);
+  }
+}
+
+async function loadGroupMatches(seasonId, container) {
+  const groups = await fetch(`${API}/api/seasons/${seasonId}/groups-with-teams`).then(r => r.json());
+  
+  let html = '';
+  for (const g of groups) {
+    if (g.matches.length === 0) continue;
+    html += `<div class="card"><h2>Gruppe ${g.group.name}</h2>`;
+    
+    for (const m of g.matches) {
+      const homeName = teamCache[m.home_team_id] || `Team ${m.home_team_id}`;
+      const awayName = teamCache[m.away_team_id] || `Team ${m.away_team_id}`;
+      const homeGoals = m.home_goals ?? '';
+      const awayGoals = m.away_goals ?? '';
+      
+      const matchdayLabel = m.matchday ? `ST ${m.matchday}` : '';
+      const ingameWeek = m.ingame_week || '';
+
+      html += `
+        <div class="match-card">
+          <div class="match-header">
+            <div class="match-teams">
+              <span class="match-team">${homeName}</span>
+              <span class="match-vs">vs</span>
+              <span class="match-team">${awayName}</span>
+            </div>
+            <div style="display:flex;gap:.5rem;align-items:center">
+              ${matchdayLabel ? `<span style="font-size:.75rem;color:var(--primary);font-weight:600" title="Spieltag">${matchdayLabel}</span>` : ''}
+              <span style="font-size:.75rem;color:var(--muted)" title="Match-ID für News">ID: ${m.id}</span>
+              <span class="match-status ${m.status}">${m.status}</span>
+            </div>
+          </div>
+          <div class="match-score">
+            <input type="number" min="0" id="home-${m.id}" value="${homeGoals}" placeholder="-" style="width:50px">
+            <span>:</span>
+            <input type="number" min="0" id="away-${m.id}" value="${awayGoals}" placeholder="-" style="width:50px">
+            <input type="number" min="1" id="week-${m.id}" value="${ingameWeek}" placeholder="W" title="Ingame Woche" style="width:50px;margin-left:.5rem;font-size:.85rem">
+            <button class="btn btn-sm btn-success" onclick="saveGroupMatch(${m.id})">💾</button>
+          </div>
+        </div>`;
+    }
+    html += '</div>';
+  }
+  
+  container.innerHTML = html || '<div class="card"><em>Keine Matches gefunden. Erst Spielplan generieren!</em></div>';
+}
+
+async function loadKOMatches(seasonId, container) {
+  try {
+    const res = await fetch(`${API}/api/seasons/${seasonId}/ko-bracket`);
+    if (res.status === 404) {
+      container.innerHTML = `
+        <div class="card" style="text-align:center">
+          <p>Noch kein KO-Bracket erstellt</p>
+          <button class="btn btn-primary" onclick="generateKOBracket(${seasonId})">🎲 Bracket generieren</button>
+        </div>`;
+      return;
+    }
+    
+    const bracket = await res.json();
+    let html = '';
+    
+    const rounds = {};
+    bracket.matches.forEach(m => {
+      if (!rounds[m.round]) rounds[m.round] = [];
+      rounds[m.round].push(m);
+    });
+    
+    Object.keys(rounds).sort((a,b) => a-b).forEach(roundNum => {
+      const roundName = getRoundName(parseInt(roundNum), bracket.total_rounds);
+      html += `<div class="card"><h2>${roundName}</h2>`;
+      
+      rounds[roundNum].sort((a,b) => a.position - b.position).forEach(m => {
+        if (m.is_bye) {
+          html += `<div class="match-card" style="opacity:.6"><em>${teamCache[m.home_team_id] || 'Team ' + m.home_team_id} – Freilos</em></div>`;
+          return;
+        }
+        
+        const homeName = m.home_team_id ? (teamCache[m.home_team_id] || `Team ${m.home_team_id}`) : '?';
+        const awayName = m.away_team_id ? (teamCache[m.away_team_id] || `Team ${m.away_team_id}`) : '?';
+        const homeGoals = m.home_goals ?? '';
+        const awayGoals = m.away_goals ?? '';
+        const ingameWeek = m.ingame_week || '';
+        const disabled = !m.home_team_id || !m.away_team_id;
+
+        html += `
+          <div class="match-card">
+            <div class="match-header">
+              <div class="match-teams">
+                <span class="match-team">${homeName}</span>
+                <span class="match-vs">vs</span>
+                <span class="match-team">${awayName}</span>
+              </div>
+              <div style="display:flex;gap:.5rem;align-items:center">
+                <span style="font-size:.75rem;color:var(--muted)" title="Match-ID für News">KO-ID: ${m.id}</span>
+                <span class="match-status ${m.status}">${m.status}</span>
+              </div>
+            </div>
+            <div class="match-score">
+              <input type="number" min="0" id="ko-home-${m.id}" value="${homeGoals}" placeholder="-" style="width:50px" ${disabled ? 'disabled' : ''}>
+              <span>:</span>
+              <input type="number" min="0" id="ko-away-${m.id}" value="${awayGoals}" placeholder="-" style="width:50px" ${disabled ? 'disabled' : ''}>
+              <input type="number" min="1" id="ko-week-${m.id}" value="${ingameWeek}" placeholder="W" title="Ingame Woche" style="width:50px;margin-left:.5rem;font-size:.85rem" ${disabled ? 'disabled' : ''}>
+              <button class="btn btn-sm btn-success" onclick="saveKOMatch(${m.id})" ${disabled ? 'disabled' : ''}>💾</button>
+            </div>
+          </div>`;
+      });
+      
+      html += '</div>';
+    });
+    
+    container.innerHTML = html;
+  } catch (e) {
+    container.innerHTML = `<div class="card" style="color:var(--danger)">Fehler: ${e.message}</div>`;
+  }
+}
+
+function getRoundName(round, total) {
+  const remaining = total - round + 1;
+  if (remaining === 1) return '🏆 Finale';
+  if (remaining === 2) return 'Halbfinale';
+  if (remaining === 3) return 'Viertelfinale';
+  if (remaining === 4) return 'Achtelfinale';
+  return `Runde ${round}`;
+}
+
+async function saveGroupMatch(matchId) {
+  const home = document.getElementById(`home-${matchId}`).value;
+  const away = document.getElementById(`away-${matchId}`).value;
+  const week = document.getElementById(`week-${matchId}`).value;
+
+  if (home === '' || away === '') {
+    toast('Bitte beide Ergebnisse eingeben', 'error');
+    return;
+  }
+
+  try {
+    const body = {
+      home_goals: parseInt(home),
+      away_goals: parseInt(away)
+    };
+
+    // Ingame-Woche nur hinzufügen wenn gesetzt
+    if (week !== '') {
+      body.ingame_week = parseInt(week);
+    }
+
+    await authFetch(`${API}/api/matches/${matchId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    toast('Ergebnis gespeichert!');
+    loadMatchesForPhase();
+  } catch (e) {
+    toast('Fehler: ' + e.message, 'error');
+  }
+}
+
+async function saveKOMatch(matchId) {
+  const home = document.getElementById(`ko-home-${matchId}`).value;
+  const away = document.getElementById(`ko-away-${matchId}`).value;
+  const week = document.getElementById(`ko-week-${matchId}`).value;
+
+  if (home === '' || away === '') {
+    toast('Bitte beide Ergebnisse eingeben', 'error');
+    return;
+  }
+
+  if (home === away) {
+    toast('Unentschieden nicht erlaubt im KO!', 'error');
+    return;
+  }
+
+  try {
+    const body = {
+      home_goals: parseInt(home),
+      away_goals: parseInt(away)
+    };
+
+    // Ingame-Woche nur hinzufügen wenn gesetzt
+    if (week !== '') {
+      body.ingame_week = parseInt(week);
+    }
+
+    await authFetch(`${API}/api/ko-matches/${matchId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    toast('Ergebnis gespeichert! Sieger wurde weitergeleitet.');
+    loadMatchesForPhase();
+  } catch (e) {
+    toast('Fehler: ' + e.message, 'error');
+  }
+}
+
+async function generateKOBracket(seasonId) {
+  try {
+    await authFetch(`${API}/api/seasons/${seasonId}/ko-bracket/generate`, { method: 'POST' });
+    toast('KO-Bracket erstellt!');
+    loadMatchesForPhase();
+  } catch (e) {
+    toast('Fehler: ' + e.message, 'error');
+  }
+}
+
+// ========== TEAMS ==========
+async function loadTeamSeasons() {
+  const seasons = await fetch(`${API}/api/seasons`).then(r => r.json());
+  const select = document.getElementById('team-season');
+  select.innerHTML = '<option value="">Wählen...</option>' + 
+    seasons.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+  select.onchange = loadTeamsForSeason;
+}
+
+async function loadTeamsForSeason() {
+  const seasonId = document.getElementById('team-season').value;
+  if (!seasonId) {
+    document.getElementById('teams-list').innerHTML = '';
+    return;
+  }
+
+  const groups = await fetch(`${API}/api/seasons/${seasonId}/groups-with-teams`).then(r => r.json());
+
+  let html = '<table><thead><tr><th>Team</th><th>Gruppe</th><th>Aktionen</th></tr></thead><tbody>';
+  groups.forEach(g => {
+    g.teams.forEach(t => {
+      const logoIndicator = t.logo_url ? '🖼️' : '';
+      const linkIndicator = t.onlineliga_url ? '🔗' : '';
+      html += `
+        <tr>
+          <td>${t.name} ${logoIndicator} ${linkIndicator}</td>
+          <td>Gruppe ${g.group.name}</td>
+          <td>
+            <button class="btn btn-sm btn-secondary" onclick="editTeam(${t.id})" title="Bearbeiten">✏️</button>
+          </td>
+        </tr>`;
+    });
+  });
+  html += '</tbody></table>';
+
+  document.getElementById('teams-list').innerHTML = html;
+}
+
+async function addTeam() {
+  const seasonId = document.getElementById('team-season').value;
+  const name = document.getElementById('team-name').value.trim();
+  
+  if (!seasonId || !name) {
+    toast('Saison und Name erforderlich', 'error');
+    return;
+  }
+  
+  try {
+    await authFetch(`${API}/api/seasons/${seasonId}/teams`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name })
+    });
+    toast('Team hinzugefügt!');
+    document.getElementById('team-name').value = '';
+    loadTeamsForSeason();
+  } catch (e) {
+    toast('Fehler: ' + e.message, 'error');
+  }
+}
+
+async function bulkAddTeams() {
+  const seasonId = document.getElementById('team-season').value;
+  const text = document.getElementById('team-bulk').value.trim();
+
+  if (!seasonId || !text) {
+    toast('Saison und Teams erforderlich', 'error');
+    return;
+  }
+
+  const teams = text.split('\n').map(t => t.trim()).filter(t => t);
+
+  try {
+    const res = await authFetch(`${API}/api/seasons/${seasonId}/teams/bulk`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ teams })
+    });
+    const data = await res.json();
+    toast(`${data.count} Teams importiert!`);
+    document.getElementById('team-bulk').value = '';
+    loadTeamsForSeason();
+  } catch (e) {
+    toast('Fehler: ' + e.message, 'error');
+  }
+}
+
+async function editTeam(teamId) {
+  try {
+    const team = await fetch(`${API}/api/teams/${teamId}`).then(r => r.json());
+
+    document.getElementById('edit-team-id').value = team.id;
+    document.getElementById('edit-team-name').value = team.name;
+    document.getElementById('edit-team-logo').value = team.logo_url || '';
+    document.getElementById('edit-team-onlineliga').value = team.onlineliga_url || '';
+
+    document.getElementById('edit-team-modal').style.display = 'flex';
+  } catch (e) {
+    toast('Fehler beim Laden: ' + e.message, 'error');
+  }
+}
+
+function closeEditTeamModal() {
+  document.getElementById('edit-team-modal').style.display = 'none';
+  document.getElementById('edit-team-id').value = '';
+  document.getElementById('edit-team-name').value = '';
+  document.getElementById('edit-team-logo').value = '';
+  document.getElementById('edit-team-onlineliga').value = '';
+}
+
+async function saveTeamEdit() {
+  const teamId = document.getElementById('edit-team-id').value;
+  const name = document.getElementById('edit-team-name').value.trim();
+  const logo_url = document.getElementById('edit-team-logo').value.trim() || null;
+  const onlineliga_url = document.getElementById('edit-team-onlineliga').value.trim() || null;
+
+  if (!name) {
+    toast('Name erforderlich', 'error');
+    return;
+  }
+
+  try {
+    await authFetch(`${API}/api/teams/${teamId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, logo_url, onlineliga_url })
+    });
+
+    toast('Team aktualisiert!');
+    closeEditTeamModal();
+    loadTeamsForSeason();
+  } catch (e) {
+    toast('Fehler: ' + e.message, 'error');
+  }
+}
+
+// ========== SEASONS ==========
+async function loadSeasons() {
+  const seasons = await fetch(`${API}/api/seasons`).then(r => r.json());
+
+  let html = '';
+  for (const s of seasons) {
+    const groups = await fetch(`${API}/api/seasons/${s.id}/groups-with-teams`).then(r => r.json());
+    const teamCount = groups.reduce((sum, g) => sum + g.teams.length, 0);
+
+    // Status Badge
+    const statusColors = {
+      'planned': 'color:#1e40af;background:#dbeafe',
+      'active': 'color:#166534;background:#dcfce7',
+      'archived': 'color:#6b7280;background:#f3f4f6'
+    };
+    const statusStyle = statusColors[s.status] || '';
+
+    html += `
+      <tr>
+        <td>${s.id}</td>
+        <td><strong>${s.name}</strong></td>
+        <td>${teamCount} / ${s.participant_count}</td>
+        <td><span style="padding:.2rem .5rem;border-radius:4px;font-size:.8rem;${statusStyle}">${s.status}</span></td>
+        <td>
+          <button class="btn btn-sm btn-secondary" onclick="generateSchedule(${s.id})" title="Spielplan generieren">📅</button>
+          <button class="btn btn-sm btn-primary" onclick="editSeason(${s.id})" title="Bearbeiten">✏️</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteSeason(${s.id})" title="Löschen">🗑️</button>
+        </td>
+      </tr>`;
+  }
+
+  document.getElementById('seasons-list').innerHTML = html || '<tr><td colspan="5"><em>Keine Saisons</em></td></tr>';
+}
+
+async function editSeason(seasonId) {
+  try {
+    const season = await fetch(`${API}/api/seasons/${seasonId}`).then(r => r.json());
+
+    document.getElementById('edit-season-id').value = season.id;
+    document.getElementById('edit-season-name').value = season.name;
+    document.getElementById('edit-season-status').value = season.status;
+
+    document.getElementById('edit-season-modal').style.display = 'flex';
+  } catch (e) {
+    toast('Fehler beim Laden: ' + e.message, 'error');
+  }
+}
+
+function closeEditSeasonModal() {
+  document.getElementById('edit-season-modal').style.display = 'none';
+  document.getElementById('edit-season-id').value = '';
+  document.getElementById('edit-season-name').value = '';
+}
+
+async function saveSeasonEdit() {
+  const seasonId = document.getElementById('edit-season-id').value;
+  const name = document.getElementById('edit-season-name').value.trim();
+  const status = document.getElementById('edit-season-status').value;
+
+  if (!name) {
+    toast('Name erforderlich', 'error');
+    return;
+  }
+
+  try {
+    await authFetch(`${API}/api/seasons/${seasonId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, status })
+    });
+
+    toast('Saison aktualisiert!');
+    closeEditSeasonModal();
+    loadSeasons();
+  } catch (e) {
+    toast('Fehler: ' + e.message, 'error');
+  }
+}
+
+async function deleteSeason(seasonId) {
+  // Saison-Info holen für Bestätigung
+  const season = await fetch(`${API}/api/seasons/${seasonId}`).then(r => r.json());
+
+  const confirmed = confirm(
+    `Saison "${season.name}" wirklich löschen?\n\n` +
+    `⚠️ Dies löscht ALLE zugehörigen Daten:\n` +
+    `- Gruppen\n` +
+    `- Teams\n` +
+    `- Matches\n` +
+    `- KO-Bracket\n\n` +
+    `Diese Aktion kann nicht rückgängig gemacht werden!`
+  );
+
+  if (!confirmed) return;
+
+  try {
+    await authFetch(`${API}/api/seasons/${seasonId}`, {
+      method: 'DELETE'
+    });
+
+    toast('Saison gelöscht');
+    loadSeasons();
+
+    // Dashboard aktualisieren
+    if (document.getElementById('dashboard').classList.contains('active')) {
+      loadDashboard();
+    }
+  } catch (e) {
+    toast('Fehler: ' + e.message, 'error');
+  }
+}
+
+async function createSeason() {
+  const name = document.getElementById('season-name').value.trim();
+  const count = parseInt(document.getElementById('season-count').value);
+  
+  if (!name || !count) {
+    toast('Name und Anzahl erforderlich', 'error');
+    return;
+  }
+  
+  try {
+    await authFetch(`${API}/api/seasons`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, participant_count: count })
+    });
+    toast('Saison erstellt!');
+    document.getElementById('season-name').value = '';
+    loadSeasons();
+  } catch (e) {
+    toast('Fehler: ' + e.message, 'error');
+  }
+}
+
+async function generateSchedule(seasonId) {
+  const groups = await fetch(`${API}/api/seasons/${seasonId}/groups-with-teams`).then(r => r.json());
+  
+  let generated = 0;
+  for (const g of groups) {
+    if (g.matches.length > 0) continue;
+    try {
+      await authFetch(`${API}/api/groups/${g.group.id}/generate-schedule`, { method: 'POST' });
+      generated++;
+    } catch (e) {}
+  }
+  
+  toast(`Spielplan für ${generated} Gruppen generiert!`);
+  loadSeasons();
+}
+
+// ========== NEWS ==========
+async function loadNews() {
+  try {
+    const news = await fetch(`${API}/api/news?published_only=false`).then(r => r.json());
+    
+    if (news.length === 0) {
+      document.getElementById('news-list').innerHTML = '<em style="color:var(--muted)">Noch keine Artikel vorhanden</em>';
+      return;
+    }
+    
+    let html = '<table><thead><tr><th>Titel</th><th>Autor</th><th>Status</th><th>Datum</th><th>Aktionen</th></tr></thead><tbody>';
+    
+    news.forEach(n => {
+      const date = new Date(n.created_at).toLocaleDateString('de-DE');
+      const status = n.published ? '<span style="color:var(--success)">✓ Online</span>' : '<span style="color:var(--muted)">Entwurf</span>';
+      html += `
+        <tr>
+          <td><strong>${escapeHtml(n.title)}</strong></td>
+          <td>${escapeHtml(n.author)}</td>
+          <td>${status}</td>
+          <td>${date}</td>
+          <td>
+            <button class="btn btn-sm btn-secondary" onclick="editNews(${n.id})">✏️</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteNews(${n.id})">🗑️</button>
+          </td>
+        </tr>`;
+    });
+    
+    html += '</tbody></table>';
+    document.getElementById('news-list').innerHTML = html;
+  } catch (e) {
+    document.getElementById('news-list').innerHTML = `<em style="color:var(--danger)">Fehler: ${e.message}</em>`;
+  }
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+async function saveNews() {
+  const editId = document.getElementById('news-edit-id').value;
+  const title = document.getElementById('news-title').value.trim();
+  const content = document.getElementById('news-content').value.trim();
+  const author = document.getElementById('news-author').value.trim() || 'Admin';
+  const published = parseInt(document.getElementById('news-published').value);
+  
+  if (!title || !content) {
+    toast('Titel und Inhalt erforderlich', 'error');
+    return;
+  }
+  
+  try {
+    if (editId) {
+      // Update
+      await authFetch(`${API}/api/news/${editId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, content, author, published })
+      });
+      toast('Artikel aktualisiert!');
+    } else {
+      // Create
+      await authFetch(`${API}/api/news`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, content, author, published })
+      });
+      toast('Artikel veröffentlicht!');
+    }
+    
+    clearNewsForm();
+    loadNews();
+  } catch (e) {
+    toast('Fehler: ' + e.message, 'error');
+  }
+}
+
+async function editNews(id) {
+  try {
+    const news = await fetch(`${API}/api/news/${id}`).then(r => r.json());
+    document.getElementById('news-edit-id').value = news.id;
+    document.getElementById('news-title').value = news.title;
+    document.getElementById('news-content').value = news.content;
+    document.getElementById('news-author').value = news.author;
+    document.getElementById('news-published').value = news.published;
+    
+    document.getElementById('news-title').focus();
+    toast('Artikel zum Bearbeiten geladen');
+  } catch (e) {
+    toast('Fehler: ' + e.message, 'error');
+  }
+}
+
+async function deleteNews(id) {
+  if (!confirm('Artikel wirklich löschen?')) return;
+  
+  try {
+    await authFetch(`${API}/api/news/${id}`, { method: 'DELETE' });
+    toast('Artikel gelöscht');
+    loadNews();
+  } catch (e) {
+    toast('Fehler: ' + e.message, 'error');
+  }
+}
+
+function clearNewsForm() {
+  document.getElementById('news-edit-id').value = '';
+  document.getElementById('news-title').value = '';
+  document.getElementById('news-content').value = '';
+  document.getElementById('news-author').value = 'Admin';
+  document.getElementById('news-published').value = '1';
+}
+
+// ========== MATCH INSERTER TOOL ==========
+
+// Lade Saisons in Match-Inserter
+async function loadMatchInserterSeasons() {
+  try {
+    const seasons = await fetch(`${API}/api/seasons`).then(r => r.json());
+    const select = document.getElementById('match-insert-season');
+
+    select.innerHTML = '<option value="">Wählen...</option>' +
+      seasons.sort((a, b) => b.id - a.id).map(s =>
+        `<option value="${s.id}">${s.name}</option>`
+      ).join('');
+
+    select.onchange = loadMatchInserterGroups;
+  } catch (e) {
+    console.error('Fehler beim Laden der Saisons:', e);
+  }
+}
+
+// Lade Gruppen/Phasen wenn Saison gewählt
+async function loadMatchInserterGroups() {
+  const seasonId = document.getElementById('match-insert-season').value;
+  const select = document.getElementById('match-insert-group');
+  const matchdayContainer = document.getElementById('match-insert-matchday-container');
+
+  // Spieltag-Dropdown verstecken
+  matchdayContainer.style.display = 'none';
+
+  if (!seasonId) {
+    select.innerHTML = '<option value="">Erst Saison wählen</option>';
+    return;
+  }
+
+  try {
+    const groups = await fetch(`${API}/api/seasons/${seasonId}/groups-with-teams`).then(r => r.json());
+
+    let html = '<option value="">Wählen...</option>';
+
+    // "Alle Gruppen" Option
+    html += `<option value="all:${seasonId}">Alle Gruppen</option>`;
+
+    // Einzelne Gruppen hinzufügen
+    groups.forEach(g => {
+      html += `<option value="group:${g.group.id}">Gruppe ${g.group.name}</option>`;
+    });
+
+    // KO-Phase Option
+    html += `<option value="ko:${seasonId}">KO-Phase</option>`;
+
+    select.innerHTML = html;
+    select.onchange = loadMatchInserterMatchdays;
+  } catch (e) {
+    select.innerHTML = '<option value="">Fehler beim Laden</option>';
+  }
+}
+
+// Lade Spieltage wenn Gruppe gewählt
+async function loadMatchInserterMatchdays() {
+  const groupValue = document.getElementById('match-insert-group').value;
+  const seasonId = document.getElementById('match-insert-season').value;
+  const matchdayContainer = document.getElementById('match-insert-matchday-container');
+  const matchdaySelect = document.getElementById('match-insert-matchday');
+
+  if (!groupValue) {
+    matchdayContainer.style.display = 'none';
+    return;
+  }
+
+  const [type, id] = groupValue.split(':');
+
+  // Bei Gruppenphase oder "Alle Gruppen" Spieltage anzeigen
+  if (type === 'group' || type === 'all') {
+    try {
+      let endpoint;
+      if (type === 'all') {
+        // Für alle Gruppen: Saison-weite Spieltage
+        endpoint = `${API}/api/seasons/${seasonId}/matchdays`;
+      } else {
+        // Für einzelne Gruppe
+        endpoint = `${API}/api/groups/${id}/matchdays`;
+      }
+
+      const data = await fetch(endpoint).then(r => r.json());
+      const maxMatchday = data.max_matchday;
+
+      if (maxMatchday > 0) {
+        let html = type === 'all'
+          ? '<option value="">Spieltag wählen (erforderlich)</option>'
+          : '<option value="">Alle Spieltage</option>';
+
+        for (let i = 1; i <= maxMatchday; i++) {
+          html += `<option value="${i}">Spieltag ${i}</option>`;
+        }
+        matchdaySelect.innerHTML = html;
+        matchdayContainer.style.display = 'block';
+      } else {
+        matchdayContainer.style.display = 'none';
+      }
+    } catch (e) {
+      matchdayContainer.style.display = 'none';
+    }
+  } else {
+    // Bei KO-Phase verstecken
+    matchdayContainer.style.display = 'none';
+  }
+}
+
+// Matches einfügen
+async function insertMatches() {
+  const seasonId = document.getElementById('match-insert-season').value;
+  const groupValue = document.getElementById('match-insert-group').value;
+  const matchday = document.getElementById('match-insert-matchday').value;
+  const textarea = document.getElementById('news-content');
+
+  if (!seasonId || !groupValue) {
+    toast('Bitte Saison und Gruppe/Phase wählen', 'error');
+    return;
+  }
+
+  try {
+    const [type, id] = groupValue.split(':');
+    let matchIds = [];
+
+    if (type === 'all') {
+      // Alle Gruppen - Spieltag MUSS gewählt sein
+      if (!matchday) {
+        toast('Bitte Spieltag wählen für "Alle Gruppen"', 'error');
+        return;
+      }
+
+      // Alle Matches eines Spieltags über alle Gruppen
+      const matches = await fetch(`${API}/api/seasons/${seasonId}/matchday/${matchday}`).then(r => r.json());
+      matchIds = matches.map(m => m.id);
+
+      if (matchIds.length === 0) {
+        toast('Keine Matches an diesem Spieltag gefunden', 'error');
+        return;
+      }
+
+      const syntax = `[matches:${matchIds.join(',')}]`;
+      insertAtCursor(textarea, syntax);
+      toast(`${matchIds.length} Match(es) von Spieltag ${matchday} eingefügt!`);
+
+    } else if (type === 'group') {
+      // Gruppenphase-Matches holen
+      if (matchday) {
+        // Nur bestimmter Spieltag
+        const matches = await fetch(`${API}/api/groups/${id}/matchday/${matchday}`).then(r => r.json());
+        matchIds = matches.map(m => m.id);
+      } else {
+        // Alle Matches der Gruppe
+        const groups = await fetch(`${API}/api/seasons/${seasonId}/groups-with-teams`).then(r => r.json());
+        const group = groups.find(g => g.group.id == id);
+
+        if (group && group.matches) {
+          matchIds = group.matches.map(m => m.id);
+        }
+      }
+
+      if (matchIds.length === 0) {
+        toast('Keine Matches gefunden', 'error');
+        return;
+      }
+
+      const syntax = `[matches:${matchIds.join(',')}]`;
+      insertAtCursor(textarea, syntax);
+      toast(`${matchIds.length} Match(es) eingefügt!`);
+
+    } else if (type === 'ko') {
+      // KO-Phase-Matches holen
+      const response = await fetch(`${API}/api/seasons/${seasonId}/ko-bracket`);
+
+      if (response.status === 404) {
+        toast('Noch kein KO-Bracket für diese Saison', 'error');
+        return;
+      }
+
+      const bracket = await response.json();
+
+      if (bracket.matches) {
+        matchIds = bracket.matches
+          .filter(m => !m.is_bye)
+          .map(m => m.id);
+      }
+
+      if (matchIds.length === 0) {
+        toast('Keine KO-Matches gefunden', 'error');
+        return;
+      }
+
+      const syntax = `[ko-matches:${matchIds.join(',')}]`;
+      insertAtCursor(textarea, syntax);
+      toast(`${matchIds.length} KO-Match(es) eingefügt!`);
+    }
+
+  } catch (e) {
+    toast('Fehler: ' + e.message, 'error');
+  }
+}
+
+// Hilfs-Funktion: Text an Cursor-Position einfügen
+function insertAtCursor(textarea, text) {
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+  const before = textarea.value.substring(0, start);
+  const after = textarea.value.substring(end);
+
+  textarea.value = before + text + after;
+
+  // Cursor nach eingefügtem Text positionieren
+  const newPos = start + text.length;
+  textarea.setSelectionRange(newPos, newPos);
+  textarea.focus();
+}
+
+// Init
+checkAuth();
+</script>
+</body>
+</html>

@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <title>Ewige Tabelle – BIW Pokal</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root{
+      --bg:#f3f4f6;--card:#fff;--text:#111827;--muted:#6b7280;--primary:#2563eb;--border:#e5e7eb;--accent:#eef2ff;--success:#16a34a;--danger:#dc2626;
+    }
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{margin:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--text)}
+    header{position:sticky;top:0;z-index:50;background:var(--card);border-bottom:1px solid var(--border);padding:1rem 2rem}
+    header h1{margin:0;font-size:1.5rem}
+    header p{margin:.25rem 0 0;color:var(--muted)}
+
+    /* Burger Menu */
+    .burger-btn{background:none;border:none;cursor:pointer;padding:.5rem;display:flex;flex-direction:column;gap:4px;z-index:100}
+    .burger-btn span{display:block;width:24px;height:3px;background:var(--text);border-radius:2px;transition:all .3s}
+    .burger-btn.open span:nth-child(1){transform:rotate(45deg) translate(5px,5px)}
+    .burger-btn.open span:nth-child(2){opacity:0}
+    .burger-btn.open span:nth-child(3){transform:rotate(-45deg) translate(7px,-6px)}
+
+    /* Menu Overlay */
+    .menu-overlay{position:fixed;top:0;right:0;width:100%;height:100vh;background:rgba(0,0,0,.5);z-index:90;opacity:0;pointer-events:none;transition:opacity .3s}
+    .menu-overlay.open{opacity:1;pointer-events:auto}
+
+    /* Menu Panel */
+    nav{position:fixed;top:0;right:-100%;width:280px;height:100vh;background:var(--card);z-index:100;transition:right .3s;padding:5rem 2rem 2rem;box-shadow:-4px 0 24px rgba(0,0,0,.1)}
+    nav.open{right:0}
+    nav ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.5rem}
+    nav a{text-decoration:none;color:var(--text);padding:.75rem 1rem;border-radius:8px;font-weight:500;display:block;transition:background .2s}
+    nav a:hover{background:var(--accent)}
+    nav a.active{background:var(--accent);color:var(--primary);font-weight:700}
+    main{max-width:1200px;margin:0 auto;padding:2.5rem 2rem}
+    h2{margin-bottom:1.5rem}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:2rem;box-shadow:0 8px 24px rgba(0,0,0,.06)}
+    .card-header{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:.75rem}
+    .card-title{font-weight:700;font-size:1.1rem}
+    .card-sub{color:var(--muted);font-size:.9rem}
+    table{width:100%;border-collapse:collapse;margin-top:.75rem;font-size:.9rem}
+    th,td{padding:.55rem .65rem;border-bottom:1px solid var(--border);text-align:center}
+    th{color:var(--muted);font-weight:600;position:sticky;top:72px;background:var(--card);z-index:10}
+    td:first-child,th:first-child{text-align:left;padding-left:1rem}
+    tr.top3{background:var(--accent)}
+    tr.top1{font-weight:700;color:var(--primary)}
+    .rank{font-weight:700;color:var(--primary);min-width:40px}
+    .loading{text-align:center;padding:3rem;color:var(--muted)}
+  </style>
+</head>
+<body>
+  <header>
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div style="display:flex;align-items:center;gap:1rem">
+        <img src="img/logo.png" alt="BIW Pokal Logo" style="height:48px;width:auto">
+        <div>
+          <h1>BIW Pokal</h1>
+          <p>Ewige Tabelle</p>
+        </div>
+      </div>
+      <button class="burger-btn" id="burger-btn" aria-label="Menü öffnen">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Menu Overlay -->
+  <div class="menu-overlay" id="menu-overlay"></div>
+
+  <!-- Navigation Menu -->
+  <nav id="nav-menu">
+    <ul>
+      <li><a href="index.html">Start</a></li>
+      <li><a href="turnier.html">Gruppenphase</a></li>
+      <li><a href="ko.html">KO‑Phase</a></li>
+      <li><a href="ewige-tabelle.html" class="active">Ewige Tabelle</a></li>
+      <li><a href="regeln.html">Regeln</a></li>
+      <li><a href="archiv.html">Archiv</a></li>
+      <li id="admin-link" style="display:none"><a href="admin.html" style="color:var(--primary);font-weight:600">🔐 Admin</a></li>
+    </ul>
+  </nav>
+
+  <main>
+    <section>
+      <h2>Ewige Tabelle</h2>
+      <p style="color:var(--muted);margin-bottom:2rem">Alle Teams, alle Spiele, alle Tore – über alle Saisons hinweg</p>
+
+      <div class="card">
+        <div id="standings-container" class="loading">
+          <em>Lade Statistiken...</em>
+        </div>
+      </div>
+    </section>
+  </main>
+
+<script>
+const API = '';
+
+// Ewige Tabelle laden
+async function loadAllTimeStandings() {
+  const container = document.getElementById('standings-container');
+
+  try {
+    const standings = await fetch(`${API}/api/all-time-standings`).then(r => r.json());
+
+    if (standings.length === 0) {
+      container.innerHTML = '<div class="loading"><em>Noch keine Spiele vorhanden</em></div>';
+      return;
+    }
+
+    let html = `
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Team</th>
+            <th>Sp</th>
+            <th>S</th>
+            <th>U</th>
+            <th>N</th>
+            <th>T+</th>
+            <th>T-</th>
+            <th>TD</th>
+            <th>Pkt</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+
+    standings.forEach((row, idx) => {
+      const rank = idx + 1;
+      const tdiff = row.goals_for - row.goals_against;
+      let rowClass = '';
+
+      if (rank === 1) rowClass = 'top1';
+      else if (rank <= 3) rowClass = 'top3';
+
+      html += `
+        <tr class="${rowClass}">
+          <td class="rank">${rank}</td>
+          <td style="text-align:left">
+            <a href="team.html?id=${row.team_id}" style="color:inherit;text-decoration:none;font-weight:${rank === 1 ? '700' : '500'}">${row.team_name}</a>
+          </td>
+          <td>${row.played}</td>
+          <td>${row.won}</td>
+          <td>${row.draw}</td>
+          <td>${row.lost}</td>
+          <td>${row.goals_for}</td>
+          <td>${row.goals_against}</td>
+          <td style="font-weight:600;color:${tdiff > 0 ? 'var(--success)' : tdiff < 0 ? 'var(--danger)' : 'inherit'}">${tdiff > 0 ? '+' : ''}${tdiff}</td>
+          <td style="font-weight:700">${row.points}</td>
+        </tr>
+      `;
+    });
+
+    html += '</tbody></table>';
+    container.innerHTML = html;
+  } catch (e) {
+    container.innerHTML = '<div class="loading" style="color:var(--danger)">Fehler beim Laden der Daten</div>';
+  }
+}
+
+loadAllTimeStandings();
+
+// Check if user is logged in (show admin link)
+if (localStorage.getItem('biw_token')) {
+  document.getElementById('admin-link').style.display = 'block';
+}
+
+// Burger Menu Toggle
+const burgerBtn = document.getElementById('burger-btn');
+const navMenu = document.getElementById('nav-menu');
+const menuOverlay = document.getElementById('menu-overlay');
+
+function toggleMenu() {
+  burgerBtn.classList.toggle('open');
+  navMenu.classList.toggle('open');
+  menuOverlay.classList.toggle('open');
+}
+
+burgerBtn.addEventListener('click', toggleMenu);
+menuOverlay.addEventListener('click', toggleMenu);
+
+// Close menu on navigation
+navMenu.querySelectorAll('a').forEach(link => {
+  link.addEventListener('click', () => {
+    if (navMenu.classList.contains('open')) {
+      toggleMenu();
+    }
+  });
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <title>Team-Profil – BIW Pokal</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root{
+      --bg:#f3f4f6;--card:#fff;--text:#111827;--muted:#6b7280;--primary:#2563eb;--border:#e5e7eb;--accent:#eef2ff;--success:#16a34a;--danger:#dc2626;--warning:#f59e0b;
+    }
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{margin:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--text)}
+    header{position:sticky;top:0;z-index:50;background:var(--card);border-bottom:1px solid var(--border);padding:1rem 2rem}
+    header h1{margin:0;font-size:1.5rem}
+    header p{margin:.25rem 0 0;color:var(--muted)}
+
+    /* Burger Menu */
+    .burger-btn{background:none;border:none;cursor:pointer;padding:.5rem;display:flex;flex-direction:column;gap:4px;z-index:100}
+    .burger-btn span{display:block;width:24px;height:3px;background:var(--text);border-radius:2px;transition:all .3s}
+    .burger-btn.open span:nth-child(1){transform:rotate(45deg) translate(5px,5px)}
+    .burger-btn.open span:nth-child(2){opacity:0}
+    .burger-btn.open span:nth-child(3){transform:rotate(-45deg) translate(7px,-6px)}
+
+    .menu-overlay{position:fixed;top:0;right:0;width:100%;height:100vh;background:rgba(0,0,0,.5);z-index:90;opacity:0;pointer-events:none;transition:opacity .3s}
+    .menu-overlay.open{opacity:1;pointer-events:auto}
+
+    nav{position:fixed;top:0;right:-100%;width:280px;height:100vh;background:var(--card);z-index:100;transition:right .3s;padding:5rem 2rem 2rem;box-shadow:-4px 0 24px rgba(0,0,0,.1)}
+    nav.open{right:0}
+    nav ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.5rem}
+    nav a{text-decoration:none;color:var(--text);padding:.75rem 1rem;border-radius:8px;font-weight:500;display:block;transition:background .2s}
+    nav a:hover{background:var(--accent)}
+    nav a.active{background:var(--accent);color:var(--primary);font-weight:700}
+
+    main{max-width:900px;margin:0 auto;padding:2.5rem 2rem}
+    .back-link{display:inline-flex;align-items:center;gap:.5rem;color:var(--muted);text-decoration:none;font-size:.9rem;margin-bottom:1.5rem}
+    .back-link:hover{color:var(--primary)}
+
+    /* Team Header */
+    .team-header{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:2rem;margin-bottom:2rem;display:flex;gap:2rem;align-items:center}
+    .team-logo{width:100px;height:100px;border-radius:12px;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:2.5rem;font-weight:700;color:var(--primary);flex-shrink:0;border:2px solid var(--border)}
+    .team-logo img{width:100%;height:100%;object-fit:cover;border-radius:10px}
+    .team-info{flex:1}
+    .team-name{font-size:2rem;font-weight:700;margin:0 0 .5rem}
+    .team-meta{display:flex;gap:1rem;color:var(--muted);font-size:.9rem}
+    .team-meta a{color:var(--primary);text-decoration:none}
+    .team-meta a:hover{text-decoration:underline}
+
+    /* Stats Cards */
+    .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:1rem;margin-bottom:2rem}
+    .stat-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:1rem;text-align:center}
+    .stat-value{font-size:1.8rem;font-weight:700;color:var(--primary)}
+    .stat-label{font-size:.8rem;color:var(--muted);margin-top:.25rem}
+
+    /* Recent Matches */
+    .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.5rem;margin-bottom:2rem}
+    .card h2{margin:0 0 1rem;font-size:1.2rem}
+    .match-list{display:flex;flex-direction:column;gap:.75rem}
+    .match-item{background:var(--accent);border:1px solid var(--border);border-radius:10px;padding:1rem;display:flex;justify-content:space-between;align-items:center}
+    .match-item.win{border-left:4px solid var(--success)}
+    .match-item.loss{border-left:4px solid var(--danger)}
+    .match-item.draw{border-left:4px solid var(--warning)}
+    .match-item.scheduled{border-left:4px solid var(--muted)}
+    .match-teams{flex:1}
+    .match-result{font-size:1.2rem;font-weight:700;min-width:60px;text-align:center}
+    .match-result.win{color:var(--success)}
+    .match-result.loss{color:var(--danger)}
+    .match-result.draw{color:var(--warning)}
+    .match-badge{font-size:.75rem;color:var(--muted);margin-top:.25rem}
+    .opponent-link{color:var(--primary);text-decoration:none;font-weight:600}
+    .opponent-link:hover{text-decoration:underline}
+
+    .empty-state{text-align:center;padding:3rem;color:var(--muted)}
+    .loading{text-align:center;padding:2rem;color:var(--muted)}
+  </style>
+</head>
+<body>
+  <header>
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div style="display:flex;align-items:center;gap:1rem">
+        <img src="img/logo.png" alt="BIW Pokal Logo" style="height:48px;width:auto">
+        <div>
+          <h1>BIW Pokal</h1>
+          <p>Team-Profil</p>
+        </div>
+      </div>
+      <button class="burger-btn" id="burger-btn" aria-label="Menü öffnen">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+  </header>
+
+  <div class="menu-overlay" id="menu-overlay"></div>
+
+  <nav id="nav-menu">
+    <ul>
+      <li><a href="index.html">Start</a></li>
+      <li><a href="turnier.html">Gruppenphase</a></li>
+      <li><a href="ko.html">KO‑Phase</a></li>
+      <li><a href="ewige-tabelle.html">Ewige Tabelle</a></li>
+      <li><a href="regeln.html">Regeln</a></li>
+      <li><a href="archiv.html">Archiv</a></li>
+      <li id="admin-link" style="display:none"><a href="admin.html" style="color:var(--primary);font-weight:600">🔐 Admin</a></li>
+    </ul>
+  </nav>
+
+  <main>
+    <a href="javascript:history.back()" class="back-link">← Zurück</a>
+
+    <div id="team-content" class="loading">
+      <em>Lade Team-Profil...</em>
+    </div>
+  </main>
+
+<script>
+const API = '';
+
+// Auth check
+if (localStorage.getItem('biw_token')) {
+  document.getElementById('admin-link').style.display = 'block';
+}
+
+// Burger Menu
+const burgerBtn = document.getElementById('burger-btn');
+const navMenu = document.getElementById('nav-menu');
+const menuOverlay = document.getElementById('menu-overlay');
+
+function toggleMenu() {
+  burgerBtn.classList.toggle('open');
+  navMenu.classList.toggle('open');
+  menuOverlay.classList.toggle('open');
+}
+
+burgerBtn.addEventListener('click', toggleMenu);
+menuOverlay.addEventListener('click', toggleMenu);
+
+navMenu.querySelectorAll('a').forEach(link => {
+  link.addEventListener('click', () => {
+    if (navMenu.classList.contains('open')) toggleMenu();
+  });
+});
+
+// Get team ID from URL
+const urlParams = new URLSearchParams(window.location.search);
+const teamId = urlParams.get('id');
+
+if (!teamId) {
+  document.getElementById('team-content').innerHTML = '<div class="empty-state">Keine Team-ID angegeben</div>';
+} else {
+  loadTeamProfile(teamId);
+}
+
+async function loadTeamProfile(teamId) {
+  const container = document.getElementById('team-content');
+
+  try {
+    const team = await fetch(`${API}/api/teams/${teamId}`).then(r => {
+      if (!r.ok) throw new Error('Team nicht gefunden');
+      return r.json();
+    });
+
+    const logoHTML = team.logo_url
+      ? `<img src="${team.logo_url}" alt="${team.name} Logo">`
+      : team.name.substring(0, 2).toUpperCase();
+
+    const onlineligaLink = team.onlineliga_url
+      ? `<a href="${team.onlineliga_url}" target="_blank" rel="noopener">🔗 Onlineliga-Profil</a>`
+      : '';
+
+    let html = `
+      <div class="team-header">
+        <div class="team-logo">${logoHTML}</div>
+        <div class="team-info">
+          <h1 class="team-name">${team.name}</h1>
+          <div class="team-meta">
+            ${onlineligaLink}
+          </div>
+        </div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-value">${team.stats.played}</div>
+          <div class="stat-label">Gespielt</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" style="color:var(--success)">${team.stats.wins}</div>
+          <div class="stat-label">Siege</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" style="color:var(--warning)">${team.stats.draws}</div>
+          <div class="stat-label">Unentschieden</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" style="color:var(--danger)">${team.stats.losses}</div>
+          <div class="stat-label">Niederlagen</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Letzte Spiele</h2>
+    `;
+
+    if (team.recent_matches.length === 0) {
+      html += '<div class="empty-state">Noch keine Spiele ausgetragen</div>';
+    } else {
+      html += '<div class="match-list">';
+
+      team.recent_matches.forEach(match => {
+        const resultClass = match.result;
+        const resultText = match.result === 'scheduled'
+          ? '-:-'
+          : `${match.own_goals}:${match.opponent_goals}`;
+
+        const homeAway = match.is_home ? '🏠 Heim' : '✈️ Auswärts';
+        const vs = match.is_home ? 'vs' : '@';
+
+        html += `
+          <div class="match-item ${resultClass}">
+            <div class="match-teams">
+              <div><strong>${vs} <a href="team.html?id=${match.opponent_id}" class="opponent-link">${match.opponent_name}</a></strong></div>
+              <div class="match-badge">${match.season_name} • ${homeAway}</div>
+            </div>
+            <div class="match-result ${resultClass}">${resultText}</div>
+          </div>
+        `;
+      });
+
+      html += '</div>';
+    }
+
+    html += '</div>';
+
+    container.innerHTML = html;
+  } catch (e) {
+    container.innerHTML = `<div class="empty-state" style="color:var(--danger)">Fehler: ${e.message}</div>`;
+  }
+}
+</script>
+</body>
+</html>
