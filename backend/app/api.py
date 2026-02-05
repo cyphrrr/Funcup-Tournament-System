@@ -265,14 +265,22 @@ def update_team(team_id: int, update: schemas.TeamUpdate, db: Session = Depends(
 
 @router.post("/seasons/{season_id}/teams", response_model=schemas.TeamRead)
 def add_team_to_season(season_id: int, team: schemas.TeamCreate, db: Session = Depends(get_db), _: str = Depends(get_current_user)):
-    t = models.Team(
-        name=team.name,
-        logo_url=team.logo_url,
-        onlineliga_url=team.onlineliga_url
-    )
-    db.add(t)
-    db.commit()
-    db.refresh(t)
+    # Prüfen, ob Team mit diesem Namen bereits existiert
+    existing_team = db.query(models.Team).filter(models.Team.name == team.name).first()
+
+    if existing_team:
+        # Existierendes Team wiederverwenden
+        t = existing_team
+    else:
+        # Neues Team erstellen
+        t = models.Team(
+            name=team.name,
+            logo_url=team.logo_url,
+            onlineliga_url=team.onlineliga_url
+        )
+        db.add(t)
+        db.commit()
+        db.refresh(t)
 
     groups = db.query(models.Group).filter(models.Group.season_id == season_id).order_by(models.Group.sort_order).all()
     counts = {g.id: db.query(models.SeasonTeam).filter(models.SeasonTeam.group_id == g.id).count() for g in groups}
@@ -293,10 +301,18 @@ def bulk_add_teams(season_id: int, payload: schemas.BulkTeamCreate, db: Session 
 
     created = []
     for name in payload.teams:
-        t = models.Team(name=name)
-        db.add(t)
-        db.commit()
-        db.refresh(t)
+        # Prüfen, ob Team mit diesem Namen bereits existiert
+        existing_team = db.query(models.Team).filter(models.Team.name == name).first()
+
+        if existing_team:
+            # Existierendes Team wiederverwenden
+            t = existing_team
+        else:
+            # Neues Team erstellen
+            t = models.Team(name=name)
+            db.add(t)
+            db.commit()
+            db.refresh(t)
 
         counts = {g.id: db.query(models.SeasonTeam).filter(models.SeasonTeam.group_id == g.id).count() for g in groups}
         target_group_id = min(counts, key=counts.get)
