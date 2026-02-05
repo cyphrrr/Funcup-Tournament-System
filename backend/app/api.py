@@ -977,24 +977,29 @@ def get_all_time_standings(db: Session = Depends(get_db)):
     """
     Ewige Tabelle: Aggregierte Statistiken aller Teams über alle Saisons.
     Berücksichtigt sowohl Gruppenphase als auch KO-Phase Spiele.
+    Gruppiert nach Team-Namen (wegen historischer Duplikate).
     """
     # Alle Teams holen
     teams = db.query(models.Team).all()
 
-    standings = []
+    # Nach Team-Namen gruppieren (wegen Duplikaten aus Saison-Importen)
+    team_stats = {}  # team_name -> stats dict
 
     for team in teams:
-        stats = {
-            "team_id": team.id,
-            "team_name": team.name,
-            "played": 0,
-            "won": 0,
-            "draw": 0,
-            "lost": 0,
-            "goals_for": 0,
-            "goals_against": 0,
-            "points": 0
-        }
+        if team.name not in team_stats:
+            team_stats[team.name] = {
+                "team_id": team.id,  # Erste gefundene ID verwenden
+                "team_name": team.name,
+                "played": 0,
+                "won": 0,
+                "draw": 0,
+                "lost": 0,
+                "goals_for": 0,
+                "goals_against": 0,
+                "points": 0
+            }
+
+        stats = team_stats[team.name]
 
         # Gruppenphase-Matches (als Heim-Team)
         home_matches = db.query(models.Match).filter(
@@ -1072,9 +1077,8 @@ def get_all_time_standings(db: Session = Depends(get_db)):
             else:
                 stats["lost"] += 1
 
-        # Nur Teams mit mindestens einem Spiel aufnehmen
-        if stats["played"] > 0:
-            standings.append(stats)
+    # Nur Teams mit mindestens einem Spiel aufnehmen
+    standings = [stats for stats in team_stats.values() if stats["played"] > 0]
 
     # Sortiere nach Punkten, Tordifferenz, Tore geschossen
     standings.sort(
