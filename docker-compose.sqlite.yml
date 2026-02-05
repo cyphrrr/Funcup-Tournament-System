@@ -1,0 +1,50 @@
+services:
+  # Backend (FastAPI mit SQLite)
+  backend:
+    build: ./backend
+    container_name: biw-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      # DATABASE_URL nicht gesetzt = SQLite als Fallback
+      - ADMIN_USER=${ADMIN_USER:-admin}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-biw2026!}
+      - API_KEY=${API_KEY:-biw-n8n-secret-key-change-me}
+      - JWT_SECRET=${JWT_SECRET:-super-secret-jwt-key-change-in-production}
+    volumes:
+      # biw.db vom Host ins Container mounten
+      - ./backend/biw.db:/app/biw.db
+    networks:
+      - biw-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Frontend (Nginx)
+  frontend:
+    image: nginx:alpine
+    container_name: biw-frontend
+    restart: unless-stopped
+    ports:
+      - "9988:80"
+      - "9977:443"
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - backend
+    networks:
+      - biw-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  biw-network:
+    driver: bridge
