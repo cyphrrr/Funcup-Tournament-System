@@ -348,7 +348,7 @@
   </div>
 
 <script>
-const API = `http://${window.location.hostname}:8000`;
+const API = window.location.origin;
 let teamCache = {};
 let currentSeason = null;
 let authToken = localStorage.getItem('biw_token');

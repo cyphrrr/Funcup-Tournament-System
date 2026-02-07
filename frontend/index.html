@@ -128,7 +128,7 @@
   </main>
 
 <script>
-const API = `http://${window.location.hostname}:8000`;
+const API = window.location.origin;
 const headerStatus = document.getElementById('header-status');
 let teamCache = {}; // team_id → name
 
