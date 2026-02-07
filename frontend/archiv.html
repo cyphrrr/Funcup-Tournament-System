@@ -6,11 +6,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root{
-      --bg:#f3f4f6;--card:#fff;--text:#111827;--muted:#6b7280;--primary:#2563eb;--border:#e5e7eb;--accent:#eef2ff;--success:#16a34a;--danger:#dc2626;--warning:#f59e0b;
+      --bg:#f3f4f6;--card:#fff;--text:#111827;--muted:#6b7280;--primary:#10b981;--border:#e5e7eb;--accent:#eef2ff;--success:#16a34a;--danger:#dc2626;--warning:#f59e0b;
+    }
+    html.dark-mode{
+      --bg:#111827;--card:#1f2937;--text:#f3f4f6;--muted:#9ca3af;--primary:#10b981;--border:#374151;--accent:#111827;--success:#10b981;--danger:#ef4444;--warning:#f59e0b;
     }
     *{box-sizing:border-box}
     html{scroll-behavior:smooth}
-    body{margin:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--text)}
+    body{margin:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:url('img/logo-bg.png') repeat;color:var(--text)}
     header{position:sticky;top:0;z-index:50;background:var(--card);border-bottom:1px solid var(--border);padding:1rem 2rem}
     header h1{margin:0;font-size:1.5rem}
     header p{margin:.25rem 0 0;color:var(--muted)}
@@ -83,23 +86,34 @@
     /* Empty State */
     .empty-state{text-align:center;padding:3rem;color:var(--muted)}
     .loading{text-align:center;padding:2rem;color:var(--muted)}
+
+    /* Dark mode toggle */
+    .dark-mode-toggle{appearance:none;cursor:pointer;width:50px;height:28px;background:var(--border);border:none;border-radius:14px;position:relative;transition:background .3s}
+    .dark-mode-toggle::before{content:"☀️";position:absolute;left:4px;top:50%;transform:translateY(-50%);font-size:14px;transition:left .3s}
+    .dark-mode-toggle::after{content:"🌙";position:absolute;right:4px;top:50%;transform:translateY(-50%);font-size:14px;opacity:0;transition:opacity .3s}
+    .dark-mode-toggle:checked{background:var(--primary)}
+    .dark-mode-toggle:checked::before{opacity:0}
+    .dark-mode-toggle:checked::after{opacity:1}
   </style>
 </head>
 <body>
   <header>
     <div style="display:flex;justify-content:space-between;align-items:center">
       <div style="display:flex;align-items:center;gap:1rem">
-        <img src="img/logo.png" alt="BIW Pokal Logo" style="height:48px;width:auto">
+        <img src="img/logo_comic.png" alt="BIW Pokal Logo" style="height:48px;width:auto">
         <div>
           <h1>BIW Pokal</h1>
           <p>Archiv – Alle Saisons</p>
         </div>
       </div>
-      <button class="burger-btn" id="burger-btn" aria-label="Menü öffnen">
-        <span></span>
-        <span></span>
-        <span></span>
-      </button>
+      <div style="display:flex;align-items:center;gap:1rem">
+        <input type="checkbox" class="dark-mode-toggle" id="dark-mode-toggle" aria-label="Dark Mode">
+        <button class="burger-btn" id="burger-btn" aria-label="Menü öffnen">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+      </div>
     </div>
   </header>
 
@@ -131,7 +145,7 @@
   </main>
 
 <script>
-const API = '';
+const API = `http://${window.location.hostname}:8000`;
 let teamCache = {};
 
 // Check if user is logged in (show admin link)
@@ -215,10 +229,11 @@ async function loadSeasonDetails(seasonId) {
     // Load groups
     const groups = await fetch(`${API}/api/seasons/${seasonId}/groups-with-teams`).then(r => r.json());
 
-    let html = '<h3 style="margin:1rem 0 .75rem;font-size:1rem">Gruppenphase</h3>';
+    let html = '<div class="card"><h3 style="margin:0 0 .75rem;font-size:1rem">Gruppenphase</h3>';
 
     if (groups.length === 0) {
       html += '<p style="color:var(--muted)">Keine Gruppen vorhanden</p>';
+      html += '</div>';
     } else {
       for (const g of groups) {
         html += `<div class="card" style="margin-bottom:1rem">
@@ -253,6 +268,7 @@ async function loadSeasonDetails(seasonId) {
 
         html += '</div>';
       }
+      html += '</div>';
     }
 
     // KO-Phase
@@ -263,8 +279,9 @@ async function loadSeasonDetails(seasonId) {
       });
 
       if (bracket) {
-        html += '<h3 style="margin:1.5rem 0 .75rem;font-size:1rem">KO-Phase</h3>';
+        html += '<div class="card" style="margin-top:1.5rem"><h3 style="margin:0 0 .75rem;font-size:1rem">KO-Phase</h3>';
         html += renderCompactBracket(bracket);
+        html += '</div>';
 
         // Check for champion
         const finalMatch = bracket.matches.find(m => m.round === bracket.total_rounds);
@@ -274,12 +291,14 @@ async function loadSeasonDetails(seasonId) {
           html = `<div class="champion-badge">🏆 Pokalsieger: ${winnerName}</div>` + html;
         }
       } else {
-        html += '<h3 style="margin:1.5rem 0 .75rem;font-size:1rem">KO-Phase</h3>';
+        html += '<div class="card" style="margin-top:1.5rem"><h3 style="margin:0 0 .75rem;font-size:1rem">KO-Phase</h3>';
         html += '<p style="color:var(--muted)">Noch nicht gestartet</p>';
+        html += '</div>';
       }
     } catch (e) {
-      html += '<h3 style="margin:1.5rem 0 .75rem;font-size:1rem">KO-Phase</h3>';
+      html += '<div class="card" style="margin-top:1.5rem"><h3 style="margin:0 0 .75rem;font-size:1rem">KO-Phase</h3>';
       html += '<p style="color:var(--muted)">Noch nicht gestartet</p>';
+      html += '</div>';
     }
 
     container.innerHTML = html;
@@ -386,6 +405,29 @@ async function loadSeasons() {
 
 // Load seasons on page load
 loadSeasons();
+
+// Dark Mode Toggle
+function initDarkMode() {
+  const isDarkMode = localStorage.getItem('biw_dark_mode') === 'true';
+  const toggle = document.getElementById('dark-mode-toggle');
+
+  if (isDarkMode) {
+    document.documentElement.classList.add('dark-mode');
+    toggle.checked = true;
+  }
+
+  toggle.addEventListener('change', () => {
+    if (toggle.checked) {
+      document.documentElement.classList.add('dark-mode');
+      localStorage.setItem('biw_dark_mode', 'true');
+    } else {
+      document.documentElement.classList.remove('dark-mode');
+      localStorage.setItem('biw_dark_mode', 'false');
+    }
+  });
+}
+
+initDarkMode();
 </script>
 </body>
 </html>

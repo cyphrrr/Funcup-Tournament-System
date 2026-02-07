@@ -5,9 +5,10 @@
   <title>BIW Pokal – Admin</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    :root{--bg:#f3f4f6;--card:#fff;--text:#111827;--muted:#6b7280;--primary:#2563eb;--border:#e5e7eb;--accent:#eef2ff;--success:#16a34a;--danger:#dc2626;--warning:#f59e0b}
+    :root{--bg:#f3f4f6;--card:#fff;--text:#111827;--muted:#6b7280;--primary:#10b981;--border:#e5e7eb;--accent:#eef2ff;--success:#16a34a;--danger:#dc2626;--warning:#f59e0b}
+    html.dark-mode{--bg:#111827;--card:#1f2937;--text:#f3f4f6;--muted:#9ca3af;--primary:#10b981;--border:#374151;--accent:#111827;--success:#10b981;--danger:#ef4444;--warning:#f59e0b}
     *{box-sizing:border-box}
-    body{margin:0;font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text)}
+    body{margin:0;font-family:system-ui,-apple-system,sans-serif;background:url('img/logo-bg.png') repeat;color:var(--text)}
     
     /* Layout */
     .admin-layout{display:flex;min-height:100vh}
@@ -347,7 +348,7 @@
   </div>
 
 <script>
-const API = '';
+const API = `http://${window.location.hostname}:8000`;
 let teamCache = {};
 let currentSeason = null;
 let authToken = localStorage.getItem('biw_token');
@@ -1359,8 +1360,32 @@ function insertAtCursor(textarea, text) {
   textarea.focus();
 }
 
+// Dark Mode Toggle
+function initDarkMode() {
+  const isDarkMode = localStorage.getItem('biw_dark_mode') === 'true';
+  const toggle = document.getElementById('dark-mode-toggle');
+
+  if (toggle) {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark-mode');
+      toggle.checked = true;
+    }
+
+    toggle.addEventListener('change', () => {
+      if (toggle.checked) {
+        document.documentElement.classList.add('dark-mode');
+        localStorage.setItem('biw_dark_mode', 'true');
+      } else {
+        document.documentElement.classList.remove('dark-mode');
+        localStorage.setItem('biw_dark_mode', 'false');
+      }
+    });
+  }
+}
+
 // Init
 checkAuth();
+initDarkMode();
 </script>
 </body>
 </html>
