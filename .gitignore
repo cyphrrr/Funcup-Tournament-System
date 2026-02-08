@@ -53,3 +53,4 @@ node_modules/
 .coverage
 htmlcov/
 .pytest_cache/
+.claude/
