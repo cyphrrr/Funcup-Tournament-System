@@ -46,6 +46,7 @@ class TeamCreate(BaseModel):
     name: str
     logo_url: str | None = None
     onlineliga_url: str | None = None
+    group_id: int | None = None  # Optional: explizite Gruppenzuweisung für Import
 
 
 class TeamUpdate(BaseModel):
@@ -96,6 +97,11 @@ class TeamDetail(BaseModel):
 class MatchCreate(BaseModel):
     home_team_id: int
     away_team_id: int
+    home_goals: int | None = None
+    away_goals: int | None = None
+    status: str | None = None
+    matchday: int | None = None
+    ingame_week: int | None = None
 
 class MatchRead(BaseModel):
     id: int

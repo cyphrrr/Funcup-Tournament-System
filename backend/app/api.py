@@ -282,9 +282,22 @@ def add_team_to_season(season_id: int, team: schemas.TeamCreate, db: Session = D
         db.commit()
         db.refresh(t)
 
-    groups = db.query(models.Group).filter(models.Group.season_id == season_id).order_by(models.Group.sort_order).all()
-    counts = {g.id: db.query(models.SeasonTeam).filter(models.SeasonTeam.group_id == g.id).count() for g in groups}
-    target_group_id = min(counts, key=counts.get)
+    # Gruppenzuweisung: Explizit (falls group_id gegeben) oder automatisch (kleinste Gruppe)
+    if team.group_id is not None:
+        # Explizite Gruppenzuweisung (z.B. für Import)
+        target_group_id = team.group_id
+        # Validierung: Gruppe muss zur Season gehören
+        group = db.query(models.Group).filter(
+            models.Group.id == target_group_id,
+            models.Group.season_id == season_id
+        ).first()
+        if not group:
+            raise HTTPException(status_code=400, detail=f"Group {target_group_id} not found in season {season_id}")
+    else:
+        # Automatische Verteilung auf kleinste Gruppe
+        groups = db.query(models.Group).filter(models.Group.season_id == season_id).order_by(models.Group.sort_order).all()
+        counts = {g.id: db.query(models.SeasonTeam).filter(models.SeasonTeam.group_id == g.id).count() for g in groups}
+        target_group_id = min(counts, key=counts.get)
 
     st = models.SeasonTeam(season_id=season_id, team_id=t.id, group_id=target_group_id)
     db.add(st)
@@ -374,6 +387,11 @@ def create_match(group_id: int, match: schemas.MatchCreate, db: Session = Depend
         group_id=group_id,
         home_team_id=match.home_team_id,
         away_team_id=match.away_team_id,
+        home_goals=match.home_goals,
+        away_goals=match.away_goals,
+        status=match.status if match.status else "scheduled",
+        matchday=match.matchday,
+        ingame_week=match.ingame_week,
     )
     db.add(obj)
     db.commit()
