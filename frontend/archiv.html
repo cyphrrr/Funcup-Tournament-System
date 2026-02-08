@@ -144,8 +144,9 @@
     </section>
   </main>
 
-<script>
-const API = window.location.origin;
+<script type="module">
+import { API_URL } from './js/config.js';
+const API = API_URL;
 let teamCache = {};
 
 // Check if user is logged in (show admin link)

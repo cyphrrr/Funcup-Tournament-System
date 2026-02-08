@@ -109,8 +109,9 @@
     </section>
   </main>
 
-<script>
-const API = window.location.origin;
+<script type="module">
+import { API_URL } from './js/config.js';
+const API = API_URL;
 
 // Ewige Tabelle laden
 async function loadAllTimeStandings() {

@@ -128,8 +128,9 @@
     </div>
   </main>
 
-<script>
-const API = window.location.origin;
+<script type="module">
+import { API_URL } from './js/config.js';
+const API = API_URL;
 
 // Auth check
 if (localStorage.getItem('biw_token')) {

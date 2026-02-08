@@ -347,8 +347,9 @@
     </main>
   </div>
 
-<script>
-const API = window.location.origin;
+<script type="module">
+import { API_URL } from './js/config.js';
+const API = API_URL;
 let teamCache = {};
 let currentSeason = null;
 let authToken = localStorage.getItem('biw_token');
