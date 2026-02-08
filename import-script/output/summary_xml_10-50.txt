@@ -1,0 +1,65 @@
+============================================================
+BIW POKAL XML CONVERSION SUMMARY
+============================================================
+Converted at: 2026-02-07T00:37:08.962127
+Total matches: 3245
+
+XML PARSING STATS:
+------------------------------------------------------------
+Total items scanned: 4375
+SP Events found: 4375
+Matches parsed: 3245
+Parse errors: 0
+
+SEASON BREAKDOWN:
+------------------------------------------------------------
+Season 10: 12 groups, 72 matches, 48 teams
+Season 11: 2 groups, 6 matches, 6 teams
+Season 12: 2 groups, 6 matches, 6 teams
+Season 13: 2 groups, 12 matches, 8 teams
+Season 14: 4 groups, 24 matches, 16 teams
+Season 15: 6 groups, 36 matches, 24 teams
+Season 16: 6 groups, 33 matches, 23 teams
+Season 17: 8 groups, 48 matches, 33 teams
+Season 18: 8 groups, 48 matches, 32 teams
+Season 19: 16 groups, 96 matches, 66 teams
+Season 20: 16 groups, 96 matches, 68 teams
+Season 21: 16 groups, 96 matches, 64 teams
+Season 22: 16 groups, 96 matches, 65 teams
+Season 23: 16 groups, 96 matches, 64 teams
+Season 24: 16 groups, 96 matches, 64 teams
+Season 25: 16 groups, 96 matches, 64 teams
+Season 26: 16 groups, 93 matches, 63 teams
+Season 27: 16 groups, 96 matches, 64 teams
+Season 28: 16 groups, 96 matches, 64 teams
+Season 29: 16 groups, 96 matches, 65 teams
+Season 30: 16 groups, 96 matches, 64 teams
+Season 31: 16 groups, 96 matches, 64 teams
+Season 32: 16 groups, 96 matches, 64 teams
+Season 33: 16 groups, 96 matches, 64 teams
+Season 34: 16 groups, 96 matches, 64 teams
+Season 35: 16 groups, 96 matches, 64 teams
+Season 36: 16 groups, 96 matches, 64 teams
+Season 37: 16 groups, 96 matches, 64 teams
+Season 38: 16 groups, 96 matches, 64 teams
+Season 39: 16 groups, 96 matches, 64 teams
+Season 40: 16 groups, 96 matches, 64 teams
+Season 41: 16 groups, 96 matches, 64 teams
+Season 42: 16 groups, 96 matches, 65 teams
+Season 43: 15 groups, 87 matches, 60 teams
+Season 44: 16 groups, 96 matches, 65 teams
+Season 45: 13 groups, 68 matches, 51 teams
+Season 46: 16 groups, 96 matches, 64 teams
+Season 47: 16 groups, 96 matches, 63 teams
+Season 48: 16 groups, 69 matches, 55 teams
+Season 49: 16 groups, 57 matches, 51 teams
+Season 50: 12 groups, 90 matches, 48 teams
+
+------------------------------------------------------------
+TOTALS:
+  Seasons: 41
+  Groups: 554
+  Matches: 3245
+  Unique teams: 165
+  Errors: 0
+============================================================
