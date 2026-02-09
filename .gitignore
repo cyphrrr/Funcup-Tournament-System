@@ -57,3 +57,12 @@ htmlcov/
 
 # Basic Auth (sensible Passwörter)
 .htpasswd
+
+# Import Scripts (individuell, nicht öffentlich)
+import-script/
+import-neu/
+REST-IMPORT/
+import_seasons.py
+
+# Docker Backup Files
+*.phase3-backup
