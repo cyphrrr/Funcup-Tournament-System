@@ -42,15 +42,13 @@ async def on_ready():
     logger.info(f'✅ Bot eingeloggt als {bot.user.name} (ID: {bot.user.id})')
     logger.info(f'📊 Verbunden mit {len(bot.guilds)} Server(n)')
 
-    # Slash Commands synchronisieren
+    # Slash Commands synchronisieren (Pycord Syntax)
     guild_id = os.getenv('DISCORD_GUILD_ID')
     if guild_id:
-        guild = discord.Object(id=int(guild_id))
-        bot.tree.copy_global_to(guild=guild)
-        await bot.tree.sync(guild=guild)
+        await bot.sync_commands(guild_ids=[int(guild_id)])
         logger.info(f'🔄 Slash Commands synchronisiert für Guild {guild_id}')
     else:
-        await bot.tree.sync()
+        await bot.sync_commands()
         logger.info('🔄 Slash Commands global synchronisiert (kann bis zu 1h dauern)')
 
     # Status setzen
