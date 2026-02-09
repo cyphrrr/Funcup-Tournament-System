@@ -520,6 +520,8 @@ def group_standings(group_id: int, db: Session = Depends(get_db)):
     for m in matches:
         if m.home_goals is None or m.away_goals is None:
             continue
+        if m.home_team_id not in teams or m.away_team_id not in teams:
+            continue
         home = teams[m.home_team_id]
         away = teams[m.away_team_id]
 
