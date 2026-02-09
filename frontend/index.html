@@ -199,8 +199,9 @@ async function loadNews() {
         day: '2-digit', month: 'long', year: 'numeric'
       });
 
-      // Simple Markdown: **bold**, *italic*, newlines
+      // Simple Markdown: [Text](URL), **bold**, *italic*, newlines
       let content = n.content
+        .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
         .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
         .replace(/\*(.+?)\*/g, '<em>$1</em>')
         .replace(/\n/g, '<br>');
