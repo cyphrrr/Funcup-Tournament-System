@@ -69,6 +69,19 @@
     .dark-mode-toggle:checked{background:var(--primary)}
     .dark-mode-toggle:checked::before{opacity:0}
     .dark-mode-toggle:checked::after{opacity:1}
+
+    /* Footer */
+    footer{background:var(--card);border-top:1px solid var(--border);padding:1.5rem 2rem;margin-top:3rem;display:grid;grid-template-columns:1fr 1fr 1fr;gap:2rem;align-items:center;font-size:.85rem;color:var(--muted)}
+    .footer-left{text-align:left}
+    .footer-center{text-align:center}
+    .footer-right{text-align:right}
+    footer a{color:var(--primary);text-decoration:none}
+    footer a:hover{text-decoration:underline}
+    .backend-status{display:inline-flex;align-items:center;gap:.5rem;font-weight:500}
+    .status-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+    .status-dot.online{background:#10b981}
+    .status-dot.offline{background:#dc2626}
+    @media(max-width:768px){footer{grid-template-columns:1fr;gap:1rem;text-align:center}.footer-left,.footer-right{text-align:center}}
   </style>
 </head>
 <body>
@@ -338,6 +351,30 @@ navMenu.querySelectorAll('a').forEach(link => {
   });
 });
 
+// Backend Status Monitor
+function updateBackendStatus() {
+  const statusDot = document.getElementById('backend-status-dot');
+  const statusText = document.getElementById('backend-status-text');
+
+  if (!statusDot || !statusText) return;
+
+  fetch(`${API}/api/seasons`).then(r => {
+    if (r.ok) {
+      statusDot.className = 'status-dot online';
+      statusText.textContent = 'Backend verbunden';
+    } else {
+      throw new Error('API Error');
+    }
+  }).catch(() => {
+    statusDot.className = 'status-dot offline';
+    statusText.textContent = 'Backend getrennt';
+  });
+}
+
+// Check Backend Status initially and every 30 seconds
+updateBackendStatus();
+setInterval(updateBackendStatus, 30000);
+
 // Dark Mode Toggle
 function initDarkMode() {
   const isDarkMode = localStorage.getItem('biw_dark_mode') === 'true';
@@ -361,5 +398,21 @@ function initDarkMode() {
 
 initDarkMode();
 </script>
+
+<footer>
+  <div class="footer-left">
+    <div class="backend-status">
+      <span class="status-dot online" id="backend-status-dot"></span>
+      <span id="backend-status-text">Backend verbunden</span>
+    </div>
+  </div>
+  <div class="footer-center">
+    <p style="margin:0">© 2026 BIW Pokal | <a href="impressum.html">Impressum</a> | <a href="datenschutz.html">Datenschutz</a></p>
+  </div>
+  <div class="footer-right">
+    <p style="margin:0">Version 1.0</p>
+  </div>
+</footer>
+
 </body>
 </html>
