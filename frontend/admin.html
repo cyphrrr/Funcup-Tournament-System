@@ -347,8 +347,20 @@
     </main>
   </div>
 
-<script type="module">
-import { API_URL } from './js/config.js';
+<script>
+// API URL Configuration (inline from config.js)
+const API_URL = (() => {
+  const hostname = window.location.hostname;
+  const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
+  const isPrivateNetwork = hostname.startsWith('192.168.') ||
+                          hostname.startsWith('10.') ||
+                          hostname.startsWith('172.');
+  if (isLocalhost || isPrivateNetwork) {
+    return `http://${hostname}:8000`;
+  }
+  return window.location.origin;
+})();
+
 const API = API_URL;
 let teamCache = {};
 let currentSeason = null;
