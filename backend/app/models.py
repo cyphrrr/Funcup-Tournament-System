@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean, Text
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from .db import Base
 
@@ -77,3 +78,39 @@ class KOMatch(Base):
     ingame_week = Column(Integer, nullable=True)  # Ingame Spielwoche (z.B. W39)
     next_match_id = Column(Integer, ForeignKey("ko_matches.id"), nullable=True)
     next_match_slot = Column(String, nullable=True)  # "home" oder "away" - wohin der Sieger geht
+
+
+class UserProfile(Base):
+    """
+    User Profile für Discord-Integration.
+    Verknüpft Discord-User mit Teams und speichert OAuth2-Daten.
+    """
+    __tablename__ = "user_profiles"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    # Discord-Daten
+    discord_id = Column(String, unique=True, index=True, nullable=False)  # Discord Snowflake ID
+    discord_username = Column(String, nullable=True)  # z.B. "Max#1234"
+    discord_avatar_url = Column(String, nullable=True)  # Discord Avatar URL
+
+    # Team-Verknüpfung
+    team_id = Column(Integer, ForeignKey("teams.id"), nullable=True)  # Verknüpftes Team
+
+    # User-Daten
+    profile_url = Column(String, nullable=True)  # Onlineliga Profil-URL
+    participating_next = Column(Boolean, default=True)  # Teilnahme am nächsten Pokal
+    crest_url = Column(String, nullable=True)  # Custom Wappen-URL (uploads/)
+
+    # OAuth2 Token Storage (für Discord OAuth2)
+    # WICHTIG: In Production mit Encryption speichern!
+    access_token = Column(Text, nullable=True)
+    refresh_token = Column(Text, nullable=True)
+    token_expires_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Relationship zu Team (optional)
+    team = relationship("Team", backref="user_profile", foreign_keys=[team_id])

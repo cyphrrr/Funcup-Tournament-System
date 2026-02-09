@@ -1,5 +1,6 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, HttpUrl, Field
 from datetime import datetime
+from typing import Optional
 
 
 # Auth Schemas
@@ -193,3 +194,107 @@ class NewsRead(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# ============================================================
+# Discord Bot & User Profile Schemas
+# ============================================================
+
+class UserProfileBase(BaseModel):
+    """Basis-Schema für UserProfile"""
+    discord_id: str
+    discord_username: Optional[str] = None
+    profile_url: Optional[HttpUrl] = None
+    participating_next: bool = True
+
+
+class UserProfileCreate(UserProfileBase):
+    """Schema für User-Registrierung (Admin-Only)"""
+    team_id: Optional[int] = None
+
+
+class UserProfileUpdate(BaseModel):
+    """Schema für User-Updates (partielle Updates)"""
+    profile_url: Optional[HttpUrl] = None
+    participating_next: Optional[bool] = None
+    team_id: Optional[int] = None
+
+
+class UserProfileResponse(BaseModel):
+    """Response-Schema mit verknüpften Team-Daten"""
+    id: int
+    discord_id: str
+    discord_username: Optional[str] = None
+    discord_avatar_url: Optional[str] = None
+    team_id: Optional[int] = None
+    team_name: Optional[str] = None  # Joined aus Team
+    profile_url: Optional[str] = None
+    participating_next: bool
+    crest_url: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class ParticipationUpdate(BaseModel):
+    """Schema für Teilnahme-Update via Discord Bot"""
+    participating: bool = Field(..., description="Teilnahme am nächsten Pokal")
+
+
+class ProfileUrlUpdate(BaseModel):
+    """Schema für Profil-URL Update via Discord Bot"""
+    profile_url: HttpUrl = Field(..., description="Onlineliga Profil-URL")
+
+
+class ParticipationReport(BaseModel):
+    """Admin-Report über Teilnahme-Status"""
+    total_users: int
+    participating: int
+    not_participating: int
+    participation_rate: float  # Prozent
+    users: list[UserProfileResponse]
+
+
+# ============================================================
+# OAuth2 & Auth Schemas
+# ============================================================
+
+class DiscordUserInfo(BaseModel):
+    """Discord User-Info vom OAuth2 Callback"""
+    id: str
+    username: str
+    discriminator: str
+    avatar: Optional[str] = None
+    email: Optional[str] = None
+
+
+class OAuth2CallbackResponse(BaseModel):
+    """Response nach erfolgreichem OAuth2 Login"""
+    access_token: str
+    token_type: str = "bearer"
+    user: UserProfileResponse
+
+
+class MeResponse(BaseModel):
+    """Response für /api/auth/me Endpoint"""
+    discord_id: str
+    discord_username: str
+    team_name: Optional[str] = None
+    authenticated: bool = True
+
+
+# ============================================================
+# File Upload Schemas
+# ============================================================
+
+class CrestUploadResponse(BaseModel):
+    """Response nach erfolgreichem Wappen-Upload"""
+    crest_url: str
+    message: str = "Wappen erfolgreich hochgeladen"
+
+
+class CrestDeleteResponse(BaseModel):
+    """Response nach Wappen-Löschung"""
+    message: str = "Wappen erfolgreich gelöscht"

@@ -1,5 +1,7 @@
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from .api import router
 
 app = FastAPI(title="BIW Pokal API", version="0.1.0")
@@ -13,6 +15,11 @@ app.add_middleware(
 )
 
 app.include_router(router, prefix="/api")
+
+# Static Files für Uploads (Wappen, etc.)
+UPLOAD_DIR = os.getenv("UPLOAD_DIR", "/app/uploads")
+if os.path.exists(UPLOAD_DIR):
+    app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 @app.get("/health")
 def health():

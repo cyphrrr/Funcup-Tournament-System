@@ -1127,3 +1127,498 @@ def get_all_time_standings(db: Session = Depends(get_db)):
     )
 
     return standings
+
+# ============================================================
+# DISCORD BOT ENDPOINTS
+# ============================================================
+
+@router.get("/discord/users/{discord_id}", response_model=schemas.UserProfileResponse)
+def get_user_by_discord_id(
+    discord_id: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Holt User-Profil anhand Discord ID.
+    Public Endpoint (kein Auth) - wird vom Discord Bot verwendet.
+    """
+    # User suchen
+    user = db.query(models.UserProfile).filter(
+        models.UserProfile.discord_id == discord_id
+    ).first()
+    
+    if not user:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Kein User mit Discord ID {discord_id} gefunden"
+        )
+    
+    # Team-Name joinen wenn vorhanden
+    team_name = None
+    if user.team_id:
+        team = db.query(models.Team).filter(models.Team.id == user.team_id).first()
+        if team:
+            team_name = team.name
+    
+    # Response bauen
+    return schemas.UserProfileResponse(
+        id=user.id,
+        discord_id=user.discord_id,
+        discord_username=user.discord_username,
+        discord_avatar_url=user.discord_avatar_url,
+        team_id=user.team_id,
+        team_name=team_name,
+        profile_url=user.profile_url,
+        participating_next=user.participating_next,
+        crest_url=user.crest_url,
+        created_at=user.created_at,
+        updated_at=user.updated_at
+    )
+
+
+@router.patch("/discord/users/{discord_id}/participation", response_model=schemas.UserProfileResponse)
+def update_participation(
+    discord_id: str,
+    update: schemas.ParticipationUpdate,
+    db: Session = Depends(get_db)
+):
+    """
+    Setzt Teilnahme-Status für nächsten Pokal.
+    Verwendet vom Discord Bot via /dabei Command.
+    """
+    user = db.query(models.UserProfile).filter(
+        models.UserProfile.discord_id == discord_id
+    ).first()
+    
+    if not user:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Kein User mit Discord ID {discord_id} gefunden"
+        )
+    
+    # Teilnahme-Status updaten
+    user.participating_next = update.participating
+    db.commit()
+    db.refresh(user)
+    
+    # Team-Name joinen
+    team_name = None
+    if user.team_id:
+        team = db.query(models.Team).filter(models.Team.id == user.team_id).first()
+        if team:
+            team_name = team.name
+    
+    return schemas.UserProfileResponse(
+        id=user.id,
+        discord_id=user.discord_id,
+        discord_username=user.discord_username,
+        discord_avatar_url=user.discord_avatar_url,
+        team_id=user.team_id,
+        team_name=team_name,
+        profile_url=user.profile_url,
+        participating_next=user.participating_next,
+        crest_url=user.crest_url,
+        created_at=user.created_at,
+        updated_at=user.updated_at
+    )
+
+
+@router.patch("/discord/users/{discord_id}/profile", response_model=schemas.UserProfileResponse)
+def update_profile_url(
+    discord_id: str,
+    update: schemas.ProfileUrlUpdate,
+    db: Session = Depends(get_db)
+):
+    """
+    Speichert Onlineliga Profil-URL.
+    Verwendet vom Discord Bot via /profil Command.
+    """
+    user = db.query(models.UserProfile).filter(
+        models.UserProfile.discord_id == discord_id
+    ).first()
+    
+    if not user:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Kein User mit Discord ID {discord_id} gefunden"
+        )
+    
+    # Profil-URL updaten
+    user.profile_url = str(update.profile_url)
+    db.commit()
+    db.refresh(user)
+    
+    # Team-Name joinen
+    team_name = None
+    if user.team_id:
+        team = db.query(models.Team).filter(models.Team.id == user.team_id).first()
+        if team:
+            team_name = team.name
+    
+    return schemas.UserProfileResponse(
+        id=user.id,
+        discord_id=user.discord_id,
+        discord_username=user.discord_username,
+        discord_avatar_url=user.discord_avatar_url,
+        team_id=user.team_id,
+        team_name=team_name,
+        profile_url=user.profile_url,
+        participating_next=user.participating_next,
+        crest_url=user.crest_url,
+        created_at=user.created_at,
+        updated_at=user.updated_at
+    )
+
+
+@router.post("/discord/users/register", response_model=schemas.UserProfileResponse)
+def register_discord_user(
+    user_data: schemas.UserProfileCreate,
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_user)  # Admin-Only
+):
+    """
+    Registriert neuen Discord User.
+    Admin-Only Endpoint (erfordert Auth).
+    """
+    # Prüfe ob User bereits existiert
+    existing = db.query(models.UserProfile).filter(
+        models.UserProfile.discord_id == user_data.discord_id
+    ).first()
+    
+    if existing:
+        raise HTTPException(
+            status_code=400,
+            detail=f"User mit Discord ID {user_data.discord_id} existiert bereits"
+        )
+    
+    # Neuen User anlegen
+    user = models.UserProfile(
+        discord_id=user_data.discord_id,
+        discord_username=user_data.discord_username,
+        profile_url=str(user_data.profile_url) if user_data.profile_url else None,
+        team_id=user_data.team_id,
+        participating_next=user_data.participating_next
+    )
+    
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    
+    # Team-Name joinen
+    team_name = None
+    if user.team_id:
+        team = db.query(models.Team).filter(models.Team.id == user.team_id).first()
+        if team:
+            team_name = team.name
+    
+    return schemas.UserProfileResponse(
+        id=user.id,
+        discord_id=user.discord_id,
+        discord_username=user.discord_username,
+        discord_avatar_url=user.discord_avatar_url,
+        team_id=user.team_id,
+        team_name=team_name,
+        profile_url=user.profile_url,
+        participating_next=user.participating_next,
+        crest_url=user.crest_url,
+        created_at=user.created_at,
+        updated_at=user.updated_at
+    )
+
+
+@router.get("/discord/participation-report", response_model=schemas.ParticipationReport)
+def get_participation_report(
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_user)  # Admin-Only
+):
+    """
+    Admin-Endpoint: Report über Teilnahme-Status aller User.
+    """
+    # Alle User holen
+    users = db.query(models.UserProfile).all()
+    
+    total = len(users)
+    participating = sum(1 for u in users if u.participating_next is True)
+    not_participating = sum(1 for u in users if u.participating_next is False)
+    
+    # Participation Rate berechnen
+    rate = (participating / total * 100) if total > 0 else 0.0
+    
+    # User-Liste mit Team-Namen
+    user_responses = []
+    for user in users:
+        team_name = None
+        if user.team_id:
+            team = db.query(models.Team).filter(models.Team.id == user.team_id).first()
+            if team:
+                team_name = team.name
+        
+        user_responses.append(schemas.UserProfileResponse(
+            id=user.id,
+            discord_id=user.discord_id,
+            discord_username=user.discord_username,
+            discord_avatar_url=user.discord_avatar_url,
+            team_id=user.team_id,
+            team_name=team_name,
+            profile_url=user.profile_url,
+            participating_next=user.participating_next,
+            crest_url=user.crest_url,
+            created_at=user.created_at,
+            updated_at=user.updated_at
+        ))
+    
+    return schemas.ParticipationReport(
+        total_users=total,
+        participating=participating,
+        not_participating=not_participating,
+        participation_rate=rate,
+        users=user_responses
+    )
+
+
+# ============================================================
+# DISCORD OAUTH2 ENDPOINTS
+# ============================================================
+
+from .discord_oauth import DiscordOAuth2Client
+from .auth import create_jwt_token
+import secrets
+
+# OAuth2 Client initialisieren
+discord_oauth = DiscordOAuth2Client()
+
+# State Storage (in Production: Redis verwenden!)
+oauth_states = {}
+
+
+@router.get("/auth/discord/login")
+def discord_login():
+    """
+    Startet Discord OAuth2 Flow.
+    Redirect zu Discord Authorization URL.
+    """
+    # CSRF State Token generieren
+    state = secrets.token_urlsafe(32)
+    oauth_states[state] = True  # Markiere State als gültig
+    
+    # Authorization URL generieren
+    auth_url = discord_oauth.get_authorization_url(state)
+    
+    return {"authorization_url": auth_url}
+
+
+@router.get("/auth/discord/callback", response_model=schemas.OAuth2CallbackResponse)
+async def discord_callback(
+    code: str,
+    state: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Discord OAuth2 Callback.
+    Tauscht Authorization Code gegen Access Token und erstellt/updated User.
+    """
+    # State validieren (CSRF Protection)
+    if state not in oauth_states:
+        raise HTTPException(status_code=400, detail="Ungültiger State (CSRF)")
+    
+    # State aus Storage entfernen (einmalig verwendbar)
+    del oauth_states[state]
+    
+    # Access Token holen
+    token = await discord_oauth.fetch_token(code)
+    if not token:
+        raise HTTPException(status_code=400, detail="Token Exchange fehlgeschlagen")
+    
+    # User-Info von Discord holen
+    discord_user = await discord_oauth.fetch_user_info(token["access_token"])
+    if not discord_user:
+        raise HTTPException(status_code=400, detail="Konnte User-Info nicht abrufen")
+    
+    # User in DB erstellen oder updaten
+    discord_id = discord_user["id"]
+    user = db.query(models.UserProfile).filter(
+        models.UserProfile.discord_id == discord_id
+    ).first()
+    
+    if not user:
+        # Neuen User anlegen
+        user = models.UserProfile(
+            discord_id=discord_id,
+            discord_username=f"{discord_user['username']}#{discord_user['discriminator']}",
+            discord_avatar_url=discord_user.get("avatar"),
+            participating_next=True
+        )
+        db.add(user)
+    else:
+        # Bestehenden User updaten
+        user.discord_username = f"{discord_user['username']}#{discord_user['discriminator']}"
+        user.discord_avatar_url = discord_user.get("avatar")
+    
+    # OAuth2 Token speichern (optional, für zukünftige API Calls)
+    from datetime import datetime, timezone
+    user.access_token = token["access_token"]
+    user.refresh_token = token.get("refresh_token")
+    user.token_expires_at = datetime.fromtimestamp(token["expires_at"], tz=timezone.utc)
+    
+    db.commit()
+    db.refresh(user)
+    
+    # JWT Token für unsere API erstellen
+    jwt_token = create_jwt_token(discord_id)
+    
+    # Team-Name joinen
+    team_name = None
+    if user.team_id:
+        team = db.query(models.Team).filter(models.Team.id == user.team_id).first()
+        if team:
+            team_name = team.name
+    
+    user_response = schemas.UserProfileResponse(
+        id=user.id,
+        discord_id=user.discord_id,
+        discord_username=user.discord_username,
+        discord_avatar_url=user.discord_avatar_url,
+        team_id=user.team_id,
+        team_name=team_name,
+        profile_url=user.profile_url,
+        participating_next=user.participating_next,
+        crest_url=user.crest_url,
+        created_at=user.created_at,
+        updated_at=user.updated_at
+    )
+    
+    return schemas.OAuth2CallbackResponse(
+        access_token=jwt_token,
+        user=user_response
+    )
+
+
+# ============================================================
+# FILE UPLOAD ENDPOINTS
+# ============================================================
+
+from fastapi import UploadFile, File
+from .image_utils import validate_image_file, process_crest_image
+import os
+import aiofiles
+
+# Upload-Verzeichnis aus Environment
+UPLOAD_DIR = os.getenv("UPLOAD_DIR", "/app/uploads")
+CRESTS_DIR = os.path.join(UPLOAD_DIR, "crests")
+
+# Sicherstellen dass Upload-Verzeichnis existiert
+os.makedirs(CRESTS_DIR, exist_ok=True)
+
+
+@router.post("/upload/crest", response_model=schemas.CrestUploadResponse)
+async def upload_crest(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: str = Depends(get_current_user)
+):
+    """
+    Wappen-Upload für eingeloggten User.
+    Verarbeitet Bild (resize, WebP) und speichert es.
+    """
+    # User aus DB holen (current_user ist discord_id vom JWT)
+    user = db.query(models.UserProfile).filter(
+        models.UserProfile.discord_id == current_user
+    ).first()
+    
+    if not user:
+        raise HTTPException(
+            status_code=404,
+            detail="User-Profil nicht gefunden"
+        )
+    
+    # Datei-Validierung
+    file_size = 0
+    file_content = await file.read()
+    file_size = len(file_content)
+    
+    is_valid, error_msg = validate_image_file(
+        file.filename,
+        file.content_type,
+        file_size
+    )
+    
+    if not is_valid:
+        raise HTTPException(status_code=400, detail=error_msg)
+    
+    # Bild verarbeiten (resize, WebP)
+    try:
+        processed_image = await process_crest_image(file_content)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    
+    # Dateiname: {discord_id}.webp
+    filename = f"{user.discord_id}.webp"
+    filepath = os.path.join(CRESTS_DIR, filename)
+    
+    # Datei speichern
+    async with aiofiles.open(filepath, "wb") as f:
+        await f.write(processed_image)
+    
+    # URL zum Wappen
+    crest_url = f"/uploads/crests/{filename}"
+    
+    # User-Profil updaten
+    user.crest_url = crest_url
+    db.commit()
+    
+    return schemas.CrestUploadResponse(
+        crest_url=crest_url,
+        message="Wappen erfolgreich hochgeladen"
+    )
+
+
+@router.delete("/upload/crest", response_model=schemas.CrestDeleteResponse)
+async def delete_crest(
+    db: Session = Depends(get_db),
+    current_user: str = Depends(get_current_user)
+):
+    """
+    Löscht eigenes Wappen.
+    """
+    # User aus DB holen
+    user = db.query(models.UserProfile).filter(
+        models.UserProfile.discord_id == current_user
+    ).first()
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="User-Profil nicht gefunden")
+    
+    if not user.crest_url:
+        raise HTTPException(status_code=404, detail="Kein Wappen vorhanden")
+    
+    # Datei löschen
+    filename = f"{user.discord_id}.webp"
+    filepath = os.path.join(CRESTS_DIR, filename)
+    
+    if os.path.exists(filepath):
+        os.remove(filepath)
+    
+    # User-Profil updaten
+    user.crest_url = None
+    db.commit()
+    
+    return schemas.CrestDeleteResponse(
+        message="Wappen erfolgreich gelöscht"
+    )
+
+
+@router.get("/upload/crest/{discord_id}")
+def get_crest(discord_id: str, db: Session = Depends(get_db)):
+    """
+    Public Endpoint: Wappen eines Users abrufen.
+    Redirect zur Datei oder 404 wenn nicht vorhanden.
+    """
+    user = db.query(models.UserProfile).filter(
+        models.UserProfile.discord_id == discord_id
+    ).first()
+    
+    if not user or not user.crest_url:
+        raise HTTPException(status_code=404, detail="Wappen nicht gefunden")
+    
+    # Redirect zur Datei (Nginx wird /uploads/ servieren)
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url=user.crest_url)

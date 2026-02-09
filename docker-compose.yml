@@ -6,12 +6,21 @@ services:
     restart: unless-stopped
     expose:
       - "8000"
+    volumes:
+      - ./uploads:/app/uploads
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       - ADMIN_USER=${ADMIN_USER:-admin}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-biw2026!}
       - API_KEY=${API_KEY:-biw-n8n-secret-key-change-me}
       - JWT_SECRET=${JWT_SECRET:-super-secret-jwt-key-change-in-production}
+      - DISCORD_CLIENT_ID=${DISCORD_CLIENT_ID}
+      - DISCORD_CLIENT_SECRET=${DISCORD_CLIENT_SECRET}
+      - DISCORD_REDIRECT_URI=${DISCORD_REDIRECT_URI}
+      - UPLOAD_DIR=/app/uploads
+      - MAX_FILE_SIZE=${MAX_FILE_SIZE:-5242880}
+      - CREST_MAX_WIDTH=${CREST_MAX_WIDTH:-512}
+      - CREST_MAX_HEIGHT=${CREST_MAX_HEIGHT:-512}
     depends_on:
       postgres:
         condition: service_healthy
@@ -64,6 +73,28 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+
+  # Discord Bot
+  bot:
+    build: ./bot
+    container_name: biw-bot
+    restart: unless-stopped
+    environment:
+      - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN}
+      - DISCORD_GUILD_ID=${DISCORD_GUILD_ID}
+      - BACKEND_URL=http://backend:8000
+      - DASHBOARD_URL=${DASHBOARD_URL:-https://biw-pokal.de}
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - biw-network
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f 'python main.py' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
 networks:
   biw-network:
