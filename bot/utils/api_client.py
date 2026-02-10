@@ -142,6 +142,58 @@ class BackendAPIClient:
         """
         return await self.get_team_by_discord_id(discord_id)
 
+    # --- Team Endpoints ---
+
+    async def search_teams(self, name: str) -> list[Dict[str, Any]]:
+        """
+        Sucht Teams nach Name (partial match)
+
+        Args:
+            name: Team-Name (oder Teil davon)
+
+        Returns:
+            Liste von Teams (max. 10) oder leere Liste
+        """
+        result = await self._request(
+            'GET',
+            '/api/teams/search',
+            params={'name': name}
+        )
+        return result if result else []
+
+    async def claim_team(self, discord_id: str, team_id: int) -> Dict[str, Any]:
+        """
+        Claimed ein Team für einen User (Self-Service)
+
+        Args:
+            discord_id: Discord User ID
+            team_id: Team ID
+
+        Returns:
+            Dict mit success/error Status und Daten
+        """
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    f"{self.base_url}/api/discord/users/{discord_id}/claim-team",
+                    json={"team_id": team_id},
+                    timeout=aiohttp.ClientTimeout(total=10)
+                ) as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        return {"success": True, "data": data}
+                    elif resp.status == 409:
+                        return {"success": False, "error": "already_claimed"}
+                    elif resp.status == 404:
+                        return {"success": False, "error": "not_found"}
+                    else:
+                        error_text = await resp.text()
+                        logger.error(f"Team-Claim fehlgeschlagen: {resp.status} {error_text}")
+                        return {"success": False, "error": "unknown"}
+        except Exception as e:
+            logger.error(f"Team-Claim fehlgeschlagen: {e}")
+            return {"success": False, "error": str(e)}
+
     # --- Health Check ---
 
     async def health_check(self) -> bool:

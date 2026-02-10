@@ -266,6 +266,11 @@ class ParticipationReport(BaseModel):
     users: list[UserProfileResponse]
 
 
+class TeamClaimRequest(BaseModel):
+    """Request für Team-Claim via Discord Bot"""
+    team_id: int
+
+
 # ============================================================
 # OAuth2 & Auth Schemas
 # ============================================================

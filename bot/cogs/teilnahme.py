@@ -168,6 +168,90 @@ class Teilnahme(commands.Cog):
             await ctx.followup.send(embed=embed, ephemeral=True)
             logger.warning(f'⚠️ Keine Daten gefunden für {ctx.author.name} (ID: {discord_id})')
 
+    @discord.slash_command(
+        name="claim",
+        description="Verknüpfe dein Discord-Konto mit deinem BIW Pokal Team"
+    )
+    async def claim(
+        self,
+        ctx: discord.ApplicationContext,
+        teamname: Option(
+            str,
+            description="Name deines Teams (oder Teil davon)",
+            required=True,
+            min_length=2
+        )
+    ):
+        """
+        Slash Command: /claim
+        Verknüpft Discord-User mit einem Team (Self-Service)
+        """
+        await ctx.defer(ephemeral=True)
+
+        discord_id = str(ctx.author.id)
+
+        logger.info(f'👤 {ctx.author.name} versucht Team zu claimen: {teamname}')
+
+        # 1. Team suchen
+        teams = await self.api.search_teams(teamname)
+
+        if not teams:
+            embed = discord.Embed(
+                title="❌ Kein Team gefunden",
+                description=f'Kein Team mit "{teamname}" gefunden.\n\nPrüfe die Schreibweise und versuche es erneut.',
+                color=discord.Color.red()
+            )
+            await ctx.followup.send(embed=embed, ephemeral=True)
+            return
+
+        if len(teams) > 1:
+            # Mehrere Treffer - User muss genauer sein
+            team_list = "\n".join([f"• {t['name']}" for t in teams[:5]])
+            embed = discord.Embed(
+                title="🔍 Mehrere Teams gefunden",
+                description=f'Bitte sei genauer. Gefundene Teams:\n\n{team_list}\n\nVersuche es mit dem vollständigen Namen.',
+                color=discord.Color.orange()
+            )
+            await ctx.followup.send(embed=embed, ephemeral=True)
+            return
+
+        # Genau ein Team gefunden
+        team = teams[0]
+
+        # 2. Team claimen
+        result = await self.api.claim_team(discord_id, team['id'])
+
+        if result.get('success'):
+            embed = discord.Embed(
+                title="✅ Team erfolgreich verknüpft!",
+                description=f'Du bist jetzt als **{team["name"]}** registriert.',
+                color=discord.Color.green()
+            )
+            embed.add_field(name="🏆 Team", value=team['name'], inline=True)
+            embed.add_field(name="📅 Nächster Pokal", value="✅ Dabei", inline=True)
+            embed.set_footer(text="Nutze /status um deine Daten zu sehen")
+
+            await ctx.followup.send(embed=embed, ephemeral=True)
+            logger.info(f'✅ {ctx.author.name} hat Team "{team["name"]}" geclaimed')
+
+        elif result.get('error') == 'already_claimed':
+            embed = discord.Embed(
+                title="❌ Team bereits vergeben",
+                description=f'**{team["name"]}** ist bereits von einem anderen User beansprucht.\n\nFalls das dein Team ist, kontaktiere einen Admin.',
+                color=discord.Color.red()
+            )
+            await ctx.followup.send(embed=embed, ephemeral=True)
+            logger.warning(f'⚠️ Team "{team["name"]}" bereits vergeben - Anfrage von {ctx.author.name}')
+
+        else:
+            embed = discord.Embed(
+                title="❌ Fehler",
+                description='Team konnte nicht verknüpft werden. Bitte versuche es später erneut.',
+                color=discord.Color.red()
+            )
+            await ctx.followup.send(embed=embed, ephemeral=True)
+            logger.error(f'❌ Claim fehlgeschlagen für {ctx.author.name}: {result}')
+
 
 def setup(bot: commands.Bot):
     """Setup-Funktion zum Laden des Cogs"""

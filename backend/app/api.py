@@ -263,6 +263,21 @@ def update_team(team_id: int, update: schemas.TeamUpdate, db: Session = Depends(
     return team
 
 
+@router.get("/teams/search", response_model=list[schemas.TeamRead])
+def search_teams(
+    name: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Sucht Teams nach Name (case-insensitive, partial match).
+    Für Discord Bot Team-Claim Feature.
+    """
+    teams = db.query(models.Team).filter(
+        models.Team.name.ilike(f"%{name}%")
+    ).limit(10).all()
+    return teams
+
+
 @router.post("/seasons/{season_id}/teams", response_model=schemas.TeamRead)
 def add_team_to_season(season_id: int, team: schemas.TeamCreate, db: Session = Depends(get_db), _: str = Depends(get_current_user)):
     # Prüfen, ob Team mit diesem Namen bereits existiert
@@ -1374,6 +1389,73 @@ def register_discord_user(
         discord_avatar_url=user.discord_avatar_url,
         team_id=user.team_id,
         team_name=team_name,
+        profile_url=user.profile_url,
+        participating_next=user.participating_next,
+        crest_url=user.crest_url,
+        created_at=user.created_at,
+        updated_at=user.updated_at
+    )
+
+
+@router.post("/discord/users/{discord_id}/claim-team", response_model=schemas.UserProfileResponse)
+def claim_team(
+    discord_id: str,
+    claim_data: schemas.TeamClaimRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    User claimed ein Team (Self-Service).
+    - Erstellt User-Profil falls nicht vorhanden
+    - Prüft ob Team existiert
+    - Prüft ob Team noch frei ist (kein anderer User hat es)
+    - Verknüpft User mit Team
+    """
+    from datetime import datetime
+
+    team_id = claim_data.team_id
+
+    # Team existiert?
+    team = db.query(models.Team).filter(models.Team.id == team_id).first()
+    if not team:
+        raise HTTPException(status_code=404, detail="Team nicht gefunden")
+
+    # Team schon vergeben?
+    existing_claim = db.query(models.UserProfile).filter(
+        models.UserProfile.team_id == team_id,
+        models.UserProfile.discord_id != discord_id
+    ).first()
+    if existing_claim:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Team '{team.name}' ist bereits von einem anderen User beansprucht"
+        )
+
+    # User holen oder erstellen
+    user = db.query(models.UserProfile).filter(
+        models.UserProfile.discord_id == discord_id
+    ).first()
+
+    if not user:
+        # User erstellen (Self-Registration via Claim)
+        user = models.UserProfile(
+            discord_id=discord_id,
+            participating_next=True
+        )
+        db.add(user)
+
+    # Team verknüpfen
+    user.team_id = team_id
+    user.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(user)
+
+    return schemas.UserProfileResponse(
+        id=user.id,
+        discord_id=user.discord_id,
+        discord_username=user.discord_username,
+        discord_avatar_url=user.discord_avatar_url,
+        team_id=user.team_id,
+        team_name=team.name,
         profile_url=user.profile_url,
         participating_next=user.participating_next,
         crest_url=user.crest_url,
