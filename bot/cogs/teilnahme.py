@@ -107,7 +107,7 @@ class Teilnahme(commands.Cog):
             )
 
             # Team Name
-            team_name = user_data.get('name', 'Nicht zugewiesen')
+            team_name = user_data.get('team_name') or 'Nicht zugewiesen'
             embed.add_field(
                 name="🏆 Team",
                 value=team_name,
@@ -115,7 +115,7 @@ class Teilnahme(commands.Cog):
             )
 
             # Teilnahme-Status
-            participating = user_data.get('participating', False)
+            participating = user_data.get('participating_next', False)
             status_text = "✅ Dabei" if participating else "❌ Nicht dabei"
             embed.add_field(
                 name="📅 Nächster Pokal",
