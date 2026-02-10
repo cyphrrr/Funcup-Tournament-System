@@ -279,10 +279,18 @@ def search_teams(
     Sucht Teams nach Name (case-insensitive, partial match).
     Für Discord Bot Team-Claim Feature.
     """
+    # Validation: min 2 chars
+    if len(name.strip()) < 2:
+        raise HTTPException(
+            status_code=400,
+            detail="Suchbegriff muss mindestens 2 Zeichen lang sein"
+        )
+
     teams = db.query(models.Team).filter(
         models.Team.name.ilike(f"%{name}%")
     ).limit(10).all()
-    return teams
+
+    return [{"id": t.id, "name": t.name} for t in teams]
 
 
 @router.post("/seasons/{season_id}/teams", response_model=schemas.TeamRead)
@@ -1154,6 +1162,70 @@ def get_all_time_standings(db: Session = Depends(get_db)):
 # DISCORD BOT ENDPOINTS
 # ============================================================
 
+@router.post("/discord/users/ensure", response_model=schemas.UserProfileResponse)
+def ensure_user(
+    user_data: schemas.UserEnsureRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Upsert-Endpoint: Erstellt User falls nicht vorhanden, aktualisiert sonst username/avatar.
+    Public Endpoint (kein Auth) - wird vom Discord Bot bei jedem Command aufgerufen.
+
+    Logic:
+        1. Suche User anhand discord_id
+        2. Falls gefunden: Update username/avatar + updated_at
+        3. Falls nicht gefunden: Erstelle neuen User mit participating_next=True
+        4. Return full UserProfileResponse
+    """
+    from datetime import datetime
+
+    user = db.query(models.UserProfile).filter(
+        models.UserProfile.discord_id == user_data.discord_id
+    ).first()
+
+    if user:
+        # Update existing user
+        if user_data.discord_username is not None:
+            user.discord_username = user_data.discord_username
+        if user_data.discord_avatar_url is not None:
+            user.discord_avatar_url = user_data.discord_avatar_url
+        user.updated_at = datetime.utcnow()
+        db.commit()
+        db.refresh(user)
+    else:
+        # Create new user
+        user = models.UserProfile(
+            discord_id=user_data.discord_id,
+            discord_username=user_data.discord_username,
+            discord_avatar_url=user_data.discord_avatar_url,
+            participating_next=True
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+    # Get team name for response
+    team_name = None
+    if user.team_id:
+        team = db.query(models.Team).filter(models.Team.id == user.team_id).first()
+        if team:
+            team_name = team.name
+
+    return schemas.UserProfileResponse(
+        id=user.id,
+        discord_id=user.discord_id,
+        discord_username=user.discord_username,
+        discord_avatar_url=user.discord_avatar_url,
+        team_id=user.team_id,
+        team_name=team_name,
+        profile_url=user.profile_url,
+        participating_next=user.participating_next,
+        crest_url=user.crest_url,
+        created_at=user.created_at,
+        updated_at=user.updated_at
+    )
+
+
 @router.get("/discord/users/{discord_id}", response_model=schemas.UserProfileResponse)
 def get_user_by_discord_id(
     discord_id: str,
@@ -1412,21 +1484,44 @@ def claim_team(
 ):
     """
     User claimed ein Team (Self-Service).
-    - Erstellt User-Profil falls nicht vorhanden
-    - Prüft ob Team existiert
-    - Prüft ob Team noch frei ist (kein anderer User hat es)
-    - Verknüpft User mit Team
+
+    Validations (in order):
+        1. User muss existieren (404)
+        2. Team muss existieren (404)
+        3. User darf noch kein Team haben (409 "du hast bereits ein Team")
+        4. Team darf nicht von anderem User geclaimed sein (409 "bereits von anderem User verknüpft")
+
+    Success:
+        200 OK mit aktualisiertem UserProfileResponse
     """
     from datetime import datetime
 
     team_id = claim_data.team_id
 
-    # Team existiert?
+    # 1. User existiert? (muss existieren, da ensure_user vorher aufgerufen wurde)
+    user = db.query(models.UserProfile).filter(
+        models.UserProfile.discord_id == discord_id
+    ).first()
+
+    if not user:
+        raise HTTPException(
+            status_code=404,
+            detail=f"User mit Discord ID {discord_id} nicht gefunden"
+        )
+
+    # 2. Team existiert?
     team = db.query(models.Team).filter(models.Team.id == team_id).first()
     if not team:
         raise HTTPException(status_code=404, detail="Team nicht gefunden")
 
-    # Team schon vergeben?
+    # 3. User hat bereits ein Team?
+    if user.team_id is not None:
+        raise HTTPException(
+            status_code=409,
+            detail="Du hast bereits ein Team verknüpft"
+        )
+
+    # 4. Team schon von anderem User vergeben?
     existing_claim = db.query(models.UserProfile).filter(
         models.UserProfile.team_id == team_id,
         models.UserProfile.discord_id != discord_id
@@ -1434,23 +1529,10 @@ def claim_team(
     if existing_claim:
         raise HTTPException(
             status_code=409,
-            detail=f"Team '{team.name}' ist bereits von einem anderen User beansprucht"
+            detail="Team ist bereits von einem anderen User verknüpft"
         )
 
-    # User holen oder erstellen
-    user = db.query(models.UserProfile).filter(
-        models.UserProfile.discord_id == discord_id
-    ).first()
-
-    if not user:
-        # User erstellen (Self-Registration via Claim)
-        user = models.UserProfile(
-            discord_id=discord_id,
-            participating_next=True
-        )
-        db.add(user)
-
-    # Team verknüpfen
+    # Alles OK -> Team verknüpfen
     user.team_id = team_id
     user.updated_at = datetime.utcnow()
     db.commit()

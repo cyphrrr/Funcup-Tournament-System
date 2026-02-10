@@ -81,6 +81,34 @@ class BackendAPIClient:
 
     # --- Discord User Endpoints ---
 
+    async def ensure_user(
+        self,
+        discord_id: str,
+        discord_username: str,
+        discord_avatar_url: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Upsert User: Erstellt User falls nicht vorhanden, aktualisiert sonst.
+        Wird bei jedem Command als erstes aufgerufen.
+
+        Args:
+            discord_id: Discord User ID (String)
+            discord_username: Discord Username
+            discord_avatar_url: Optional Discord Avatar URL
+
+        Returns:
+            User Dict mit allen Feldern oder None bei Fehler
+        """
+        return await self._request(
+            'POST',
+            '/api/discord/users/ensure',
+            json_data={
+                'discord_id': discord_id,
+                'discord_username': discord_username,
+                'discord_avatar_url': discord_avatar_url
+            }
+        )
+
     async def get_team_by_discord_id(self, discord_id: str) -> Optional[Dict[str, Any]]:
         """
         Holt User-Profil anhand der Discord User ID
@@ -163,14 +191,15 @@ class BackendAPIClient:
 
     async def claim_team(self, discord_id: str, team_id: int) -> Dict[str, Any]:
         """
-        Claimed ein Team für einen User (Self-Service)
-
-        Args:
-            discord_id: Discord User ID
-            team_id: Team ID
+        Claimed ein Team für einen User (Self-Service).
 
         Returns:
-            Dict mit success/error Status und Daten
+            Dict mit success/error Status:
+            - {"success": True, "data": {...}} bei Erfolg
+            - {"success": False, "error": "not_found"} bei 404
+            - {"success": False, "error": "already_has_team"} bei 409 (user hat schon team)
+            - {"success": False, "error": "team_claimed"} bei 409 (team schon vergeben)
+            - {"success": False, "error": "unknown"} bei anderen Fehlern
         """
         try:
             async with aiohttp.ClientSession() as session:
@@ -182,10 +211,15 @@ class BackendAPIClient:
                     if resp.status == 200:
                         data = await resp.json()
                         return {"success": True, "data": data}
-                    elif resp.status == 409:
-                        return {"success": False, "error": "already_claimed"}
                     elif resp.status == 404:
                         return {"success": False, "error": "not_found"}
+                    elif resp.status == 409:
+                        # Parse error message to distinguish between two cases
+                        error_text = await resp.text()
+                        if "bereits ein Team" in error_text:
+                            return {"success": False, "error": "already_has_team"}
+                        else:
+                            return {"success": False, "error": "team_claimed"}
                     else:
                         error_text = await resp.text()
                         logger.error(f"Team-Claim fehlgeschlagen: {resp.status} {error_text}")

@@ -66,8 +66,22 @@ class Profil(commands.Cog):
         await ctx.defer(ephemeral=True)
 
         discord_id = str(ctx.author.id)
+        discord_username = f"{ctx.author.name}#{ctx.author.discriminator}"
+        avatar_url = ctx.author.display_avatar.url if ctx.author.display_avatar else None
 
         logger.info(f'👤 {ctx.author.name} setzt Profil-URL: {url}')
+
+        # Auto-Register/Update User
+        user = await self.api.ensure_user(discord_id, discord_username, avatar_url)
+        if not user:
+            embed = discord.Embed(
+                title="❌ Fehler",
+                description='Backend ist nicht erreichbar. Bitte versuche es später erneut.',
+                color=discord.Color.red()
+            )
+            await ctx.followup.send(embed=embed, ephemeral=True)
+            logger.error(f'❌ ensure_user fehlgeschlagen für {ctx.author.name}')
+            return
 
         # URL validieren
         if not self._validate_url(url):
@@ -107,16 +121,9 @@ class Profil(commands.Cog):
             # Fehler-Embed
             embed = discord.Embed(
                 title="❌ Fehler",
-                description=(
-                    'Profil-URL konnte nicht gespeichert werden.\n\n'
-                    '**Mögliche Gründe:**\n'
-                    '• Backend ist nicht erreichbar\n'
-                    '• Dein Discord Account ist nicht registriert\n\n'
-                    'Bitte kontaktiere einen Admin.'
-                ),
+                description='Profil-URL konnte nicht gespeichert werden. Bitte versuche es später erneut.',
                 color=discord.Color.red()
             )
-
             await ctx.followup.send(embed=embed, ephemeral=True)
             logger.error(f'❌ Profil-URL-Speicherung fehlgeschlagen für {ctx.author.name}')
 
@@ -131,7 +138,34 @@ class Profil(commands.Cog):
         """
         await ctx.defer(ephemeral=True)
 
+        discord_id = str(ctx.author.id)
+        discord_username = f"{ctx.author.name}#{ctx.author.discriminator}"
+        avatar_url = ctx.author.display_avatar.url if ctx.author.display_avatar else None
+
         logger.info(f'👤 {ctx.author.name} fragt Wappen-Upload-Link ab')
+
+        # Auto-Register/Update User
+        user = await self.api.ensure_user(discord_id, discord_username, avatar_url)
+        if not user:
+            embed = discord.Embed(
+                title="❌ Fehler",
+                description='Backend ist nicht erreichbar. Bitte versuche es später erneut.',
+                color=discord.Color.red()
+            )
+            await ctx.followup.send(embed=embed, ephemeral=True)
+            logger.error(f'❌ ensure_user fehlgeschlagen für {ctx.author.name}')
+            return
+
+        # Check if user has team
+        if user.get('team_id') is None:
+            embed = discord.Embed(
+                title="⚠️ Kein Team verknüpft",
+                description='Du musst zuerst ein Team verknüpfen.\n\n💡 Nutze `/claim <teamname>` um dein Team zu verknüpfen.',
+                color=discord.Color.orange()
+            )
+            await ctx.followup.send(embed=embed, ephemeral=True)
+            logger.info(f'⚠️ {ctx.author.name} hat kein Team für Wappen-Upload')
+            return
 
         # Dashboard URL aus Environment oder Default
         dashboard_url = os.getenv('DASHBOARD_URL', 'https://biw-pokal.de')

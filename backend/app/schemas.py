@@ -272,6 +272,13 @@ class TeamClaimRequest(BaseModel):
     team_id: int
 
 
+class UserEnsureRequest(BaseModel):
+    """Request schema for ensure user endpoint (Upsert)."""
+    discord_id: str = Field(..., description="Discord User ID (Snowflake)")
+    discord_username: Optional[str] = Field(None, description="Discord username")
+    discord_avatar_url: Optional[str] = Field(None, description="Discord avatar URL")
+
+
 # ============================================================
 # OAuth2 & Auth Schemas
 # ============================================================
