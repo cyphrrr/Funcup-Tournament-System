@@ -149,14 +149,14 @@ def get_team_detail(team_id: int, db: Session = Depends(get_db)):
     if not team:
         raise HTTPException(status_code=404, detail="Team not found")
 
-    # Alle Matches des Teams (Gruppenphase + KO)
+    # Alle Matches des Teams (Gruppenphase + KO) - KEINE Limit!
     group_matches = db.query(models.Match).filter(
         (models.Match.home_team_id == team_id) | (models.Match.away_team_id == team_id)
-    ).order_by(models.Match.id.desc()).limit(5).all()
+    ).order_by(models.Match.id.desc()).all()
 
     ko_matches = db.query(models.KOMatch).filter(
         (models.KOMatch.home_team_id == team_id) | (models.KOMatch.away_team_id == team_id)
-    ).order_by(models.KOMatch.id.desc()).limit(5).all()
+    ).order_by(models.KOMatch.id.desc()).all()
 
     # Kombinieren und sortieren
     all_matches = []
@@ -221,13 +221,14 @@ def get_team_detail(team_id: int, db: Session = Depends(get_db)):
                     date=None
                 ))
 
-    # Nur die letzten 5
-    recent_matches = sorted(all_matches, key=lambda x: x.id, reverse=True)[:5]
+    # Statistiken aus ALLEN Spielen berechnen
+    all_matches_sorted = sorted(all_matches, key=lambda x: x.id, reverse=True)
+    wins = sum(1 for m in all_matches_sorted if m.result == "win")
+    draws = sum(1 for m in all_matches_sorted if m.result == "draw")
+    losses = sum(1 for m in all_matches_sorted if m.result == "loss")
 
-    # Statistiken berechnen
-    wins = sum(1 for m in recent_matches if m.result == "win")
-    draws = sum(1 for m in recent_matches if m.result == "draw")
-    losses = sum(1 for m in recent_matches if m.result == "loss")
+    # Nur die letzten 5 für die Anzeige
+    recent_matches = all_matches_sorted[:5]
 
     # Discord-Claim-Status überprüfen
     discord_claimed = db.query(models.UserProfile).filter(
