@@ -1269,6 +1269,63 @@ def update_profile_url(
     )
 
 
+@router.patch("/discord/users/{discord_id}", response_model=schemas.UserProfileResponse)
+def update_user_profile(
+    discord_id: str,
+    update_data: schemas.UserProfileAdminUpdate,
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_user)  # Admin-Only
+):
+    """
+    Aktualisiert ein User-Profil (Admin only).
+    Nur übergebene Felder werden aktualisiert.
+    Verwendet vom Discord Bot für Team-Verknüpfung etc.
+    """
+    # User finden
+    user = db.query(models.UserProfile).filter(
+        models.UserProfile.discord_id == discord_id
+    ).first()
+
+    if not user:
+        raise HTTPException(
+            status_code=404,
+            detail=f"User mit Discord ID {discord_id} nicht gefunden"
+        )
+
+    # Nur übergebene Felder aktualisieren
+    update_dict = update_data.model_dump(exclude_unset=True)
+    for field, value in update_dict.items():
+        setattr(user, field, value)
+
+    # Updated timestamp setzen
+    from datetime import datetime
+    user.updated_at = datetime.utcnow()
+
+    db.commit()
+    db.refresh(user)
+
+    # Team-Name laden falls team_id gesetzt
+    team_name = None
+    if user.team_id:
+        team = db.query(models.Team).filter(models.Team.id == user.team_id).first()
+        if team:
+            team_name = team.name
+
+    return schemas.UserProfileResponse(
+        id=user.id,
+        discord_id=user.discord_id,
+        discord_username=user.discord_username,
+        discord_avatar_url=user.discord_avatar_url,
+        team_id=user.team_id,
+        team_name=team_name,
+        profile_url=user.profile_url,
+        participating_next=user.participating_next,
+        crest_url=user.crest_url,
+        created_at=user.created_at,
+        updated_at=user.updated_at
+    )
+
+
 @router.post("/discord/users/register", response_model=schemas.UserProfileResponse)
 def register_discord_user(
     user_data: schemas.UserProfileCreate,
@@ -1283,13 +1340,13 @@ def register_discord_user(
     existing = db.query(models.UserProfile).filter(
         models.UserProfile.discord_id == user_data.discord_id
     ).first()
-    
+
     if existing:
         raise HTTPException(
             status_code=400,
             detail=f"User mit Discord ID {user_data.discord_id} existiert bereits"
         )
-    
+
     # Neuen User anlegen
     user = models.UserProfile(
         discord_id=user_data.discord_id,
@@ -1298,18 +1355,18 @@ def register_discord_user(
         team_id=user_data.team_id,
         participating_next=user_data.participating_next
     )
-    
+
     db.add(user)
     db.commit()
     db.refresh(user)
-    
+
     # Team-Name joinen
     team_name = None
     if user.team_id:
         team = db.query(models.Team).filter(models.Team.id == user.team_id).first()
         if team:
             team_name = team.name
-    
+
     return schemas.UserProfileResponse(
         id=user.id,
         discord_id=user.discord_id,

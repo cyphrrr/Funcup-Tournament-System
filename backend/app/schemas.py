@@ -220,6 +220,15 @@ class UserProfileUpdate(BaseModel):
     team_id: Optional[int] = None
 
 
+class UserProfileAdminUpdate(BaseModel):
+    """Schema für Admin-Update eines User Profiles"""
+    discord_username: Optional[str] = None
+    team_id: Optional[int] = None
+    profile_url: Optional[str] = None
+    participating_next: Optional[bool] = None
+    crest_url: Optional[str] = None
+
+
 class UserProfileResponse(BaseModel):
     """Response-Schema mit verknüpften Team-Daten"""
     id: int
