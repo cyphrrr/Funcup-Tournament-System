@@ -229,11 +229,17 @@ def get_team_detail(team_id: int, db: Session = Depends(get_db)):
     draws = sum(1 for m in recent_matches if m.result == "draw")
     losses = sum(1 for m in recent_matches if m.result == "loss")
 
+    # Discord-Claim-Status überprüfen
+    discord_claimed = db.query(models.UserProfile).filter(
+        models.UserProfile.team_id == team_id
+    ).first() is not None
+
     return schemas.TeamDetail(
         id=team.id,
         name=team.name,
         logo_url=team.logo_url,
         onlineliga_url=team.onlineliga_url,
+        discord_claimed=discord_claimed,
         recent_matches=recent_matches,
         stats={
             "played": wins + draws + losses,

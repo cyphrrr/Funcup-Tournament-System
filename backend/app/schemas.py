@@ -89,6 +89,7 @@ class TeamDetail(BaseModel):
     name: str
     logo_url: str | None
     onlineliga_url: str | None
+    discord_claimed: bool  # Ob das Team via Discord geclaimt wurde
     recent_matches: list[TeamDetailMatch]
     stats: dict  # Gesamt-Statistiken
 

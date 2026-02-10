@@ -169,6 +169,45 @@ navMenu.querySelectorAll('a').forEach(link => {
   });
 });
 
+// Dark Mode Toggle
+function initDarkMode() {
+  const isDarkMode = localStorage.getItem('biw_dark_mode') === 'true';
+  const toggle = document.getElementById('dark-mode-toggle');
+
+  if (isDarkMode) {
+    document.documentElement.classList.add('dark-mode');
+    toggle.checked = true;
+  }
+
+  toggle.addEventListener('change', () => {
+    if (toggle.checked) {
+      document.documentElement.classList.add('dark-mode');
+      localStorage.setItem('biw_dark_mode', 'true');
+    } else {
+      document.documentElement.classList.remove('dark-mode');
+      localStorage.setItem('biw_dark_mode', 'false');
+    }
+  });
+}
+
+initDarkMode();
+
+// Backend Status Monitor
+function updateBackendStatus() {
+  const statusDot = document.getElementById("backend-status-dot");
+  const statusText = document.getElementById("backend-status-text");
+  if (!statusDot || !statusText) return;
+  fetch(`${API}/api/seasons`).then(r => {
+    statusDot.className = r.ok ? "status-dot online" : "status-dot offline";
+    statusText.textContent = r.ok ? "Backend verbunden" : "Backend getrennt";
+  }).catch(() => {
+    statusDot.className = "status-dot offline";
+    statusText.textContent = "Backend getrennt";
+  });
+}
+updateBackendStatus();
+setInterval(updateBackendStatus, 30000);
+
 // Get team ID from URL
 const urlParams = new URLSearchParams(window.location.search);
 const teamId = urlParams.get('id');
@@ -193,16 +232,21 @@ async function loadTeamProfile(teamId) {
       : team.name.substring(0, 2).toUpperCase();
 
     const onlineligaLink = team.onlineliga_url
-      ? `<a href="${team.onlineliga_url}" target="_blank" rel="noopener">🔗 Onlineliga-Profil</a>`
+      ? `<a href="${team.onlineliga_url}" target="_blank" rel="noopener" style="display:inline-block;margin-top:.5rem;padding:.5rem 1rem;background:var(--primary);color:white;border-radius:8px;text-decoration:none;font-weight:600;font-size:.9rem">🔗 Onlineliga-Profil</a>`
       : '';
+
+    const discordStatus = team.discord_claimed
+      ? `<button style="display:inline-block;margin-top:.5rem;margin-left:.5rem;padding:.5rem 1rem;background:#2563eb;color:white;border-radius:8px;border:none;cursor:default;font-weight:600;font-size:.9rem" disabled>✅ Discord geclaimt</button>`
+      : `<button style="display:inline-block;margin-top:.5rem;margin-left:.5rem;padding:.5rem 1rem;background:#dc2626;color:white;border-radius:8px;border:none;cursor:default;font-weight:600;font-size:.9rem" disabled>✘ Nicht geclaimt</button>`;
 
     let html = `
       <div class="team-header">
         <div class="team-logo">${logoHTML}</div>
         <div class="team-info">
           <h1 class="team-name">${team.name}</h1>
-          <div class="team-meta">
+          <div style="display:flex;gap:.5rem;flex-wrap:wrap">
             ${onlineligaLink}
+            ${discordStatus}
           </div>
         </div>
       </div>
@@ -265,57 +309,6 @@ async function loadTeamProfile(teamId) {
     container.innerHTML = `<div class="empty-state" style="color:var(--danger)">Fehler: ${e.message}</div>`;
   }
 }
-
-// Check if user is logged in (show admin link)
-if (localStorage.getItem('biw_token')) {
-  document.getElementById('admin-link').style.display = 'block';
-}
-
-// Burger Menu Toggle
-const burgerBtn = document.getElementById('burger-btn');
-const navMenu = document.getElementById('nav-menu');
-const menuOverlay = document.getElementById('menu-overlay');
-
-function toggleMenu() {
-  burgerBtn.classList.toggle('open');
-  navMenu.classList.toggle('open');
-  menuOverlay.classList.toggle('open');
-}
-
-burgerBtn.addEventListener('click', toggleMenu);
-menuOverlay.addEventListener('click', toggleMenu);
-
-// Close menu on navigation
-navMenu.querySelectorAll('a').forEach(link => {
-  link.addEventListener('click', () => {
-    if (navMenu.classList.contains('open')) {
-      toggleMenu();
-    }
-  });
-});
-
-// Dark Mode Toggle
-function initDarkMode() {
-  const isDarkMode = localStorage.getItem('biw_dark_mode') === 'true';
-  const toggle = document.getElementById('dark-mode-toggle');
-
-  if (isDarkMode) {
-    document.documentElement.classList.add('dark-mode');
-    toggle.checked = true;
-  }
-
-  toggle.addEventListener('change', () => {
-    if (toggle.checked) {
-      document.documentElement.classList.add('dark-mode');
-      localStorage.setItem('biw_dark_mode', 'true');
-    } else {
-      document.documentElement.classList.remove('dark-mode');
-      localStorage.setItem('biw_dark_mode', 'false');
-    }
-  });
-}
-
-initDarkMode();
 </script>
 
 <footer>
@@ -332,24 +325,5 @@ initDarkMode();
     <p style="margin:0">Version 1.0</p>
   </div>
 </footer>
-<script type="module">
-import { API_URL } from './js/config.js';
-
-function updateBackendStatus() {
-  const statusDot = document.getElementById("backend-status-dot");
-  const statusText = document.getElementById("backend-status-text");
-  if (!statusDot || !statusText) return;
-  fetch(`${API_URL}/api/seasons`).then(r => {
-    statusDot.className = r.ok ? "status-dot online" : "status-dot offline";
-    statusText.textContent = r.ok ? "Backend verbunden" : "Backend getrennt";
-  }).catch(() => {
-    statusDot.className = "status-dot offline";
-    statusText.textContent = "Backend getrennt";
-  });
-}
-updateBackendStatus();
-setInterval(updateBackendStatus, 30000);
-</script>
-
 </body>
 </html>
