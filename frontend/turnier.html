@@ -398,13 +398,14 @@ initDarkMode();
     <p style="margin:0">Version 1.0</p>
   </div>
 </footer>
-<script>
-// Backend Status Monitor
+<script type="module">
+import { API_URL } from './js/config.js';
+
 function updateBackendStatus() {
   const statusDot = document.getElementById("backend-status-dot");
   const statusText = document.getElementById("backend-status-text");
   if (!statusDot || !statusText) return;
-  fetch(window.location.origin.replace(":.*", "") + ":8000/api/seasons").then(r => {
+  fetch(`${API_URL}/api/seasons`).then(r => {
     statusDot.className = r.ok ? "status-dot online" : "status-dot offline";
     statusText.textContent = r.ok ? "Backend verbunden" : "Backend getrennt";
   }).catch(() => {
