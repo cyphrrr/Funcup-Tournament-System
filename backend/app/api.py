@@ -5,6 +5,7 @@ from . import models, schemas
 from .db import SessionLocal, engine
 from .auth import get_current_user, verify_credentials, create_jwt_token
 from .ko_bracket_generator import generate_ko_brackets
+from . import ranking_service
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -2181,9 +2182,12 @@ def update_ko_match_result(
     Body:
         - home_goals: int (>= 0)
         - away_goals: int (>= 0)
-        - winner_id: int | null (erforderlich bei Unentschieden)
+        - winner_id: int | null (optional bei Unentschieden - wird automatisch via Tiebreaker ermittelt)
 
-    Bei Unentschieden MUSS winner_id angegeben werden (Tiebreaker via Onlineliga-Ranking).
+    Bei Unentschieden:
+        - Falls winner_id gegeben: verwende diesen
+        - Falls winner_id NICHT gegeben: automatischer Tiebreaker via Onlineliga-Ranking
+
     Bei regulärem Sieg wird winner_id automatisch berechnet.
 
     Nach Eintragen:
@@ -2218,12 +2222,31 @@ def update_ko_match_result(
             detail="Tore müssen >= 0 sein"
         )
 
-    # Bei Unentschieden: winner_id erforderlich
-    if home_goals == away_goals and winner_id is None:
-        raise HTTPException(
-            status_code=400,
-            detail="Bei Unentschieden muss winner_id angegeben werden (Tiebreaker: Onlineliga-Ranking)"
-        )
+    # Tiebreaker-Tracking
+    tiebreaker_used = False
+    tiebreaker_reason = None
+    tab_used = None
+
+    # Bei Unentschieden: Tiebreaker oder expliziter winner_id
+    if home_goals == away_goals:
+        if winner_id is None:
+            # Automatischer Tiebreaker via Ranking
+            try:
+                tiebreaker_result = ranking_service.resolve_tiebreaker(
+                    match.home_team_id,
+                    match.away_team_id,
+                    db
+                )
+                winner_id = tiebreaker_result["winner_id"]
+                tiebreaker_used = True
+                tiebreaker_reason = tiebreaker_result["reason"]
+                tab_used = tiebreaker_result["tab_used"]
+            except ValueError as e:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Tiebreaker fehlgeschlagen: {str(e)}"
+                )
+        # Sonst: winner_id wurde explizit übergeben
 
     # Bei regulärem Sieg: winner_id automatisch berechnen
     if home_goals != away_goals:
@@ -2279,7 +2302,7 @@ def update_ko_match_result(
     home_team = db.get(models.Team, match.home_team_id) if match.home_team_id else None
     away_team = db.get(models.Team, match.away_team_id) if match.away_team_id else None
 
-    return {
+    response = {
         "match_id": match.id,
         "home_team": {"id": home_team.id, "name": home_team.name} if home_team else None,
         "away_team": {"id": away_team.id, "name": away_team.name} if away_team else None,
@@ -2288,6 +2311,63 @@ def update_ko_match_result(
         "winner_id": winner_id,
         "status": match.status,
         "next_match_id": match.next_match_id
+    }
+
+    # Tiebreaker-Info anhängen falls verwendet
+    if tiebreaker_used:
+        response["tiebreaker_used"] = True
+        response["tiebreaker_reason"] = tiebreaker_reason
+        response["tab_used"] = tab_used
+
+    return response
+
+
+# ============================================================
+# RANKING ENDPOINTS (Google Sheets Integration)
+# ============================================================
+
+@router.get("/ranking/team/{team_name}")
+def get_team_ranking_endpoint(team_name: str, db: Session = Depends(get_db)):
+    """
+    Public Endpoint: Holt Ranking-Details eines Teams.
+
+    Args:
+        team_name: Name des Teams (URL-encoded)
+
+    Returns:
+        {
+            "team_name": "...",
+            "avg_ranking": 8.3,
+            "tab_used": "TN 51",
+            "found": true
+        }
+    """
+    from urllib.parse import unquote
+    team_name = unquote(team_name)
+
+    details = ranking_service.get_team_ranking_details(team_name, db)
+    return details
+
+
+@router.get("/ranking/all")
+def get_all_rankings(db: Session = Depends(get_db)):
+    """
+    Public Endpoint: Gibt komplettes Ranking-Sheet zurück.
+
+    Returns:
+        {
+            "tab_used": "Erster Tab (aktuelles Ranking)",
+            "teams": [
+                {"teamName": "...", "avg_ranking": 473.31},
+                ...
+            ]
+        }
+    """
+    teams = ranking_service.fetch_ranking_sheet(db)
+
+    return {
+        "tab_used": "Erster Tab (aktuelles Ranking)",
+        "teams": teams
     }
 
 
