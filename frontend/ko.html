@@ -43,15 +43,20 @@
     .season-item:hover{background:var(--accent)}
     .season-item.active{background:var(--accent);color:var(--primary);font-weight:600}
 
-    /* KO Bracket with lines */
+    /* Tabs */
+    .bracket-tabs{display:flex;gap:.25rem;margin-bottom:1.5rem;border-bottom:2px solid var(--border);padding-bottom:0}
+    .bracket-tab{padding:.65rem 1.25rem;cursor:pointer;border:none;background:none;color:var(--muted);font-size:.95rem;font-weight:500;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .2s}
+    .bracket-tab:hover{color:var(--text)}
+    .bracket-tab.active{color:var(--primary);font-weight:700;border-bottom-color:var(--primary)}
+
+    /* KO Bracket */
     .ko-bracket{display:flex;gap:2rem;overflow-x:auto;padding:1rem 0;align-items:flex-start}
-    .ko-round{min-width:200px;display:flex;flex-direction:column;justify-content:space-around}
+    .ko-round{min-width:180px;max-width:220px;display:flex;flex-direction:column;justify-content:space-around}
     .ko-round-header{text-align:center;margin:0 0 1rem;font-size:.95rem;font-weight:600;color:var(--muted)}
     .ko-match{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:.65rem .85rem;margin-bottom:.75rem;font-size:.85rem;position:relative;min-height:60px;display:flex;flex-direction:column;justify-content:center}
     .ko-match.bye{background:var(--accent);border-style:dashed}
     .ko-match.played{border-left:3px solid var(--success)}
-    .ko-match.scheduled{border-left:3px solid var(--primary)}
-    .ko-match.pending{border-left:3px solid var(--border)}
+    .ko-match.pending{border-left:3px solid var(--primary)}
     .ko-match-team{display:flex;justify-content:space-between;align-items:center;padding:2px 0}
     .ko-match-team.winner{font-weight:700;color:var(--success)}
     .ko-match-team.loser{color:var(--muted)}
@@ -59,13 +64,10 @@
     .ko-match-team .score{min-width:20px;text-align:right;font-weight:600}
     .ko-match-vs{font-size:.7rem;color:var(--muted);text-align:center;margin:2px 0}
     .ko-match-tbd{color:var(--muted);font-style:italic;text-align:center}
+    .ko-match-bye-badge{font-size:.7rem;color:var(--muted);text-align:center;background:var(--accent);border-radius:4px;padding:1px 6px;margin-top:2px;display:inline-block}
     /* connector lines */
     .ko-match::after{content:"";position:absolute;right:-1rem;top:50%;width:1rem;height:1px;background:var(--border)}
     .ko-round:last-child .ko-match::after{display:none}
-    /* Generate button */
-    .btn{background:var(--primary);color:#fff;border:none;padding:.6rem 1.2rem;border-radius:8px;cursor:pointer;font-size:.9rem;font-weight:500}
-    .btn:hover{opacity:.9}
-    .btn:disabled{background:var(--muted);cursor:not-allowed}
     .ko-empty{text-align:center;padding:2rem;color:var(--muted)}
 
     /* Dark mode toggle */
@@ -145,132 +147,180 @@ import { API_URL } from './js/config.js';
 const API = API_URL;
 const seasonsDiv = document.getElementById('seasons');
 const koContainer = document.getElementById('ko-container');
-let openedSeasonId = null;
-let teamCache = {};
+let bracketsCache = null;
+let activeTab = 'meister';
 
-// Team-Namen laden
-async function loadTeams(seasonId) {
-  const groups = await fetch(`${API}/api/seasons/${seasonId}/groups-with-teams`).then(r => r.json());
-  groups.forEach(g => g.teams.forEach(t => teamCache[t.id] = t.name));
+const ROUND_ORDER = ['runde_1', 'runde_2', 'runde_3', 'runde_4', 'viertelfinale', 'halbfinale', 'finale'];
+
+const ROUND_LABELS = {
+  'finale': '🏆 Finale',
+  'halbfinale': 'Halbfinale',
+  'viertelfinale': 'Viertelfinale'
+};
+
+const TAB_LABELS = {
+  'meister': 'Meisterrunde',
+  'lucky_loser': 'Lucky Loser',
+  'loser': 'Loser'
+};
+
+function roundLabel(key) {
+  if (ROUND_LABELS[key]) return ROUND_LABELS[key];
+  const match = key.match(/^runde_(\d+)$/);
+  if (match) return `Runde ${match[1]}`;
+  return key;
 }
 
-function teamName(id) {
-  return teamCache[id] || `Team ${id}`;
+function sortRounds(roundKeys) {
+  return roundKeys.sort((a, b) => {
+    const idxA = ROUND_ORDER.indexOf(a);
+    const idxB = ROUND_ORDER.indexOf(b);
+    const posA = idxA === -1 ? -1 : idxA;
+    const posB = idxB === -1 ? -1 : idxB;
+    return posA - posB;
+  });
 }
 
-function roundName(roundNum, totalRounds) {
-  const remaining = totalRounds - roundNum + 1;
-  if (remaining === 1) return '🏆 Finale';
-  if (remaining === 2) return 'Halbfinale';
-  if (remaining === 3) return 'Viertelfinale';
-  if (remaining === 4) return 'Achtelfinale';
-  return `Runde ${roundNum}`;
-}
+function renderMatch(m) {
+  const div = document.createElement('div');
+  const hasResult = m.home_goals !== null && m.away_goals !== null;
+  const isPlayed = hasResult;
 
-async function loadKOBracket(seasonId) {
-  openedSeasonId = seasonId;
-  koContainer.innerHTML = '<em>Lade...</em>';
+  if (m.is_bye) {
+    div.className = 'ko-match bye';
+    const teamName = m.home_team ? m.home_team.name : (m.away_team ? m.away_team.name : '?');
+    div.innerHTML = `
+      <div class="ko-match-team winner"><span class="name">${teamName}</span><span class="score">✓</span></div>
+      <div style="text-align:center"><span class="ko-match-bye-badge">Freilos</span></div>`;
+  } else if (!m.home_team && !m.away_team) {
+    div.className = 'ko-match pending';
+    div.innerHTML = `<div class="ko-match-tbd">?</div>`;
+  } else {
+    div.className = `ko-match ${isPlayed ? 'played' : 'pending'}`;
+    const homeName = m.home_team ? m.home_team.name : '?';
+    const awayName = m.away_team ? m.away_team.name : '?';
+    const homeIsWinner = m.winner_id && m.home_team && m.winner_id === m.home_team.id;
+    const awayIsWinner = m.winner_id && m.away_team && m.winner_id === m.away_team.id;
 
-  // Teams cachen
-  await loadTeams(seasonId);
-
-  try {
-    const res = await fetch(`${API}/api/seasons/${seasonId}/ko-bracket`);
-    if (res.status === 404) {
-      // Kein Bracket → Generate Button
-      koContainer.innerHTML = `
-        <div class="ko-empty">
-          <span style="color:var(--muted);font-weight:400">– Noch kein KO-Bracket erstellt</span></h1>
-          <button class="btn" onclick="generateBracket(${seasonId})">🎲 Bracket generieren</button>
-        </div>`;
-      return;
-    }
-
-    const bracket = await res.json();
-    renderBracket(bracket);
-  } catch (e) {
-    koContainer.innerHTML = `<div class="ko-empty" style="color:var(--danger)">Fehler beim Laden: ${e.message}</div>`;
+    div.innerHTML = `
+      <div class="ko-match-team ${homeIsWinner ? 'winner' : ''} ${awayIsWinner ? 'loser' : ''}">
+        <span class="name">${homeName}</span>
+        <span class="score">${hasResult ? m.home_goals : ''}</span>
+      </div>
+      <div class="ko-match-vs">vs</div>
+      <div class="ko-match-team ${awayIsWinner ? 'winner' : ''} ${homeIsWinner ? 'loser' : ''}">
+        <span class="name">${awayName}</span>
+        <span class="score">${hasResult ? m.away_goals : ''}</span>
+      </div>`;
   }
+  return div;
 }
 
-async function generateBracket(seasonId) {
-  koContainer.innerHTML = '<em>Generiere Bracket...</em>';
-  try {
-    const res = await fetch(`${API}/api/seasons/${seasonId}/ko-bracket/generate`, { method: 'POST' });
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.detail || 'Fehler');
-    }
-    const bracket = await res.json();
-    renderBracket(bracket);
-  } catch (e) {
-    koContainer.innerHTML = `<div class="ko-empty" style="color:var(--danger)">Fehler: ${e.message}</div>`;
-  }
-}
-
-function renderBracket(bracket) {
+function renderBracket(bracketData) {
   const container = document.createElement('div');
   container.className = 'ko-bracket';
 
-  // Matches nach Runde gruppieren
-  const rounds = {};
-  bracket.matches.forEach(m => {
-    if (!rounds[m.round]) rounds[m.round] = [];
-    rounds[m.round].push(m);
-  });
+  const rounds = bracketData.rounds;
+  const sortedKeys = sortRounds(Object.keys(rounds));
 
-  // Runden sortiert rendern
-  const roundNums = Object.keys(rounds).map(Number).sort((a, b) => a - b);
-
-  roundNums.forEach(roundNum => {
+  sortedKeys.forEach(key => {
     const col = document.createElement('div');
     col.className = 'ko-round';
 
     const header = document.createElement('div');
     header.className = 'ko-round-header';
-    header.textContent = roundName(roundNum, bracket.total_rounds);
+    header.textContent = roundLabel(key);
     col.appendChild(header);
 
-    // Matches dieser Runde (sortiert nach Position)
-    const matches = rounds[roundNum].sort((a, b) => a.position - b.position);
-
-    matches.forEach(m => {
-      const matchDiv = document.createElement('div');
-      matchDiv.className = `ko-match ${m.status}`;
-
-      if (m.is_bye) {
-        matchDiv.classList.add('bye');
-        matchDiv.innerHTML = `<div class="ko-match-team winner"><span class="name">${teamName(m.home_team_id)}</span><span class="score">✓</span></div><div class="ko-match-vs">Freilos</div>`;
-      } else if (!m.home_team_id && !m.away_team_id) {
-        matchDiv.innerHTML = `<div class="ko-match-tbd">TBD</div>`;
-      } else {
-        const hasResult = m.home_goals !== null && m.away_goals !== null;
-        const homeWin = hasResult && m.home_goals > m.away_goals;
-        const awayWin = hasResult && m.away_goals > m.home_goals;
-
-        matchDiv.innerHTML = `
-          <div class="ko-match-team ${homeWin ? 'winner' : ''} ${awayWin ? 'loser' : ''}">
-            <span class="name">${m.home_team_id ? teamName(m.home_team_id) : '?'}</span>
-            <span class="score">${hasResult ? m.home_goals : ''}</span>
-          </div>
-          <div class="ko-match-vs">vs</div>
-          <div class="ko-match-team ${awayWin ? 'winner' : ''} ${homeWin ? 'loser' : ''}">
-            <span class="name">${m.away_team_id ? teamName(m.away_team_id) : '?'}</span>
-            <span class="score">${hasResult ? m.away_goals : ''}</span>
-          </div>`;
-      }
-
-      col.appendChild(matchDiv);
+    rounds[key].forEach(m => {
+      col.appendChild(renderMatch(m));
     });
 
     container.appendChild(col);
   });
 
-  koContainer.innerHTML = '';
-  koContainer.appendChild(container);
+  return container;
 }
 
-// Saisons laden
+function renderTabs() {
+  if (!bracketsCache) return;
+
+  const brackets = bracketsCache.brackets;
+  const bracketKeys = Object.keys(brackets);
+
+  let html = '<div class="bracket-tabs">';
+  bracketKeys.forEach(key => {
+    html += `<button class="bracket-tab ${key === activeTab ? 'active' : ''}" data-tab="${key}">${TAB_LABELS[key] || key}</button>`;
+  });
+  html += '</div>';
+  html += '<div id="bracket-content"></div>';
+
+  koContainer.innerHTML = html;
+
+  // Tab click handlers
+  koContainer.querySelectorAll('.bracket-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      activeTab = btn.dataset.tab;
+      koContainer.querySelectorAll('.bracket-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      showBracket();
+    });
+  });
+
+  showBracket();
+}
+
+function showBracket() {
+  const contentDiv = document.getElementById('bracket-content');
+  if (!bracketsCache || !bracketsCache.brackets[activeTab]) {
+    contentDiv.innerHTML = '<div class="ko-empty">Kein Bracket verfügbar</div>';
+    return;
+  }
+  contentDiv.innerHTML = '';
+  contentDiv.appendChild(renderBracket(bracketsCache.brackets[activeTab]));
+}
+
+async function loadKOBrackets(seasonId) {
+  koContainer.innerHTML = '<em>Lade...</em>';
+  bracketsCache = null;
+  activeTab = 'meister';
+
+  try {
+    // Check status first
+    const statusRes = await fetch(`${API}/api/seasons/${seasonId}/ko-brackets/status`);
+    if (statusRes.ok) {
+      const status = await statusRes.json();
+      if (!status.exists) {
+        koContainer.innerHTML = '<div class="ko-empty">KO-Phase beginnt nach Abschluss der Gruppenphase</div>';
+        return;
+      }
+    }
+
+    const res = await fetch(`${API}/api/seasons/${seasonId}/ko-brackets`);
+    if (!res.ok) {
+      if (res.status === 404) {
+        koContainer.innerHTML = '<div class="ko-empty">KO-Phase beginnt nach Abschluss der Gruppenphase</div>';
+        return;
+      }
+      throw new Error('Fehler beim Laden');
+    }
+
+    bracketsCache = await res.json();
+    const bracketKeys = Object.keys(bracketsCache.brackets);
+    if (bracketKeys.length === 0) {
+      koContainer.innerHTML = '<div class="ko-empty">Keine Brackets vorhanden</div>';
+      return;
+    }
+    if (!bracketsCache.brackets[activeTab]) {
+      activeTab = bracketKeys[0];
+    }
+    renderTabs();
+  } catch (e) {
+    koContainer.innerHTML = `<div class="ko-empty" style="color:var(--danger)">Fehler beim Laden: ${e.message}</div>`;
+  }
+}
+
+// Load seasons
 fetch(`${API}/api/seasons`).then(r => r.json()).then(seasons => {
   seasonsDiv.innerHTML = '';
   seasons.forEach(s => {
@@ -280,13 +330,13 @@ fetch(`${API}/api/seasons`).then(r => r.json()).then(seasons => {
     div.onclick = (e) => {
       seasonsDiv.querySelectorAll('.season-item').forEach(el => el.classList.remove('active'));
       e.target.classList.add('active');
-      loadKOBracket(s.id);
+      loadKOBrackets(s.id);
     };
     seasonsDiv.appendChild(div);
   });
 });
 
-// Check if user is logged in (show admin link)
+// Admin link
 if (localStorage.getItem('biw_token')) {
   document.getElementById('admin-link').style.display = 'block';
 }
@@ -305,25 +355,20 @@ function toggleMenu() {
 burgerBtn.addEventListener('click', toggleMenu);
 menuOverlay.addEventListener('click', toggleMenu);
 
-// Close menu on navigation
 navMenu.querySelectorAll('a').forEach(link => {
   link.addEventListener('click', () => {
-    if (navMenu.classList.contains('open')) {
-      toggleMenu();
-    }
+    if (navMenu.classList.contains('open')) toggleMenu();
   });
 });
 
-// Dark Mode Toggle
+// Dark Mode
 function initDarkMode() {
   const isDarkMode = localStorage.getItem('biw_dark_mode') === 'true';
   const toggle = document.getElementById('dark-mode-toggle');
-
   if (isDarkMode) {
     document.documentElement.classList.add('dark-mode');
     toggle.checked = true;
   }
-
   toggle.addEventListener('change', () => {
     if (toggle.checked) {
       document.documentElement.classList.add('dark-mode');
