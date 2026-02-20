@@ -71,6 +71,7 @@ class Teilnahme(commands.Cog):
         if not user:
             return
 
+        discord_id = str(ctx.author.id)
         participating = (status == "ja")
 
         # API Call
@@ -117,6 +118,8 @@ class Teilnahme(commands.Cog):
         user_data = await self._ensure_user(ctx)
         if not user_data:
             return
+
+        discord_id = str(ctx.author.id)
 
         # Status-Embed erstellen
         embed = discord.Embed(
