@@ -51,10 +51,10 @@
     tr:hover{background:var(--accent)}
     
     /* Tabs */
-    .tabs{display:flex;gap:.5rem;margin-bottom:1.5rem;border-bottom:1px solid var(--border);padding-bottom:.5rem}
-    .tab{padding:.5rem 1rem;border:none;background:none;cursor:pointer;font-size:.9rem;color:var(--muted);border-radius:6px 6px 0 0}
-    .tab.active{color:var(--primary);font-weight:600;background:var(--accent)}
-    .tab:hover{color:var(--text)}
+    .tabs{display:flex;gap:.5rem;margin-bottom:1.5rem;background:var(--card);border-radius:10px;padding:.5rem}
+    .tab{padding:.5rem 1.25rem;border:none;background:var(--accent);color:var(--text);cursor:pointer;font-size:.9rem;font-weight:500;border-radius:8px;transition:all .2s}
+    .tab.active{background:var(--primary);color:#fff;font-weight:600}
+    .tab:hover:not(.active){background:var(--border);color:var(--text)}
     
     /* Match Card */
     .match-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:1rem;margin-bottom:.75rem;box-shadow:0 4px 12px rgba(0,0,0,.15)}
