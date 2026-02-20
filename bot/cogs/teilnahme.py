@@ -306,6 +306,14 @@ class ClaimConfirmView(discord.ui.View):
 
             logger.info(f'✅ Team "{self.team["name"]}" geclaimed von User {self.discord_id}')
 
+        elif result.get('error') == 'profile_url_required':
+            embed = discord.Embed(
+                title="⚠️ Schritt fehlt",
+                description='Bitte hinterlege zuerst dein Onlineliga-Profil, bevor du ein Team verknüpfst.\n\n`/profil url:https://www.onlineliga.de/...`',
+                color=discord.Color.orange()
+            )
+            logger.warning(f'⚠️ User {self.discord_id} hat keine Profile URL gesetzt')
+
         elif result.get('error') == 'team_claimed':
             embed = discord.Embed(
                 title="❌ Team bereits vergeben",
@@ -392,6 +400,14 @@ class ClaimSelectView(discord.ui.View):
             embed.set_footer(text="Nutze /status um deine Daten zu sehen")
 
             logger.info(f'✅ Team "{team["name"]}" geclaimed von User {self.discord_id}')
+
+        elif result.get('error') == 'profile_url_required':
+            embed = discord.Embed(
+                title="⚠️ Schritt fehlt",
+                description='Bitte hinterlege zuerst dein Onlineliga-Profil, bevor du ein Team verknüpfst.\n\n`/profil url:https://www.onlineliga.de/...`',
+                color=discord.Color.orange()
+            )
+            logger.warning(f'⚠️ User {self.discord_id} hat keine Profile URL gesetzt')
 
         elif result.get('error') == 'team_claimed':
             embed = discord.Embed(

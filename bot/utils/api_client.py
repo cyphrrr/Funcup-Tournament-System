@@ -197,6 +197,7 @@ class BackendAPIClient:
             Dict mit success/error Status:
             - {"success": True, "data": {...}} bei Erfolg
             - {"success": False, "error": "not_found"} bei 404
+            - {"success": False, "error": "profile_url_required"} bei 403
             - {"success": False, "error": "already_has_team"} bei 409 (user hat schon team)
             - {"success": False, "error": "team_claimed"} bei 409 (team schon vergeben)
             - {"success": False, "error": "unknown"} bei anderen Fehlern
@@ -211,6 +212,14 @@ class BackendAPIClient:
                     if resp.status == 200:
                         data = await resp.json()
                         return {"success": True, "data": data}
+                    elif resp.status == 403:
+                        # Profile URL nicht gesetzt
+                        error_data = await resp.json()
+                        detail = error_data.get("detail", "")
+                        if "PROFILE_URL_REQUIRED" in detail:
+                            return {"success": False, "error": "profile_url_required"}
+                        else:
+                            return {"success": False, "error": "forbidden"}
                     elif resp.status == 404:
                         return {"success": False, "error": "not_found"}
                     elif resp.status == 409:

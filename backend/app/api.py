@@ -1487,9 +1487,10 @@ def claim_team(
 
     Validations (in order):
         1. User muss existieren (404)
-        2. Team muss existieren (404)
-        3. User darf noch kein Team haben (409 "du hast bereits ein Team")
-        4. Team darf nicht von anderem User geclaimed sein (409 "bereits von anderem User verknüpft")
+        2. User muss Profil-URL gesetzt haben (403)
+        3. Team muss existieren (404)
+        4. User darf noch kein Team haben (409 "du hast bereits ein Team")
+        5. Team darf nicht von anderem User geclaimed sein (409 "bereits von anderem User verknüpft")
 
     Success:
         200 OK mit aktualisiertem UserProfileResponse
@@ -1509,19 +1510,26 @@ def claim_team(
             detail=f"User mit Discord ID {discord_id} nicht gefunden"
         )
 
-    # 2. Team existiert?
+    # 2. User muss Profil-URL gesetzt haben
+    if not user.profile_url or user.profile_url.strip() == "":
+        raise HTTPException(
+            status_code=403,
+            detail="PROFILE_URL_REQUIRED"
+        )
+
+    # 3. Team existiert?
     team = db.query(models.Team).filter(models.Team.id == team_id).first()
     if not team:
         raise HTTPException(status_code=404, detail="Team nicht gefunden")
 
-    # 3. User hat bereits ein Team?
+    # 4. User hat bereits ein Team?
     if user.team_id is not None:
         raise HTTPException(
             status_code=409,
             detail="Du hast bereits ein Team verknüpft"
         )
 
-    # 4. Team schon von anderem User vergeben?
+    # 5. Team schon von anderem User vergeben?
     existing_claim = db.query(models.UserProfile).filter(
         models.UserProfile.team_id == team_id,
         models.UserProfile.discord_id != discord_id
