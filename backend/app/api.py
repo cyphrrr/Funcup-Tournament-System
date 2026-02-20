@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from . import models, schemas
 from .db import SessionLocal, engine
 from .auth import get_current_user, verify_credentials, create_jwt_token
+from .ko_bracket_generator import generate_ko_brackets
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -2016,3 +2017,349 @@ def get_crest(discord_id: str, db: Session = Depends(get_db)):
     # Redirect zur Datei (Nginx wird /uploads/ servieren)
     from fastapi.responses import RedirectResponse
     return RedirectResponse(url=user.crest_url)
+
+
+# ============================================================
+# KO-BRACKET ENDPOINTS (3-Bracket-System)
+# ============================================================
+
+@router.post("/seasons/{season_id}/ko-brackets/generate", status_code=201)
+def generate_season_ko_brackets(
+    season_id: int,
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_user)
+):
+    """
+    Generiert alle 3 KO-Brackets (Meister, Lucky Loser, Loser) für eine Saison.
+
+    Prüft:
+    - Ob alle Gruppen abgeschlossen sind (alle Matches gespielt)
+    - Ob Brackets bereits existieren
+
+    Returns:
+        201: Brackets erfolgreich generiert mit Summary
+        400: Gruppen nicht abgeschlossen
+        409: Brackets bereits vorhanden
+    """
+    # Prüfe ob bereits Brackets existieren
+    existing = db.query(models.KOBracket).filter(
+        models.KOBracket.season_id == season_id
+    ).first()
+
+    if existing:
+        raise HTTPException(
+            status_code=409,
+            detail="KO-Brackets bereits generiert für diese Saison"
+        )
+
+    # Generiere Brackets (wirft ValueError bei Validierungsfehlern)
+    try:
+        result = generate_ko_brackets(season_id, db)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    return result
+
+
+@router.get("/seasons/{season_id}/ko-brackets")
+def get_season_ko_brackets(season_id: int, db: Session = Depends(get_db)):
+    """
+    Holt alle KO-Brackets einer Saison mit Matches.
+
+    Response-Struktur:
+    {
+        "season_id": X,
+        "brackets": {
+            "meister": { ... },
+            "lucky_loser": { ... },
+            "loser": { ... }
+        }
+    }
+
+    Falls ein Bracket nicht existiert: null
+    """
+    brackets_data = {}
+
+    for bracket_type in ["meister", "lucky_loser", "loser"]:
+        bracket = db.query(models.KOBracket).filter(
+            models.KOBracket.season_id == season_id,
+            models.KOBracket.bracket_type == bracket_type
+        ).first()
+
+        if not bracket:
+            brackets_data[bracket_type] = None
+            continue
+
+        # Matches laden und nach Runden gruppieren
+        matches = db.query(models.KOMatch).filter(
+            models.KOMatch.season_id == season_id,
+            models.KOMatch.bracket_type == bracket_type
+        ).order_by(models.KOMatch.round, models.KOMatch.id).all()
+
+        # Nach Runden gruppieren
+        rounds_dict = {}
+        for match in matches:
+            round_key = f"runde_{match.round}"
+            if round_key not in rounds_dict:
+                rounds_dict[round_key] = []
+
+            # Team-Daten laden
+            home_team = None
+            away_team = None
+
+            if match.home_team_id:
+                home = db.get(models.Team, match.home_team_id)
+                if home:
+                    home_team = {"id": home.id, "name": home.name}
+
+            if match.away_team_id:
+                away = db.get(models.Team, match.away_team_id)
+                if away:
+                    away_team = {"id": away.id, "name": away.name}
+
+            # Winner ermitteln
+            winner_id = None
+            if match.home_goals is not None and match.away_goals is not None:
+                if match.home_goals > match.away_goals:
+                    winner_id = match.home_team_id
+                elif match.away_goals > match.home_goals:
+                    winner_id = match.away_team_id
+
+            # Rundenname berechnen
+            total_rounds = max(m.round for m in matches)
+            round_name = _get_round_name(match.round, total_rounds)
+
+            rounds_dict[round_key].append({
+                "match_id": match.id,
+                "round": round_name,
+                "home_team": home_team,
+                "away_team": away_team,
+                "home_goals": match.home_goals,
+                "away_goals": match.away_goals,
+                "winner_id": winner_id,
+                "is_bye": match.is_bye == 1,
+                "status": match.status
+            })
+
+        brackets_data[bracket_type] = {
+            "bracket_id": bracket.id,
+            "status": bracket.status,
+            "rounds": rounds_dict
+        }
+
+    return {
+        "season_id": season_id,
+        "brackets": brackets_data
+    }
+
+
+def _get_round_name(round_num: int, total_rounds: int) -> str:
+    """Berechnet menschenlesbaren Rundennamen."""
+    remaining = total_rounds - round_num + 1
+    if remaining == 1:
+        return "finale"
+    elif remaining == 2:
+        return "halbfinale"
+    elif remaining == 3:
+        return "viertelfinale"
+    elif remaining == 4:
+        return "achtelfinale"
+    else:
+        return f"runde_{round_num}"
+
+
+@router.patch("/ko-matches/{match_id}")
+def update_ko_match_result(
+    match_id: int,
+    update: dict,
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_user)
+):
+    """
+    Trägt Ergebnis für ein KO-Match ein.
+
+    Body:
+        - home_goals: int (>= 0)
+        - away_goals: int (>= 0)
+        - winner_id: int | null (erforderlich bei Unentschieden)
+
+    Bei Unentschieden MUSS winner_id angegeben werden (Tiebreaker via Onlineliga-Ranking).
+    Bei regulärem Sieg wird winner_id automatisch berechnet.
+
+    Nach Eintragen:
+    - match.status = "played"
+    - Sieger wird in next_match weitergeleitet
+    - Falls alle Matches gespielt: bracket.status = "completed"
+    """
+    match = db.query(models.KOMatch).filter(
+        models.KOMatch.id == match_id
+    ).first()
+
+    if not match:
+        raise HTTPException(status_code=404, detail="KO-Match nicht gefunden")
+
+    if match.is_bye == 1:
+        raise HTTPException(status_code=400, detail="Freilos-Matches können nicht aktualisiert werden")
+
+    # Validierung
+    home_goals = update.get("home_goals")
+    away_goals = update.get("away_goals")
+    winner_id = update.get("winner_id")
+
+    if home_goals is None or away_goals is None:
+        raise HTTPException(
+            status_code=400,
+            detail="home_goals und away_goals sind erforderlich"
+        )
+
+    if home_goals < 0 or away_goals < 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Tore müssen >= 0 sein"
+        )
+
+    # Bei Unentschieden: winner_id erforderlich
+    if home_goals == away_goals and winner_id is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Bei Unentschieden muss winner_id angegeben werden (Tiebreaker: Onlineliga-Ranking)"
+        )
+
+    # Bei regulärem Sieg: winner_id automatisch berechnen
+    if home_goals != away_goals:
+        winner_id = match.home_team_id if home_goals > away_goals else match.away_team_id
+
+    # Validiere winner_id
+    if winner_id not in [match.home_team_id, match.away_team_id]:
+        raise HTTPException(
+            status_code=400,
+            detail="winner_id muss einem der beiden Teams entsprechen"
+        )
+
+    # Ergebnis eintragen
+    match.home_goals = home_goals
+    match.away_goals = away_goals
+    match.status = "played"
+
+    # Sieger in nächstes Match weiterleiten
+    if match.next_match_id:
+        next_match = db.get(models.KOMatch, match.next_match_id)
+        if next_match:
+            if match.next_match_slot == "home":
+                next_match.home_team_id = winner_id
+            else:
+                next_match.away_team_id = winner_id
+
+            # Wenn beide Teams da: scheduled
+            if next_match.home_team_id and next_match.away_team_id:
+                next_match.status = "scheduled"
+
+    db.commit()
+
+    # Prüfe ob Bracket komplett
+    bracket = db.query(models.KOBracket).filter(
+        models.KOBracket.season_id == match.season_id,
+        models.KOBracket.bracket_type == match.bracket_type
+    ).first()
+
+    if bracket:
+        all_matches = db.query(models.KOMatch).filter(
+            models.KOMatch.season_id == match.season_id,
+            models.KOMatch.bracket_type == match.bracket_type
+        ).all()
+
+        # Alle Matches gespielt?
+        if all(m.status == "played" for m in all_matches):
+            bracket.status = "completed"
+            db.commit()
+
+    db.refresh(match)
+
+    # Response
+    home_team = db.get(models.Team, match.home_team_id) if match.home_team_id else None
+    away_team = db.get(models.Team, match.away_team_id) if match.away_team_id else None
+
+    return {
+        "match_id": match.id,
+        "home_team": {"id": home_team.id, "name": home_team.name} if home_team else None,
+        "away_team": {"id": away_team.id, "name": away_team.name} if away_team else None,
+        "home_goals": match.home_goals,
+        "away_goals": match.away_goals,
+        "winner_id": winner_id,
+        "status": match.status,
+        "next_match_id": match.next_match_id
+    }
+
+
+@router.get("/seasons/{season_id}/ko-brackets/status")
+def get_ko_brackets_status(season_id: int, db: Session = Depends(get_db)):
+    """
+    Schnelle Übersicht über KO-Bracket Status.
+
+    Returns:
+    {
+        "season_id": X,
+        "all_groups_completed": bool,
+        "brackets_generated": bool,
+        "brackets": {
+            "meister": {"status": "...", "matches_played": X, "matches_total": Y},
+            ...
+        }
+    }
+    """
+    # Prüfe ob alle Gruppen abgeschlossen
+    groups = db.query(models.Group).filter(
+        models.Group.season_id == season_id
+    ).all()
+
+    all_groups_completed = True
+    for group in groups:
+        matches = db.query(models.Match).filter(
+            models.Match.group_id == group.id
+        ).all()
+
+        if not matches:
+            all_groups_completed = False
+            break
+
+        if any(m.status != "played" for m in matches):
+            all_groups_completed = False
+            break
+
+    # Prüfe ob Brackets existieren
+    brackets = db.query(models.KOBracket).filter(
+        models.KOBracket.season_id == season_id
+    ).all()
+
+    brackets_generated = len(brackets) > 0
+
+    # Bracket-Details
+    brackets_data = {}
+    for bracket_type in ["meister", "lucky_loser", "loser"]:
+        bracket = next((b for b in brackets if b.bracket_type == bracket_type), None)
+
+        if not bracket:
+            brackets_data[bracket_type] = None
+            continue
+
+        # Matches zählen
+        all_matches = db.query(models.KOMatch).filter(
+            models.KOMatch.season_id == season_id,
+            models.KOMatch.bracket_type == bracket_type
+        ).all()
+
+        played = sum(1 for m in all_matches if m.status == "played")
+        total = len(all_matches)
+
+        brackets_data[bracket_type] = {
+            "status": bracket.status,
+            "matches_played": played,
+            "matches_total": total
+        }
+
+    return {
+        "season_id": season_id,
+        "all_groups_completed": all_groups_completed,
+        "brackets_generated": brackets_generated,
+        "brackets": brackets_data
+    }

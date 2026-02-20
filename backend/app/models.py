@@ -117,7 +117,7 @@ class KOMatch(Base):
         "KOBracket",
         back_populates="matches",
         primaryjoin="and_(KOMatch.season_id==KOBracket.season_id, KOMatch.bracket_type==KOBracket.bracket_type)",
-        foreign_keys="[season_id, bracket_type]",
+        foreign_keys="[KOMatch.season_id, KOMatch.bracket_type]",
         viewonly=True
     )
 
