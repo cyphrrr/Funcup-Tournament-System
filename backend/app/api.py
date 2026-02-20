@@ -1,3 +1,5 @@
+import math
+from datetime import datetime
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -2442,4 +2444,210 @@ def get_ko_brackets_status(season_id: int, db: Session = Depends(get_db)):
         "all_groups_completed": all_groups_completed,
         "brackets_generated": brackets_generated,
         "brackets": brackets_data
+    }
+
+
+@router.post("/seasons/{season_id}/ko-brackets/reset")
+def reset_ko_brackets(
+    season_id: int,
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_user)
+):
+    """Löscht alle KO-Brackets und KO-Matches einer Saison."""
+    db.query(models.KOMatch).filter(models.KOMatch.season_id == season_id).delete()
+    db.query(models.KOBracket).filter(models.KOBracket.season_id == season_id).delete()
+    db.commit()
+    return {"deleted": True}
+
+
+@router.post("/seasons/{season_id}/ko-brackets/create-empty", status_code=201)
+def create_empty_bracket(
+    season_id: int,
+    body: dict,
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_user)
+):
+    """
+    Erstellt ein leeres KO-Bracket-Gerüst (ohne Team-Zuweisung).
+
+    Body:
+        bracket_type: "meister" | "lucky_loser" | "loser"
+        team_count: 2, 4, 8, 16, 32
+    """
+    bracket_type = body.get("bracket_type")
+    team_count = body.get("team_count")
+
+    if bracket_type not in ("meister", "lucky_loser", "loser"):
+        raise HTTPException(status_code=400, detail="bracket_type muss 'meister', 'lucky_loser' oder 'loser' sein")
+
+    valid_counts = [2, 4, 8, 16, 32]
+    if team_count not in valid_counts:
+        raise HTTPException(status_code=400, detail=f"team_count muss einer von {valid_counts} sein")
+
+    # Prüfe ob Bracket dieses Typs bereits existiert
+    existing = db.query(models.KOBracket).filter(
+        models.KOBracket.season_id == season_id,
+        models.KOBracket.bracket_type == bracket_type
+    ).first()
+    if existing:
+        raise HTTPException(status_code=409, detail=f"Bracket '{bracket_type}' existiert bereits für diese Saison. Bitte zuerst zurücksetzen.")
+
+    # KOBracket erstellen
+    bracket = models.KOBracket(
+        season_id=season_id,
+        bracket_type=bracket_type,
+        status="active",
+        generated_at=datetime.utcnow()
+    )
+    db.add(bracket)
+    db.flush()
+
+    # Leeres Gerüst erstellen – gleiche Logik wie generate_rounds in ko_bracket_generator
+    bracket_size = team_count
+    total_rounds = int(math.log2(bracket_size))
+
+    all_matches = []
+    for round_num in range(1, total_rounds + 1):
+        matches_in_round = bracket_size // (2 ** round_num)
+        for pos in range(1, matches_in_round + 1):
+            match = models.KOMatch(
+                season_id=season_id,
+                bracket_type=bracket_type,
+                round=round_num,
+                position=pos,
+                status="pending"
+            )
+            db.add(match)
+            all_matches.append(match)
+
+    db.flush()
+
+    # next_match_id / next_match_slot verdrahten
+    for match in all_matches:
+        if match.round < total_rounds:
+            next_round = match.round + 1
+            next_pos = (match.position + 1) // 2
+            next_match = next(
+                (m for m in all_matches if m.round == next_round and m.position == next_pos),
+                None
+            )
+            if next_match:
+                match.next_match_id = next_match.id
+                match.next_match_slot = "home" if match.position % 2 == 1 else "away"
+
+    db.commit()
+
+    return {
+        "bracket_id": bracket.id,
+        "bracket_type": bracket_type,
+        "matches_count": len(all_matches),
+        "rounds": total_rounds
+    }
+
+
+@router.patch("/ko-matches/{match_id}/set-team")
+def set_ko_match_team(
+    match_id: int,
+    body: dict,
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_user)
+):
+    """Setzt ein Team in einen Home- oder Away-Slot eines KO-Matches."""
+    slot = body.get("slot")
+    team_id = body.get("team_id")
+
+    if slot not in ("home", "away"):
+        raise HTTPException(status_code=400, detail="slot muss 'home' oder 'away' sein")
+
+    match = db.query(models.KOMatch).filter(models.KOMatch.id == match_id).first()
+    if not match:
+        raise HTTPException(status_code=404, detail="KO-Match nicht gefunden")
+
+    if match.home_goals is not None:
+        raise HTTPException(status_code=400, detail="Match bereits gespielt")
+
+    if team_id is not None:
+        # Validiere: Team muss zur Saison gehören
+        season_team = db.query(models.SeasonTeam).filter(
+            models.SeasonTeam.season_id == match.season_id,
+            models.SeasonTeam.team_id == team_id
+        ).first()
+        if not season_team:
+            raise HTTPException(status_code=400, detail="Team gehört nicht zu dieser Saison")
+
+    if slot == "home":
+        match.home_team_id = team_id
+    else:
+        match.away_team_id = team_id
+
+    # Status aktualisieren
+    if match.home_team_id and match.away_team_id:
+        match.status = "scheduled"
+    else:
+        match.status = "pending"
+
+    db.commit()
+    db.refresh(match)
+
+    home_team = db.get(models.Team, match.home_team_id) if match.home_team_id else None
+    away_team = db.get(models.Team, match.away_team_id) if match.away_team_id else None
+
+    return {
+        "match_id": match.id,
+        "home_team": {"id": home_team.id, "name": home_team.name} if home_team else None,
+        "away_team": {"id": away_team.id, "name": away_team.name} if away_team else None,
+        "status": match.status
+    }
+
+
+@router.patch("/ko-matches/{match_id}/set-bye")
+def set_ko_match_bye(
+    match_id: int,
+    body: dict,
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_user)
+):
+    """Markiert ein KO-Match als Freilos und leitet Team in nächste Runde weiter."""
+    team_id = body.get("team_id")
+    if not team_id:
+        raise HTTPException(status_code=400, detail="team_id ist erforderlich")
+
+    match = db.query(models.KOMatch).filter(models.KOMatch.id == match_id).first()
+    if not match:
+        raise HTTPException(status_code=404, detail="KO-Match nicht gefunden")
+
+    if match.home_goals is not None:
+        raise HTTPException(status_code=400, detail="Match bereits gespielt")
+
+    # Validiere: Team muss zur Saison gehören
+    season_team = db.query(models.SeasonTeam).filter(
+        models.SeasonTeam.season_id == match.season_id,
+        models.SeasonTeam.team_id == team_id
+    ).first()
+    if not season_team:
+        raise HTTPException(status_code=400, detail="Team gehört nicht zu dieser Saison")
+
+    match.is_bye = 1
+    match.home_team_id = team_id
+    match.away_team_id = None
+    match.status = "played"
+
+    # Sieger in nächste Runde weiterleiten
+    if match.next_match_id:
+        next_match = db.get(models.KOMatch, match.next_match_id)
+        if next_match:
+            if match.next_match_slot == "home":
+                next_match.home_team_id = team_id
+            else:
+                next_match.away_team_id = team_id
+
+    db.commit()
+    db.refresh(match)
+
+    team = db.get(models.Team, team_id)
+    return {
+        "match_id": match.id,
+        "home_team": {"id": team.id, "name": team.name} if team else None,
+        "is_bye": True,
+        "status": match.status
     }

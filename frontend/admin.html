@@ -112,6 +112,7 @@
       <nav>
         <a href="#dashboard" class="active" data-section="dashboard">📊 Dashboard</a>
         <a href="#matches" data-section="matches">🎮 Ergebnisse</a>
+        <a href="#ko-phase" data-section="ko-phase">🏆 KO-Phase</a>
         <a href="#teams" data-section="teams">👥 Teams</a>
         <a href="#seasons" data-section="seasons">📅 Saisons</a>
         <a href="#discord-users" data-section="discord-users">👤 Discord User</a>
@@ -167,6 +168,47 @@
         <div id="matches-list"></div>
       </div>
       
+      <!-- KO-Phase -->
+      <div id="ko-phase" class="section">
+        <h1>KO-Phase verwalten</h1>
+        <div class="card">
+          <h2>📋 Saison & Status</h2>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Saison</label>
+              <select id="ko-season" onchange="loadKOStatus()">
+                <option value="">Wählen...</option>
+              </select>
+            </div>
+          </div>
+          <div id="ko-status-info" style="display:none;margin-top:1rem">
+            <div class="stats" id="ko-stats"></div>
+            <div id="ko-generate-area"></div>
+          </div>
+        </div>
+
+        <!-- Manual bracket builder -->
+        <div id="ko-manual-builder" style="display:none">
+          <div class="card">
+            <h2>🔧 Manueller Bracket-Aufbau</h2>
+            <div id="ko-manual-brackets"></div>
+          </div>
+        </div>
+
+        <div id="ko-brackets-area" style="display:none">
+          <div class="tabs" id="ko-bracket-tabs">
+            <button class="tab active" data-bracket="meister" onclick="switchKOTab('meister')">Meisterrunde</button>
+            <button class="tab" data-bracket="lucky_loser" onclick="switchKOTab('lucky_loser')">Lucky Loser</button>
+            <button class="tab" data-bracket="loser" onclick="switchKOTab('loser')">Loser</button>
+          </div>
+          <div id="ko-bracket-content"></div>
+        </div>
+
+        <div id="ko-reset-area" style="display:none;margin-top:1rem">
+          <button class="btn btn-danger" onclick="resetKOBrackets()">⚠️ Brackets zurücksetzen</button>
+        </div>
+      </div>
+
       <!-- Teams -->
       <div id="teams" class="section">
         <h1>Teams verwalten</h1>
@@ -561,6 +603,7 @@ function showSection(name) {
   if (name === 'teams') loadTeamSeasons();
   if (name === 'seasons') loadSeasons();
   if (name === 'discord-users') loadDiscordUsers();
+  if (name === 'ko-phase') loadKOSeasons();
   if (name === 'news') {
     loadNews();
     loadMatchInserterSeasons();
@@ -1459,6 +1502,480 @@ function insertAtCursor(textarea, text) {
   const newPos = start + text.length;
   textarea.setSelectionRange(newPos, newPos);
   textarea.focus();
+}
+
+// ========== KO-PHASE ==========
+let currentKOBracketTab = 'meister';
+let currentKOBracketsData = null;
+let koSeasonTeams = []; // All teams in the season for manual builder
+
+async function loadKOSeasons() {
+  const seasons = await fetch(`${API}/api/seasons`).then(r => r.json());
+  const select = document.getElementById('ko-season');
+  select.innerHTML = '<option value="">Wählen...</option>' +
+    seasons.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+}
+
+async function loadKOStatus() {
+  const seasonId = document.getElementById('ko-season').value;
+  const infoDiv = document.getElementById('ko-status-info');
+  const bracketsArea = document.getElementById('ko-brackets-area');
+  const manualBuilder = document.getElementById('ko-manual-builder');
+  const resetArea = document.getElementById('ko-reset-area');
+
+  if (!seasonId) {
+    infoDiv.style.display = 'none';
+    bracketsArea.style.display = 'none';
+    manualBuilder.style.display = 'none';
+    resetArea.style.display = 'none';
+    return;
+  }
+
+  infoDiv.style.display = 'block';
+  bracketsArea.style.display = 'none';
+  manualBuilder.style.display = 'none';
+  resetArea.style.display = 'none';
+  document.getElementById('ko-stats').innerHTML = '<div class="stat"><div class="stat-value">...</div><div class="stat-label">Lade...</div></div>';
+  document.getElementById('ko-generate-area').innerHTML = '';
+
+  // Cache season teams
+  try {
+    const groups = await fetch(`${API}/api/seasons/${seasonId}/groups-with-teams`).then(r => r.json());
+    koSeasonTeams = [];
+    groups.forEach(g => g.teams.forEach(t => {
+      teamCache[t.id] = t.name;
+      koSeasonTeams.push({id: t.id, name: t.name});
+    }));
+  } catch (e) {}
+
+  try {
+    const status = await fetch(`${API}/api/seasons/${seasonId}/ko-brackets/status`).then(r => r.json());
+
+    // Stats
+    let statsHtml = `
+      <div class="stat">
+        <div class="stat-value" style="color:${status.all_groups_completed ? 'var(--success)' : 'var(--warning)'}">${status.all_groups_completed ? 'Ja' : 'Nein'}</div>
+        <div class="stat-label">Gruppen abgeschlossen</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value" style="color:${status.brackets_generated ? 'var(--success)' : 'var(--muted)'}">${status.brackets_generated ? 'Ja' : 'Nein'}</div>
+        <div class="stat-label">Brackets generiert</div>
+      </div>`;
+
+    if (status.brackets_generated) {
+      for (const [type, data] of Object.entries(status.brackets)) {
+        if (!data) continue;
+        const label = {meister: 'Meister', lucky_loser: 'Lucky Loser', loser: 'Loser'}[type];
+        statsHtml += `
+          <div class="stat">
+            <div class="stat-value">${data.matches_played}/${data.matches_total}</div>
+            <div class="stat-label">${label} (${data.status})</div>
+          </div>`;
+      }
+    }
+    document.getElementById('ko-stats').innerHTML = statsHtml;
+
+    if (!status.brackets_generated) {
+      // Show both auto-generate and manual buttons
+      let genHtml = '<div style="display:flex;gap:1rem;flex-wrap:wrap">';
+      if (status.all_groups_completed) {
+        genHtml += `<button class="btn btn-primary" onclick="generateKOBrackets(${seasonId})" id="ko-generate-btn">🤖 Automatisch generieren</button>`;
+      }
+      genHtml += `<button class="btn btn-secondary" onclick="showManualBuilder(${seasonId})">🔧 Manuell aufbauen</button>`;
+      genHtml += '</div>';
+      if (!status.all_groups_completed) {
+        genHtml += '<p style="color:var(--muted);font-size:.85rem;margin-top:.5rem">Auto-Generate benötigt abgeschlossene Gruppenphase. Manueller Aufbau ist jederzeit möglich.</p>';
+      }
+      document.getElementById('ko-generate-area').innerHTML = genHtml;
+    } else {
+      await loadKOBrackets(seasonId);
+      resetArea.style.display = 'block';
+    }
+  } catch (e) {
+    document.getElementById('ko-stats').innerHTML = `<div class="stat"><div class="stat-value" style="color:var(--danger)">!</div><div class="stat-label">Fehler: ${e.message}</div></div>`;
+  }
+}
+
+async function generateKOBrackets(seasonId) {
+  const btn = document.getElementById('ko-generate-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Generiere...'; }
+
+  try {
+    const res = await authFetch(`${API}/api/seasons/${seasonId}/ko-brackets/generate`, { method: 'POST' });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || 'Fehler beim Generieren');
+    }
+    toast('KO-Brackets erfolgreich generiert!');
+    loadKOStatus();
+  } catch (e) {
+    if (e.message === 'Session abgelaufen') {
+      toast('Nicht eingeloggt – bitte neu anmelden', 'error');
+    } else {
+      toast('Fehler: ' + e.message, 'error');
+    }
+    if (btn) { btn.disabled = false; btn.textContent = '🤖 Automatisch generieren'; }
+  }
+}
+
+async function resetKOBrackets() {
+  const seasonId = document.getElementById('ko-season').value;
+  if (!seasonId) return;
+  if (!confirm('⚠️ Alle KO-Brackets und Matches dieser Saison wirklich löschen?\n\nDiese Aktion kann nicht rückgängig gemacht werden!')) return;
+
+  try {
+    const res = await authFetch(`${API}/api/seasons/${seasonId}/ko-brackets/reset`, { method: 'POST' });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || 'Fehler');
+    }
+    toast('Brackets zurückgesetzt');
+    loadKOStatus();
+  } catch (e) {
+    toast('Fehler: ' + e.message, 'error');
+  }
+}
+
+// ---- Manual Builder ----
+
+function showManualBuilder(seasonId) {
+  const builder = document.getElementById('ko-manual-builder');
+  builder.style.display = 'block';
+
+  const types = [
+    {key: 'meister', label: 'Meisterrunde'},
+    {key: 'lucky_loser', label: 'Lucky Loser'},
+    {key: 'loser', label: 'Loser'}
+  ];
+
+  let html = '';
+  for (const t of types) {
+    html += `
+      <div style="padding:1rem;background:var(--bg);border-radius:8px;margin-bottom:1rem" id="manual-bracket-${t.key}">
+        <h3 style="margin:0 0 .75rem">${t.label}</h3>
+        <div class="form-row">
+          <div class="form-group" style="flex:0;min-width:150px">
+            <label>Teamanzahl</label>
+            <select id="manual-count-${t.key}">
+              <option value="2">2</option>
+              <option value="4" selected>4</option>
+              <option value="8">8</option>
+              <option value="16">16</option>
+              <option value="32">32</option>
+            </select>
+          </div>
+          <div class="form-group" style="flex:0;display:flex;align-items:flex-end">
+            <button class="btn btn-primary btn-sm" onclick="createEmptyBracket(${seasonId}, '${t.key}')">Gerüst erstellen</button>
+          </div>
+        </div>
+      </div>`;
+  }
+  document.getElementById('ko-manual-brackets').innerHTML = html;
+}
+
+async function createEmptyBracket(seasonId, bracketType) {
+  const count = parseInt(document.getElementById(`manual-count-${bracketType}`).value);
+
+  try {
+    const res = await authFetch(`${API}/api/seasons/${seasonId}/ko-brackets/create-empty`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({bracket_type: bracketType, team_count: count})
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      if (res.status === 409) {
+        toast(err.detail + ' Bitte zuerst zurücksetzen.', 'error');
+      } else {
+        throw new Error(err.detail || 'Fehler');
+      }
+      return;
+    }
+
+    toast(`${bracketType} Gerüst erstellt!`);
+    loadKOStatus();
+  } catch (e) {
+    toast('Fehler: ' + e.message, 'error');
+  }
+}
+
+// ---- Bracket display with team assignment ----
+
+async function loadKOBrackets(seasonId) {
+  try {
+    const data = await fetch(`${API}/api/seasons/${seasonId}/ko-brackets`).then(r => r.json());
+    currentKOBracketsData = data;
+
+    document.getElementById('ko-brackets-area').style.display = 'block';
+    document.getElementById('ko-manual-builder').style.display = 'none';
+    renderKOBracketTab(currentKOBracketTab);
+  } catch (e) {
+    document.getElementById('ko-bracket-content').innerHTML = `<div class="card" style="color:var(--danger)">Fehler: ${e.message}</div>`;
+  }
+}
+
+function switchKOTab(bracketType) {
+  currentKOBracketTab = bracketType;
+  document.querySelectorAll('#ko-bracket-tabs .tab').forEach(t => t.classList.remove('active'));
+  document.querySelector(`#ko-bracket-tabs .tab[data-bracket="${bracketType}"]`).classList.add('active');
+  renderKOBracketTab(bracketType);
+}
+
+function getAssignedTeamIds(bracket) {
+  // Collect all team IDs currently assigned in this bracket
+  const ids = new Set();
+  if (!bracket || !bracket.rounds) return ids;
+  for (const matches of Object.values(bracket.rounds)) {
+    for (const m of matches) {
+      if (m.home_team) ids.add(m.home_team.id);
+      if (m.away_team) ids.add(m.away_team.id);
+    }
+  }
+  return ids;
+}
+
+function renderKOBracketTab(bracketType) {
+  const container = document.getElementById('ko-bracket-content');
+  if (!currentKOBracketsData) { container.innerHTML = ''; return; }
+
+  const bracket = currentKOBracketsData.brackets[bracketType];
+  if (!bracket) {
+    container.innerHTML = '<div class="card"><em style="color:var(--muted)">Kein Bracket für diese Kategorie vorhanden</em></div>';
+    return;
+  }
+
+  const assignedIds = getAssignedTeamIds(bracket);
+
+  let html = '';
+  const roundKeys = Object.keys(bracket.rounds).sort((a, b) => {
+    const numA = parseInt(a.split('_')[1]);
+    const numB = parseInt(b.split('_')[1]);
+    return numA - numB;
+  });
+
+  for (const roundKey of roundKeys) {
+    const matches = bracket.rounds[roundKey];
+    if (matches.length === 0) continue;
+
+    const roundLabel = formatRoundName(matches[0].round);
+    html += `<div class="card"><h2>${roundLabel}</h2>`;
+
+    for (const m of matches) {
+      if (m.is_bye) {
+        const byeTeam = m.home_team ? m.home_team.name : 'TBD';
+        html += `<div class="match-card" style="opacity:.6"><em>${byeTeam} – Freilos</em></div>`;
+        continue;
+      }
+
+      const homeName = m.home_team ? m.home_team.name : null;
+      const awayName = m.away_team ? m.away_team.name : null;
+      const hasBothTeams = m.home_team && m.away_team;
+      const isPlayed = m.status === 'played';
+      const matchId = m.match_id;
+      const isRound1 = roundKey === roundKeys[0]; // Only round 1 gets team selects
+
+      html += `<div class="match-card" ${!hasBothTeams && !isRound1 ? 'style="opacity:.5"' : ''}>`;
+      html += `<div class="match-header">
+        <div class="match-teams">
+          <span class="match-team">${homeName || '???'}</span>
+          <span class="match-vs">vs</span>
+          <span class="match-team">${awayName || '???'}</span>
+        </div>
+        <div style="display:flex;gap:.5rem;align-items:center">
+          <span style="font-size:.75rem;color:var(--muted)">KO-ID: ${matchId}</span>
+          <span class="match-status ${m.status}">${m.status}</span>
+        </div>
+      </div>`;
+
+      // Score display for played matches
+      if (isPlayed && !m.is_bye) {
+        const winnerMark = m.winner_id === (m.home_team?.id) ? ' ★' : '';
+        const winnerMarkAway = m.winner_id === (m.away_team?.id) ? ' ★' : '';
+        html += `<div style="font-size:1.1rem;font-weight:600;margin:.5rem 0">
+          ${m.home_goals}${winnerMark} : ${m.away_goals}${winnerMarkAway}
+        </div>`;
+      }
+
+      // Team assignment for round 1 (unplayed matches)
+      if (isRound1 && !isPlayed) {
+        html += `<div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;margin-top:.5rem">`;
+
+        // Home team select
+        html += buildTeamSelect(matchId, 'home', m.home_team, assignedIds, m.away_team?.id);
+
+        // Away team select
+        html += buildTeamSelect(matchId, 'away', m.away_team, assignedIds, m.home_team?.id);
+
+        // Bye button (only if no result yet)
+        if (m.home_team && !m.away_team) {
+          html += `<button class="btn btn-sm btn-secondary" onclick="setMatchBye(${matchId}, ${m.home_team.id})" title="Als Freilos markieren">Bye</button>`;
+        }
+        html += `</div>`;
+      }
+
+      // Edit area for matches with both teams (result entry)
+      if (hasBothTeams && !isRound1) {
+        html += `<div id="ko-edit-area-${matchId}">`;
+        if (!isPlayed) {
+          html += `<button class="btn btn-sm btn-primary" onclick="showKOEditForm(${matchId}, ${m.home_team.id}, '${m.home_team.name.replace(/'/g, "\\'")}', ${m.away_team.id}, '${m.away_team.name.replace(/'/g, "\\'")}')">Ergebnis eintragen</button>`;
+        } else {
+          html += `<button class="btn btn-sm btn-secondary" onclick="showKOEditForm(${matchId}, ${m.home_team.id}, '${m.home_team.name.replace(/'/g, "\\'")}', ${m.away_team.id}, '${m.away_team.name.replace(/'/g, "\\'")}', ${m.home_goals}, ${m.away_goals}, ${m.winner_id || 'null'})">Bearbeiten</button>`;
+        }
+        html += `</div>`;
+      }
+
+      // For round 1 matches with both teams, also show result entry
+      if (hasBothTeams && isRound1) {
+        html += `<div id="ko-edit-area-${matchId}" style="margin-top:.5rem">`;
+        if (!isPlayed) {
+          html += `<button class="btn btn-sm btn-primary" onclick="showKOEditForm(${matchId}, ${m.home_team.id}, '${m.home_team.name.replace(/'/g, "\\'")}', ${m.away_team.id}, '${m.away_team.name.replace(/'/g, "\\'")}')">Ergebnis eintragen</button>`;
+        } else {
+          html += `<button class="btn btn-sm btn-secondary" onclick="showKOEditForm(${matchId}, ${m.home_team.id}, '${m.home_team.name.replace(/'/g, "\\'")}', ${m.away_team.id}, '${m.away_team.name.replace(/'/g, "\\'")}', ${m.home_goals}, ${m.away_goals}, ${m.winner_id || 'null'})">Bearbeiten</button>`;
+        }
+        html += `</div>`;
+      }
+
+      html += `</div>`;
+    }
+    html += '</div>';
+  }
+
+  container.innerHTML = html || '<div class="card"><em>Keine Matches in diesem Bracket</em></div>';
+}
+
+function buildTeamSelect(matchId, slot, currentTeam, assignedIds, otherTeamId) {
+  let html = `<select onchange="setMatchTeam(${matchId}, '${slot}', this.value)" style="min-width:160px;padding:.4rem">`;
+  html += `<option value="">-- ${slot === 'home' ? 'Heim' : 'Auswärts'} --</option>`;
+
+  for (const t of koSeasonTeams) {
+    const selected = currentTeam && currentTeam.id === t.id;
+    // Show: current team, or teams not assigned elsewhere (except other slot of same match)
+    const isAssignedElsewhere = assignedIds.has(t.id) && !(currentTeam && currentTeam.id === t.id) && t.id !== otherTeamId;
+    if (isAssignedElsewhere) continue;
+
+    html += `<option value="${t.id}" ${selected ? 'selected' : ''}>${t.name}</option>`;
+  }
+  html += `</select>`;
+  return html;
+}
+
+async function setMatchTeam(matchId, slot, teamIdStr) {
+  const teamId = teamIdStr ? parseInt(teamIdStr) : null;
+
+  try {
+    const res = await authFetch(`${API}/api/ko-matches/${matchId}/set-team`, {
+      method: 'PATCH',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({slot, team_id: teamId})
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || 'Fehler');
+    }
+    // Reload to refresh all selects
+    loadKOStatus();
+  } catch (e) {
+    toast('Fehler: ' + e.message, 'error');
+  }
+}
+
+async function setMatchBye(matchId, teamId) {
+  try {
+    const res = await authFetch(`${API}/api/ko-matches/${matchId}/set-bye`, {
+      method: 'PATCH',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({team_id: teamId})
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || 'Fehler');
+    }
+    toast('Freilos gesetzt');
+    loadKOStatus();
+  } catch (e) {
+    toast('Fehler: ' + e.message, 'error');
+  }
+}
+
+function formatRoundName(name) {
+  const map = {finale: 'Finale', halbfinale: 'Halbfinale', viertelfinale: 'Viertelfinale', achtelfinale: 'Achtelfinale'};
+  if (map[name]) return map[name];
+  if (name.startsWith('runde_')) return `Runde ${name.split('_')[1]}`;
+  return name;
+}
+
+function showKOEditForm(matchId, homeId, homeName, awayId, awayName, homeGoals, awayGoals, winnerId) {
+  const area = document.getElementById(`ko-edit-area-${matchId}`);
+  const hg = homeGoals !== undefined ? homeGoals : '';
+  const ag = awayGoals !== undefined ? awayGoals : '';
+
+  area.innerHTML = `
+    <div style="display:flex;gap:.75rem;align-items:flex-end;flex-wrap:wrap;margin-top:.5rem;padding:.75rem;background:var(--bg);border-radius:6px">
+      <div class="form-group" style="flex:0;min-width:70px">
+        <label>${homeName}</label>
+        <input type="number" min="0" id="ko-edit-home-${matchId}" value="${hg}" placeholder="-" style="width:60px;text-align:center">
+      </div>
+      <span style="padding-bottom:.5rem">:</span>
+      <div class="form-group" style="flex:0;min-width:70px">
+        <label>${awayName}</label>
+        <input type="number" min="0" id="ko-edit-away-${matchId}" value="${ag}" placeholder="-" style="width:60px;text-align:center">
+      </div>
+      <div class="form-group" style="flex:0;min-width:150px">
+        <label>Sieger (bei Unentschieden)</label>
+        <select id="ko-edit-winner-${matchId}" style="min-width:140px">
+          <option value="">Automatisch</option>
+          <option value="${homeId}" ${winnerId === homeId ? 'selected' : ''}>${homeName}</option>
+          <option value="${awayId}" ${winnerId === awayId ? 'selected' : ''}>${awayName}</option>
+        </select>
+      </div>
+      <button class="btn btn-sm btn-success" onclick="saveKOEditMatch(${matchId})">Speichern</button>
+      <button class="btn btn-sm btn-secondary" onclick="loadKOStatus()">Abbrechen</button>
+    </div>
+    <div id="ko-edit-msg-${matchId}" style="margin-top:.5rem"></div>`;
+}
+
+async function saveKOEditMatch(matchId) {
+  const home = document.getElementById(`ko-edit-home-${matchId}`).value;
+  const away = document.getElementById(`ko-edit-away-${matchId}`).value;
+  const winnerVal = document.getElementById(`ko-edit-winner-${matchId}`).value;
+  const msgDiv = document.getElementById(`ko-edit-msg-${matchId}`);
+
+  if (home === '' || away === '') {
+    msgDiv.innerHTML = '<span style="color:var(--danger);font-size:.85rem">Bitte beide Ergebnisse eingeben</span>';
+    return;
+  }
+
+  const body = {
+    home_goals: parseInt(home),
+    away_goals: parseInt(away)
+  };
+  if (winnerVal) body.winner_id = parseInt(winnerVal);
+
+  try {
+    const res = await authFetch(`${API}/api/ko-matches/${matchId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      if (res.status === 401) {
+        toast('Nicht eingeloggt – bitte neu anmelden', 'error');
+        return;
+      }
+      throw new Error(err.detail || 'Fehler beim Speichern');
+    }
+
+    const result = await res.json();
+    toast('Ergebnis gespeichert!' + (result.tiebreaker_used ? ` (Tiebreaker: ${result.tiebreaker_reason})` : ''));
+    loadKOStatus();
+  } catch (e) {
+    msgDiv.innerHTML = `<span style="color:var(--danger);font-size:.85rem">${e.message}</span>`;
+  }
 }
 
 // Dark Mode Toggle
