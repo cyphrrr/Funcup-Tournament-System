@@ -290,7 +290,7 @@ async function loadKOBrackets(seasonId) {
     const statusRes = await fetch(`${API}/api/seasons/${seasonId}/ko-brackets/status`);
     if (statusRes.ok) {
       const status = await statusRes.json();
-      if (!status.exists) {
+      if (!status.brackets_generated) {
         koContainer.innerHTML = '<div class="ko-empty">KO-Phase beginnt nach Abschluss der Gruppenphase</div>';
         return;
       }
