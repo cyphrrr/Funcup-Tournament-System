@@ -256,6 +256,68 @@ docker-compose ps
 
 ---
 
+## 🗃️ Schema-Migrationen
+
+Nach jedem Deployment, das Model-Änderungen enthält (neue Spalten, Tabellen), **muss** das Migrations-Script ausgeführt werden – **bevor** der Backend-Service neu gestartet wird.
+
+### Wann nötig?
+
+Immer wenn `backend/app/models.py` geändert wurde (neue `Column(...)` Definitionen).
+
+In Dev wird die SQLite-DB bei Schema-Änderungen einfach gelöscht – auf Prod darf das nicht passieren. Das Script holt fehlende Spalten nach, ohne Daten zu verlieren.
+
+### Ausführen
+
+```bash
+# Im laufenden Backend-Container:
+docker-compose exec backend python scripts/migrate_prod.py
+
+# Oder direkt auf dem Server (außerhalb Docker):
+cd backend
+python scripts/migrate_prod.py
+```
+
+### Beispiel-Ausgabe
+
+```
+=======================================================
+  BIW Pokal – Produktions-DB Migration
+=======================================================
+
+── Pflicht-Migrationen ──────────────────────────────────────
+  +  groups.completed  (Gruppe als abgeschlossen markiert)
+     → hinzugefügt ✓
+  ✓  ko_matches.bracket_type  (Bracket-Zugehörigkeit)
+
+  1 Spalte(n) hinzugefügt, 1 bereits vorhanden.
+
+── Vollständigkeitsprüfung (Model vs. DB) ───────────────────
+  ✓  seasons  (5 Spalten)
+  ✓  groups  (5 Spalten)
+  ...
+
+=======================================================
+  Migration abgeschlossen.
+=======================================================
+```
+
+### Neue Spalten ins Script aufnehmen
+
+Wenn neue Model-Spalten hinzugefügt werden, `REQUIRED_MIGRATIONS` in `backend/scripts/migrate_prod.py` ergänzen:
+
+```python
+{
+    "table": "tabellen_name",
+    "column": "spalten_name",
+    "sql": "ALTER TABLE tabellen_name ADD COLUMN IF NOT EXISTS spalten_name TYP DEFAULT wert NOT NULL",
+    "description": "kurze Beschreibung",
+},
+```
+
+Danach auch `EXPECTED_COLUMNS` im gleichen Script aktualisieren.
+
+---
+
 ## 📊 Monitoring
 
 ### Container-Status
