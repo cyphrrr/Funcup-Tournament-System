@@ -22,6 +22,28 @@ class Teilnahme(commands.Cog):
         self.api = BackendAPIClient()
         logger.info('✅ Teilnahme Cog geladen')
 
+    async def _ensure_user(self, ctx: discord.ApplicationContext) -> dict | None:
+        """
+        Zentrale Hilfsmethode für Auto-Registration.
+        Extrahiert Discord-Daten und ruft ensure_user auf.
+
+        Returns:
+            User-Dict bei Erfolg, None bei Fehler (mit ephemeral Fehlermeldung)
+        """
+        discord_id = str(ctx.author.id)
+        discord_username = ctx.author.name  # Ohne discriminator (bei neuen Accounts leer)
+        avatar_url = ctx.author.display_avatar.url if ctx.author.display_avatar else None
+
+        user = await self.api.ensure_user(discord_id, discord_username, avatar_url)
+
+        if not user:
+            await ctx.respond(
+                "⚠️ Registrierung fehlgeschlagen. Bitte versuche es erneut.",
+                ephemeral=True
+            )
+
+        return user
+
     @discord.slash_command(
         name="dabei",
         description="Teilnahme am nächsten BIW Pokal festlegen"
@@ -42,24 +64,14 @@ class Teilnahme(commands.Cog):
         """
         await ctx.defer(ephemeral=True)  # Antwort nur für User sichtbar
 
-        discord_id = str(ctx.author.id)
-        discord_username = f"{ctx.author.name}#{ctx.author.discriminator}"
-        avatar_url = ctx.author.display_avatar.url if ctx.author.display_avatar else None
-        participating = (status == "ja")
-
         logger.info(f'👤 {ctx.author.name} setzt Teilnahme: {status}')
 
         # Auto-Register/Update User
-        user = await self.api.ensure_user(discord_id, discord_username, avatar_url)
+        user = await self._ensure_user(ctx)
         if not user:
-            embed = discord.Embed(
-                title="❌ Fehler",
-                description='Backend ist nicht erreichbar. Bitte versuche es später erneut.',
-                color=discord.Color.red()
-            )
-            await ctx.followup.send(embed=embed, ephemeral=True)
-            logger.error(f'❌ ensure_user fehlgeschlagen für {ctx.author.name}')
             return
+
+        participating = (status == "ja")
 
         # API Call
         success = await self.api.set_participation(discord_id, participating)
@@ -99,24 +111,11 @@ class Teilnahme(commands.Cog):
         """
         await ctx.defer(ephemeral=True)
 
-        discord_id = str(ctx.author.id)
-        discord_username = f"{ctx.author.name}#{ctx.author.discriminator}"
-        avatar_url = ctx.author.display_avatar.url if ctx.author.display_avatar else None
-
         logger.info(f'👤 {ctx.author.name} fragt Status ab')
 
-        # Auto-Register/Update User (returns updated user data)
-        user_data = await self.api.ensure_user(discord_id, discord_username, avatar_url)
-
+        # Auto-Register/Update User
+        user_data = await self._ensure_user(ctx)
         if not user_data:
-            # Backend error
-            embed = discord.Embed(
-                title="❌ Fehler",
-                description='Backend ist nicht erreichbar. Bitte versuche es später erneut.',
-                color=discord.Color.red()
-            )
-            await ctx.followup.send(embed=embed, ephemeral=True)
-            logger.error(f'❌ ensure_user fehlgeschlagen für {ctx.author.name}')
             return
 
         # Status-Embed erstellen
@@ -205,23 +204,14 @@ class Teilnahme(commands.Cog):
         """
         await ctx.defer(ephemeral=True)
 
-        discord_id = str(ctx.author.id)
-        discord_username = f"{ctx.author.name}#{ctx.author.discriminator}"
-        avatar_url = ctx.author.display_avatar.url if ctx.author.display_avatar else None
-
         logger.info(f'👤 {ctx.author.name} versucht Team zu claimen: {teamname}')
 
         # 1. Auto-Register User
-        user = await self.api.ensure_user(discord_id, discord_username, avatar_url)
+        user = await self._ensure_user(ctx)
         if not user:
-            embed = discord.Embed(
-                title="❌ Fehler",
-                description='Backend ist nicht erreichbar. Bitte versuche es später erneut.',
-                color=discord.Color.red()
-            )
-            await ctx.followup.send(embed=embed, ephemeral=True)
-            logger.error(f'❌ ensure_user fehlgeschlagen für {ctx.author.name}')
             return
+
+        discord_id = str(ctx.author.id)
 
         # 2. Check if user already has team
         if user.get('team_id') is not None:

@@ -24,6 +24,28 @@ class Profil(commands.Cog):
         self.api = BackendAPIClient()
         logger.info('✅ Profil Cog geladen')
 
+    async def _ensure_user(self, ctx: discord.ApplicationContext) -> dict | None:
+        """
+        Zentrale Hilfsmethode für Auto-Registration.
+        Extrahiert Discord-Daten und ruft ensure_user auf.
+
+        Returns:
+            User-Dict bei Erfolg, None bei Fehler (mit ephemeral Fehlermeldung)
+        """
+        discord_id = str(ctx.author.id)
+        discord_username = ctx.author.name  # Ohne discriminator (bei neuen Accounts leer)
+        avatar_url = ctx.author.display_avatar.url if ctx.author.display_avatar else None
+
+        user = await self.api.ensure_user(discord_id, discord_username, avatar_url)
+
+        if not user:
+            await ctx.respond(
+                "⚠️ Registrierung fehlgeschlagen. Bitte versuche es erneut.",
+                ephemeral=True
+            )
+
+        return user
+
     def _validate_url(self, url: str) -> bool:
         """
         Validiert ob URL gültig ist
@@ -65,23 +87,14 @@ class Profil(commands.Cog):
         """
         await ctx.defer(ephemeral=True)
 
-        discord_id = str(ctx.author.id)
-        discord_username = f"{ctx.author.name}#{ctx.author.discriminator}"
-        avatar_url = ctx.author.display_avatar.url if ctx.author.display_avatar else None
-
         logger.info(f'👤 {ctx.author.name} setzt Profil-URL: {url}')
 
         # Auto-Register/Update User
-        user = await self.api.ensure_user(discord_id, discord_username, avatar_url)
+        user = await self._ensure_user(ctx)
         if not user:
-            embed = discord.Embed(
-                title="❌ Fehler",
-                description='Backend ist nicht erreichbar. Bitte versuche es später erneut.',
-                color=discord.Color.red()
-            )
-            await ctx.followup.send(embed=embed, ephemeral=True)
-            logger.error(f'❌ ensure_user fehlgeschlagen für {ctx.author.name}')
             return
+
+        discord_id = str(ctx.author.id)
 
         # URL validieren
         if not self._validate_url(url):
@@ -138,22 +151,11 @@ class Profil(commands.Cog):
         """
         await ctx.defer(ephemeral=True)
 
-        discord_id = str(ctx.author.id)
-        discord_username = f"{ctx.author.name}#{ctx.author.discriminator}"
-        avatar_url = ctx.author.display_avatar.url if ctx.author.display_avatar else None
-
         logger.info(f'👤 {ctx.author.name} fragt Wappen-Upload-Link ab')
 
         # Auto-Register/Update User
-        user = await self.api.ensure_user(discord_id, discord_username, avatar_url)
+        user = await self._ensure_user(ctx)
         if not user:
-            embed = discord.Embed(
-                title="❌ Fehler",
-                description='Backend ist nicht erreichbar. Bitte versuche es später erneut.',
-                color=discord.Color.red()
-            )
-            await ctx.followup.send(embed=embed, ephemeral=True)
-            logger.error(f'❌ ensure_user fehlgeschlagen für {ctx.author.name}')
             return
 
         # Check if user has team
