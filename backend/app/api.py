@@ -1611,6 +1611,163 @@ def get_participation_report(
     )
 
 
+@router.get("/discord/users", response_model=list[schemas.UserProfileResponse])
+def list_discord_users(
+    search: Optional[str] = None,
+    has_team: Optional[bool] = None,
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_user)  # Admin-Only (JWT oder API-Key)
+):
+    """
+    Admin-Endpoint: Liste aller Discord User mit Filteroptionen.
+
+    Query-Parameter:
+        - search: Optional, filtert auf discord_username (ILIKE)
+        - has_team: Optional, filtert ob team_id gesetzt ist (true) oder nicht (false)
+
+    Returns:
+        Liste von UserProfileResponse mit team_name
+    """
+    # Base query
+    query = db.query(models.UserProfile)
+
+    # Filter: search
+    if search:
+        query = query.filter(
+            models.UserProfile.discord_username.ilike(f"%{search}%")
+        )
+
+    # Filter: has_team
+    if has_team is not None:
+        if has_team:
+            query = query.filter(models.UserProfile.team_id.isnot(None))
+        else:
+            query = query.filter(models.UserProfile.team_id.is_(None))
+
+    # Order by created_at desc
+    users = query.order_by(models.UserProfile.created_at.desc()).all()
+
+    # Response mit team_name
+    user_responses = []
+    for user in users:
+        team_name = None
+        if user.team_id:
+            team = db.query(models.Team).filter(models.Team.id == user.team_id).first()
+            if team:
+                team_name = team.name
+
+        user_responses.append(schemas.UserProfileResponse(
+            id=user.id,
+            discord_id=user.discord_id,
+            discord_username=user.discord_username,
+            discord_avatar_url=user.discord_avatar_url,
+            team_id=user.team_id,
+            team_name=team_name,
+            profile_url=user.profile_url,
+            participating_next=user.participating_next,
+            crest_url=user.crest_url,
+            created_at=user.created_at,
+            updated_at=user.updated_at
+        ))
+
+    return user_responses
+
+
+@router.delete("/discord/users/{discord_id}", response_model=schemas.UserDeleteResponse)
+def delete_discord_user(
+    discord_id: str,
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_user)  # Admin-Only
+):
+    """
+    Admin-Endpoint: Löscht einen Discord User.
+
+    Returns:
+        UserDeleteResponse mit deleted=true
+    """
+    user = db.query(models.UserProfile).filter(
+        models.UserProfile.discord_id == discord_id
+    ).first()
+
+    if not user:
+        raise HTTPException(
+            status_code=404,
+            detail=f"User mit Discord ID {discord_id} nicht gefunden"
+        )
+
+    db.delete(user)
+    db.commit()
+
+    return schemas.UserDeleteResponse(
+        deleted=True,
+        discord_id=discord_id
+    )
+
+
+@router.patch("/discord/users/{discord_id}/admin-set-team", response_model=schemas.UserProfileResponse)
+def admin_set_team(
+    discord_id: str,
+    team_data: schemas.AdminSetTeamRequest,
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_user)  # Admin-Only
+):
+    """
+    Admin-Endpoint: Setzt Team für User (ohne Konfliktprüfung).
+    Admin kann Team überschreiben oder entfernen (team_id=null).
+
+    Body:
+        - team_id: int | null (null = Verknüpfung entfernen)
+
+    Returns:
+        Aktualisiertes UserProfileResponse
+    """
+    from datetime import datetime
+
+    # User laden
+    user = db.query(models.UserProfile).filter(
+        models.UserProfile.discord_id == discord_id
+    ).first()
+
+    if not user:
+        raise HTTPException(
+            status_code=404,
+            detail=f"User mit Discord ID {discord_id} nicht gefunden"
+        )
+
+    # Team validieren (falls team_id gesetzt)
+    team_name = None
+    if team_data.team_id is not None:
+        team = db.query(models.Team).filter(
+            models.Team.id == team_data.team_id
+        ).first()
+        if not team:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Team mit ID {team_data.team_id} nicht gefunden"
+            )
+        team_name = team.name
+
+    # Team setzen oder entfernen (kein Konflikt-Check)
+    user.team_id = team_data.team_id
+    user.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(user)
+
+    return schemas.UserProfileResponse(
+        id=user.id,
+        discord_id=user.discord_id,
+        discord_username=user.discord_username,
+        discord_avatar_url=user.discord_avatar_url,
+        team_id=user.team_id,
+        team_name=team_name,
+        profile_url=user.profile_url,
+        participating_next=user.participating_next,
+        crest_url=user.crest_url,
+        created_at=user.created_at,
+        updated_at=user.updated_at
+    )
+
+
 # ============================================================
 # DISCORD OAUTH2 ENDPOINTS
 # ============================================================

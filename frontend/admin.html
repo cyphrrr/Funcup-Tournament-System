@@ -114,6 +114,7 @@
         <a href="#matches" data-section="matches">🎮 Ergebnisse</a>
         <a href="#teams" data-section="teams">👥 Teams</a>
         <a href="#seasons" data-section="seasons">📅 Saisons</a>
+        <a href="#discord-users" data-section="discord-users">👤 Discord User</a>
         <a href="#news" data-section="news">📰 News</a>
       </nav>
       <div style="position:absolute;bottom:1rem;left:1rem;right:1rem">
@@ -346,7 +347,91 @@
           <div id="news-list"></div>
         </div>
       </div>
+
+      <!-- Discord Users -->
+      <div id="discord-users" class="section">
+        <h1>👤 Discord User verwalten</h1>
+
+        <div class="card">
+          <h2>🔍 Filter & Suche</h2>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Suche nach Username</label>
+              <input type="text" id="user-search" placeholder="Username eingeben..." oninput="debounceUserSearch()">
+            </div>
+            <div class="form-group" style="display:flex;align-items:flex-end">
+              <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;padding:.5rem 0">
+                <input type="checkbox" id="user-filter-no-team" onchange="loadDiscordUsers()">
+                <span>Nur ohne Team</span>
+              </label>
+            </div>
+            <div class="form-group" style="flex:0">
+              <button class="btn btn-primary" onclick="loadDiscordUsers()">🔄 Neu laden</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>👥 Alle User</h2>
+          <div style="overflow-x:auto">
+            <table>
+              <thead>
+                <tr>
+                  <th>Discord Username</th>
+                  <th>Team</th>
+                  <th>Profil URL</th>
+                  <th>Teilnahme</th>
+                  <th>Registriert</th>
+                  <th style="text-align:right">Aktionen</th>
+                </tr>
+              </thead>
+              <tbody id="discord-users-list">
+                <tr><td colspan="6" style="text-align:center;color:var(--muted)">Lade...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>➕ User manuell registrieren</h2>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Discord ID</label>
+              <input type="text" id="register-discord-id" placeholder="272170332125659137">
+            </div>
+            <div class="form-group">
+              <label>Discord Username</label>
+              <input type="text" id="register-username" placeholder="Julian">
+            </div>
+            <div class="form-group" style="display:flex;align-items:flex-end">
+              <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;padding:.5rem 0">
+                <input type="checkbox" id="register-participating" checked>
+                <span>Teilnahme aktiv</span>
+              </label>
+            </div>
+            <div class="form-group" style="flex:0">
+              <button class="btn btn-success" onclick="registerDiscordUser()">✅ Registrieren</button>
+            </div>
+          </div>
+        </div>
+      </div>
     </main>
+  </div>
+
+  <!-- Team Assignment Modal -->
+  <div id="team-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;align-items:center;justify-content:center">
+    <div class="card" style="width:500px;max-width:90%;margin:0">
+      <h2 id="team-modal-title">Team zuweisen</h2>
+      <div class="form-group" style="margin-bottom:1rem">
+        <label>Team suchen</label>
+        <input type="text" id="team-search-input" placeholder="Teamname eingeben..." oninput="searchTeamsForModal()">
+      </div>
+      <div id="team-search-results" style="max-height:300px;overflow-y:auto;margin-bottom:1rem"></div>
+      <div style="display:flex;gap:.5rem;justify-content:flex-end">
+        <button class="btn btn-danger" onclick="removeTeamAssignment()">🗑️ Verknüpfung entfernen</button>
+        <button class="btn btn-secondary" onclick="closeTeamModal()">Abbrechen</button>
+      </div>
+    </div>
   </div>
 
 <script>
@@ -470,11 +555,12 @@ function showSection(name) {
   document.querySelectorAll('.sidebar nav a').forEach(a => a.classList.remove('active'));
   document.getElementById(name)?.classList.add('active');
   document.querySelector(`[data-section="${name}"]`)?.classList.add('active');
-  
+
   // Load data
   if (name === 'matches') loadMatchSeasons();
   if (name === 'teams') loadTeamSeasons();
   if (name === 'seasons') loadSeasons();
+  if (name === 'discord-users') loadDiscordUsers();
   if (name === 'news') {
     loadNews();
     loadMatchInserterSeasons();
@@ -1395,6 +1481,207 @@ function initDarkMode() {
         localStorage.setItem('biw_dark_mode', 'false');
       }
     });
+  }
+}
+
+// ========== DISCORD USER MANAGEMENT ==========
+
+let userSearchTimeout = null;
+let currentTeamModalDiscordId = null;
+
+// Debounced search for users
+function debounceUserSearch() {
+  clearTimeout(userSearchTimeout);
+  userSearchTimeout = setTimeout(() => {
+    loadDiscordUsers();
+  }, 300);
+}
+
+// Load all discord users with filters
+async function loadDiscordUsers() {
+  const search = document.getElementById('user-search').value.trim();
+  const hasTeamFilter = document.getElementById('user-filter-no-team').checked;
+
+  let url = `${API}/api/discord/users?`;
+  if (search) url += `search=${encodeURIComponent(search)}&`;
+  if (hasTeamFilter) url += `has_team=false&`;
+
+  try {
+    const users = await authFetch(url).then(r => r.json());
+    renderDiscordUsers(users);
+  } catch (e) {
+    toast('Fehler beim Laden der User: ' + e.message, 'error');
+  }
+}
+
+// Render users table
+function renderDiscordUsers(users) {
+  const tbody = document.getElementById('discord-users-list');
+
+  if (users.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted)">Keine User gefunden</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = users.map(user => {
+    const createdDate = new Date(user.created_at).toLocaleDateString('de-DE');
+    const profileUrlShort = user.profile_url
+      ? `<a href="${user.profile_url}" target="_blank" style="color:var(--primary);text-decoration:none">🔗 Link</a>`
+      : '<span style="color:var(--muted)">-</span>';
+    const teamName = user.team_name || '<span style="color:var(--muted)">Kein Team</span>';
+    const participating = user.participating_next
+      ? '<span style="color:var(--success)">✅ Ja</span>'
+      : '<span style="color:var(--danger)">❌ Nein</span>';
+
+    return `
+      <tr>
+        <td><strong>${user.discord_username || 'Unbekannt'}</strong><br><small style="color:var(--muted)">${user.discord_id}</small></td>
+        <td>${teamName}</td>
+        <td>${profileUrlShort}</td>
+        <td>${participating}</td>
+        <td>${createdDate}</td>
+        <td style="text-align:right">
+          <button class="btn btn-sm btn-primary" onclick="openTeamModal('${user.discord_id}', '${(user.discord_username || 'User').replace(/'/g, "\\'")}')">🔗 Team</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteDiscordUser('${user.discord_id}', '${(user.discord_username || 'User').replace(/'/g, "\\'")}')">🗑️</button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+// Delete user with confirmation
+async function deleteDiscordUser(discordId, username) {
+  if (!confirm(`User "${username}" wirklich löschen?\n\nDieser Vorgang kann nicht rückgängig gemacht werden.`)) {
+    return;
+  }
+
+  try {
+    await authFetch(`${API}/api/discord/users/${discordId}`, {
+      method: 'DELETE'
+    });
+    toast(`User "${username}" gelöscht`, 'success');
+    loadDiscordUsers();
+  } catch (e) {
+    toast('Fehler beim Löschen: ' + e.message, 'error');
+  }
+}
+
+// Open team assignment modal
+function openTeamModal(discordId, username) {
+  currentTeamModalDiscordId = discordId;
+  document.getElementById('team-modal-title').textContent = `Team für ${username} zuweisen`;
+  document.getElementById('team-search-input').value = '';
+  document.getElementById('team-search-results').innerHTML = '';
+  document.getElementById('team-modal').style.display = 'flex';
+}
+
+// Close team modal
+function closeTeamModal() {
+  document.getElementById('team-modal').style.display = 'none';
+  currentTeamModalDiscordId = null;
+}
+
+// Search teams for modal
+async function searchTeamsForModal() {
+  const query = document.getElementById('team-search-input').value.trim();
+  const resultsDiv = document.getElementById('team-search-results');
+
+  if (query.length < 2) {
+    resultsDiv.innerHTML = '<p style="color:var(--muted);text-align:center;padding:1rem">Mindestens 2 Zeichen eingeben...</p>';
+    return;
+  }
+
+  try {
+    const teams = await authFetch(`${API}/api/teams/search?name=${encodeURIComponent(query)}`).then(r => r.json());
+
+    if (teams.length === 0) {
+      resultsDiv.innerHTML = '<p style="color:var(--muted);text-align:center;padding:1rem">Keine Teams gefunden</p>';
+      return;
+    }
+
+    resultsDiv.innerHTML = teams.map(team => `
+      <div style="padding:.75rem;border:1px solid var(--border);border-radius:6px;margin-bottom:.5rem;cursor:pointer;background:var(--card)"
+           onclick="assignTeam(${team.id}, '${team.name.replace(/'/g, "\\'")}')">
+        <strong>${team.name}</strong>
+        <small style="color:var(--muted);display:block">ID: ${team.id}</small>
+      </div>
+    `).join('');
+  } catch (e) {
+    resultsDiv.innerHTML = `<p style="color:var(--danger);text-align:center;padding:1rem">Fehler: ${e.message}</p>`;
+  }
+}
+
+// Assign team to user
+async function assignTeam(teamId, teamName) {
+  if (!currentTeamModalDiscordId) return;
+
+  try {
+    await authFetch(`${API}/api/discord/users/${currentTeamModalDiscordId}/admin-set-team`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ team_id: teamId })
+    });
+
+    toast(`Team "${teamName}" zugewiesen`, 'success');
+    closeTeamModal();
+    loadDiscordUsers();
+  } catch (e) {
+    toast('Fehler beim Zuweisen: ' + e.message, 'error');
+  }
+}
+
+// Remove team assignment
+async function removeTeamAssignment() {
+  if (!currentTeamModalDiscordId) return;
+
+  if (!confirm('Team-Verknüpfung wirklich entfernen?')) {
+    return;
+  }
+
+  try {
+    await authFetch(`${API}/api/discord/users/${currentTeamModalDiscordId}/admin-set-team`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ team_id: null })
+    });
+
+    toast('Team-Verknüpfung entfernt', 'success');
+    closeTeamModal();
+    loadDiscordUsers();
+  } catch (e) {
+    toast('Fehler: ' + e.message, 'error');
+  }
+}
+
+// Register new discord user
+async function registerDiscordUser() {
+  const discordId = document.getElementById('register-discord-id').value.trim();
+  const username = document.getElementById('register-username').value.trim();
+  const participating = document.getElementById('register-participating').checked;
+
+  if (!discordId || !username) {
+    toast('Bitte Discord ID und Username eingeben', 'error');
+    return;
+  }
+
+  try {
+    await authFetch(`${API}/api/discord/users/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        discord_id: discordId,
+        discord_username: username,
+        participating_next: participating
+      })
+    });
+
+    toast(`User "${username}" registriert`, 'success');
+    document.getElementById('register-discord-id').value = '';
+    document.getElementById('register-username').value = '';
+    document.getElementById('register-participating').checked = true;
+    loadDiscordUsers();
+  } catch (e) {
+    toast('Fehler bei Registrierung: ' + e.message, 'error');
   }
 }
 

@@ -279,6 +279,17 @@ class UserEnsureRequest(BaseModel):
     discord_avatar_url: Optional[str] = Field(None, description="Discord avatar URL")
 
 
+class AdminSetTeamRequest(BaseModel):
+    """Admin-Request: Team für User setzen/entfernen"""
+    team_id: Optional[int] = Field(None, description="Team ID oder null zum Entfernen")
+
+
+class UserDeleteResponse(BaseModel):
+    """Response nach User-Löschung"""
+    deleted: bool = True
+    discord_id: str
+
+
 # ============================================================
 # OAuth2 & Auth Schemas
 # ============================================================
