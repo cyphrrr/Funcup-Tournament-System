@@ -28,10 +28,30 @@ if env_path.exists():
             os.environ.setdefault(key.strip(), val.strip())
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
+
 if not DATABASE_URL:
-    print("ERROR: DATABASE_URL nicht in .env gesetzt!")
-    print("  Erwartet: DATABASE_URL=postgresql://user:pass@host:5432/dbname")
-    sys.exit(1)
+    # Aus POSTGRES_* Variablen zusammenbauen
+    pg_user = os.environ.get("POSTGRES_USER")
+    pg_pass = os.environ.get("POSTGRES_PASSWORD")
+    pg_host = os.environ.get("POSTGRES_HOST", "localhost")
+    pg_port = os.environ.get("POSTGRES_PORT", "5432")
+    pg_db   = os.environ.get("POSTGRES_DB")
+
+    missing = [k for k, v in {"POSTGRES_USER": pg_user, "POSTGRES_PASSWORD": pg_pass, "POSTGRES_DB": pg_db}.items() if not v]
+    if missing:
+        print("ERROR: Keine Datenbankverbindung konfiguriert.")
+        print("  Setze entweder DATABASE_URL oder alle POSTGRES_* Variablen in .env:")
+        print("    DATABASE_URL=postgresql://user:pass@host:5432/dbname")
+        print("  oder:")
+        print("    POSTGRES_USER=...")
+        print("    POSTGRES_PASSWORD=...")
+        print("    POSTGRES_HOST=...  (optional, default: localhost)")
+        print("    POSTGRES_PORT=...  (optional, default: 5432)")
+        print("    POSTGRES_DB=...")
+        print(f"\n  Fehlende Variablen: {', '.join(missing)}")
+        sys.exit(1)
+
+    DATABASE_URL = f"postgresql://{pg_user}:{pg_pass}@{pg_host}:{pg_port}/{pg_db}"
 
 if not DATABASE_URL.startswith("postgresql"):
     print(f"INFO: DATABASE_URL ist kein PostgreSQL ({DATABASE_URL[:20]}...).")
