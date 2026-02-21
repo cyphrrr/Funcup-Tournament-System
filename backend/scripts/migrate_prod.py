@@ -19,8 +19,17 @@ from pathlib import Path
 
 # ── .env laden ────────────────────────────────────────────────────────────────
 
-env_path = Path(__file__).parent.parent / ".env"
-if env_path.exists():
+candidates = [
+    Path(__file__).parent.parent / ".env",          # backend/.env
+    Path(__file__).parent.parent.parent / ".env",   # root/.env
+]
+env_path = next((p for p in candidates if p.exists()), None)
+if not env_path:
+    print("WARNUNG: Keine .env gefunden. Gesuchte Pfade:")
+    for p in candidates:
+        print(f"  {p}")
+    print("  Fahre fort mit bestehenden Umgebungsvariablen.\n")
+else:
     for line in env_path.read_text().splitlines():
         line = line.strip()
         if line and not line.startswith("#") and "=" in line:
