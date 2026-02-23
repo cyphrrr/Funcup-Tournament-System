@@ -345,7 +345,7 @@ class ClaimConfirmView(discord.ui.View):
         for item in self.children:
             item.disabled = True
 
-        await interaction.message.edit(embed=embed, view=self)
+        await interaction.response.edit_message(embed=embed, view=self)
 
     @discord.ui.button(label="❌ Abbrechen", style=discord.ButtonStyle.secondary)
     async def cancel_button(self, button: discord.ui.Button, interaction: discord.Interaction):
@@ -440,7 +440,7 @@ class ClaimSelectView(discord.ui.View):
         for item in self.children:
             item.disabled = True
 
-        await interaction.message.edit(embed=embed, view=self)
+        await interaction.response.edit_message(embed=embed, view=self)
 
 
 class TeamSelect(discord.ui.Select):
