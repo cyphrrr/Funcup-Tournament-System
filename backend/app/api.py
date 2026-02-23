@@ -1431,6 +1431,43 @@ def update_user_profile(
     )
 
 
+@router.patch("/discord/users/{discord_id}/team")
+def assign_team_to_user(
+    discord_id: str,
+    update: schemas.AdminSetTeamRequest,
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_user)
+):
+    """
+    Admin-Endpoint: Team einem Discord-User zuweisen.
+    Body: {"team_id": 42} oder {"team_id": null} zum Entfernen.
+    """
+    team_id = update.team_id
+
+    user = db.query(models.UserProfile).filter(
+        models.UserProfile.discord_id == discord_id
+    ).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User nicht gefunden")
+
+    if team_id is not None:
+        team = db.query(models.Team).filter(models.Team.id == team_id).first()
+        if not team:
+            raise HTTPException(status_code=404, detail=f"Team {team_id} nicht gefunden")
+
+    user.team_id = team_id
+    db.commit()
+    db.refresh(user)
+
+    return {
+        "discord_id": user.discord_id,
+        "discord_username": user.discord_username,
+        "team_id": user.team_id,
+        "profile_url": user.profile_url,
+        "participating_next": user.participating_next,
+    }
+
+
 @router.post("/discord/users/register", response_model=schemas.UserProfileResponse)
 def register_discord_user(
     user_data: schemas.UserProfileCreate,
