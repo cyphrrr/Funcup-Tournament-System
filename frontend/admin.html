@@ -381,69 +381,131 @@
         </div>
       </div>
 
-      <!-- Discord Users -->
-      <div id="discord-users" class="section">
-        <h1>👤 Discord User verwalten</h1>
+      <!-- Anmeldungen -->
+      <div id="anmeldungen" class="section">
+        <h1>📋 Anmeldungen</h1>
 
-        <div class="card">
-          <h2>🔍 Filter & Suche</h2>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Suche nach Username</label>
-              <input type="text" id="user-search" placeholder="Username eingeben..." oninput="debounceUserSearch()">
-            </div>
-            <div class="form-group" style="display:flex;align-items:flex-end">
-              <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;padding:.5rem 0">
-                <input type="checkbox" id="user-filter-no-team" onchange="loadDiscordUsers()">
-                <span>Nur ohne Team</span>
-              </label>
-            </div>
-            <div class="form-group" style="flex:0">
-              <button class="btn btn-primary" onclick="loadDiscordUsers()">🔄 Neu laden</button>
+        <!-- Statistik-Banner -->
+        <div class="anmeldungen-stats">
+          <div class="stat-badge stat-total">Gesamt: <span id="anm-stat-total">–</span></div>
+          <div class="stat-badge stat-dabei">Dabei: <span id="anm-stat-dabei">–</span></div>
+          <div class="stat-badge stat-incomplete">Unvollständig: <span id="anm-stat-incomplete">–</span></div>
+        </div>
+
+        <!-- Tab-Bar -->
+        <div class="anm-tab-bar">
+          <button class="anm-tab-btn active" data-tab="aktive-saison">🏆 Aktive Saison</button>
+          <button class="anm-tab-btn" data-tab="alle-user">👤 Alle Discord User</button>
+          <button class="anm-tab-btn" data-tab="registrieren">➕ Registrieren</button>
+        </div>
+
+        <!-- Tab: Aktive Saison -->
+        <div id="anm-tab-aktive-saison" class="anm-tab-content">
+          <div class="anm-filter-bar">
+            <button class="anm-filter-btn active" data-filter="all">Alle</button>
+            <button class="anm-filter-btn" data-filter="ready">✅ Ready</button>
+            <button class="anm-filter-btn" data-filter="incomplete">⚠️ Unvollständig</button>
+          </div>
+          <div class="card" style="padding:0">
+            <div style="overflow-x:auto">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Discord</th>
+                    <th>Team</th>
+                    <th>Profil</th>
+                    <th>Dabei</th>
+                    <th>Status</th>
+                    <th style="text-align:right">Aktionen</th>
+                  </tr>
+                </thead>
+                <tbody id="anm-aktive-saison-tbody">
+                  <tr><td colspan="6" style="text-align:center;color:var(--muted)">Lade...</td></tr>
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
 
-        <div class="card">
-          <h2>👥 Alle User</h2>
-          <div style="overflow-x:auto">
-            <table>
-              <thead>
-                <tr>
-                  <th>Discord Username</th>
-                  <th>Team</th>
-                  <th>Profil URL</th>
-                  <th>Teilnahme</th>
-                  <th>Registriert</th>
-                  <th style="text-align:right">Aktionen</th>
-                </tr>
-              </thead>
-              <tbody id="discord-users-list">
-                <tr><td colspan="6" style="text-align:center;color:var(--muted)">Lade...</td></tr>
-              </tbody>
-            </table>
+        <!-- Tab: Alle Discord User -->
+        <div id="anm-tab-alle-user" class="anm-tab-content" style="display:none">
+          <div class="card">
+            <div class="form-row">
+              <div class="form-group">
+                <label>Suche nach Username</label>
+                <input type="text" id="anm-user-search" placeholder="Username eingeben..." oninput="debounceAnmUserSearch()">
+              </div>
+              <div class="form-group" style="display:flex;align-items:flex-end">
+                <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;padding:.5rem 0">
+                  <input type="checkbox" id="anm-filter-no-team" onchange="loadAlleDiscordUser()">
+                  <span>Nur ohne Team</span>
+                </label>
+              </div>
+              <div class="form-group" style="flex:0">
+                <button class="btn btn-primary" onclick="loadAlleDiscordUser()">🔄 Neu laden</button>
+              </div>
+            </div>
+          </div>
+          <div class="card" style="padding:0">
+            <div style="overflow-x:auto">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Discord Username</th>
+                    <th>Team</th>
+                    <th>Profil URL</th>
+                    <th>Teilnahme</th>
+                    <th>Registriert</th>
+                    <th style="text-align:right">Aktionen</th>
+                  </tr>
+                </thead>
+                <tbody id="anm-alle-user-tbody">
+                  <tr><td colspan="6" style="text-align:center;color:var(--muted)">Lade...</td></tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
 
-        <div class="card">
-          <h2>➕ User manuell registrieren</h2>
-          <div class="form-row">
+        <!-- Tab: Registrieren -->
+        <div id="anm-tab-registrieren" class="anm-tab-content" style="display:none">
+          <div class="card">
+            <h2>➕ User manuell registrieren</h2>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Discord ID</label>
+                <input type="text" id="register-discord-id" placeholder="272170332125659137">
+              </div>
+              <div class="form-group">
+                <label>Discord Username</label>
+                <input type="text" id="register-username" placeholder="Julian">
+              </div>
+              <div class="form-group" style="display:flex;align-items:flex-end">
+                <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;padding:.5rem 0">
+                  <input type="checkbox" id="register-participating" checked>
+                  <span>Teilnahme aktiv</span>
+                </label>
+              </div>
+              <div class="form-group" style="flex:0;display:flex;align-items:flex-end">
+                <button class="btn btn-primary" onclick="registerDiscordUser()">Registrieren</button>
+              </div>
+            </div>
+            <div id="register-result" style="margin-top:1rem"></div>
+          </div>
+        </div>
+
+        <!-- Team-Assign Modal -->
+        <div id="team-assign-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1000;align-items:center;justify-content:center">
+          <div class="card" style="width:400px;max-width:90vw">
+            <h3>Team zuweisen</h3>
+            <input type="hidden" id="team-assign-discord-id">
             <div class="form-group">
-              <label>Discord ID</label>
-              <input type="text" id="register-discord-id" placeholder="272170332125659137">
+              <label>Team suchen</label>
+              <input type="text" id="team-assign-search" placeholder="Teamname..." oninput="searchTeamsForAssign()">
             </div>
-            <div class="form-group">
-              <label>Discord Username</label>
-              <input type="text" id="register-username" placeholder="Julian">
-            </div>
-            <div class="form-group" style="display:flex;align-items:flex-end">
-              <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;padding:.5rem 0">
-                <input type="checkbox" id="register-participating" checked>
-                <span>Teilnahme aktiv</span>
-              </label>
-            </div>
-            <div class="form-group" style="flex:0">
-              <button class="btn btn-success" onclick="registerDiscordUser()">✅ Registrieren</button>
+            <div id="team-assign-results" style="max-height:200px;overflow-y:auto;margin-top:.5rem"></div>
+            <div style="display:flex;gap:.5rem;margin-top:1rem;justify-content:flex-end">
+              <button class="btn" onclick="closeTeamAssignModal()">Abbrechen</button>
             </div>
           </div>
         </div>
