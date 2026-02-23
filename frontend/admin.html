@@ -2075,7 +2075,9 @@ function renderDiscordUsers(users) {
     const profileUrlShort = user.profile_url
       ? `<a href="${user.profile_url}" target="_blank" style="color:var(--primary);text-decoration:none">🔗 Link</a>`
       : '<span style="color:var(--muted)">-</span>';
-    const teamName = user.team_name || '<span style="color:var(--muted)">Kein Team</span>';
+    const teamName = user.team_id && user.team_name
+      ? `<a href="#" onclick="openTeamModal('${user.discord_id}', '${(user.discord_username || 'User').replace(/'/g, "\\'")}'); return false;" style="color:var(--primary);text-decoration:none;cursor:pointer">${user.team_name}</a>`
+      : '<span style="color:var(--muted)">Kein Team</span>';
     const participating = user.participating_next
       ? '<span style="color:var(--success)">✅ Ja</span>'
       : '<span style="color:var(--danger)">❌ Nein</span>';
