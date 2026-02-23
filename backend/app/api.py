@@ -1617,6 +1617,51 @@ def get_participation_report(
     }
 
 
+# ADMIN ANMELDUNGEN ENDPOINTS
+
+@router.get("/admin/anmeldungen")
+def get_anmeldungen(
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_user)
+):
+    """
+    Admin-Endpoint: Alle Discord User mit Anmeldestatus.
+    Gibt is_complete, has_profile, team_name zurück.
+    Sortierung: incomplete zuerst, dann alphabetisch.
+    """
+    users = db.query(models.UserProfile).all()
+
+    result = []
+    for user in users:
+        team_name = None
+        if user.team_id:
+            team = db.query(models.Team).filter(models.Team.id == user.team_id).first()
+            if team:
+                team_name = team.name
+
+        has_profile = bool(user.profile_url and user.profile_url.strip())
+        is_complete = (
+            has_profile
+            and user.team_id is not None
+            and user.participating_next is True
+        )
+
+        result.append({
+            "discord_id": user.discord_id,
+            "discord_username": user.discord_username,
+            "team_id": user.team_id,
+            "team_name": team_name,
+            "profile_url": user.profile_url,
+            "has_profile": has_profile,
+            "participating_next": user.participating_next or False,
+            "is_complete": is_complete,
+        })
+
+    # is_complete DESC, dann alphabetisch
+    result.sort(key=lambda x: (not x["is_complete"], x["discord_username"].lower()))
+    return result
+
+
 @router.get("/discord/users", response_model=list[schemas.UserProfileResponse])
 def list_discord_users(
     search: Optional[str] = None,
