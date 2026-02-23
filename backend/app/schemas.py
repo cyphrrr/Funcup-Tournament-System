@@ -17,6 +17,7 @@ class LoginResponse(BaseModel):
 class SeasonCreate(BaseModel):
     name: str
     participant_count: int
+    group_count: Optional[int] = None  # Optional: Admin bestimmt Gruppenanzahl manuell
 
 
 class SeasonUpdate(BaseModel):

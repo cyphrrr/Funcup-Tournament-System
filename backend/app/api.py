@@ -54,9 +54,12 @@ def create_season(season: schemas.SeasonCreate, db: Session = Depends(get_db), _
     db.commit()
     db.refresh(obj)
 
-    # 2. Gruppen automatisch erzeugen (max. 4 Teams pro Gruppe)
-    max_per_group = 4
-    group_count = (season.participant_count + max_per_group - 1) // max_per_group
+    # 2. Gruppen erzeugen: manuell (group_count) oder automatisch (max. 4 Teams pro Gruppe)
+    if season.group_count is not None and season.group_count > 0:
+        group_count = season.group_count
+    else:
+        max_per_group = 4
+        group_count = (season.participant_count + max_per_group - 1) // max_per_group
 
     for i in range(group_count):
         group_name = chr(ord('A') + i)
@@ -149,23 +152,26 @@ def list_groups(season_id: int, db: Session = Depends(get_db)):
 
 @router.get("/teams/search", response_model=list[schemas.TeamRead])
 def search_teams(
-    name: str,
+    name: Optional[str] = None,
+    search: Optional[str] = None,
+    limit: int = 10,
     db: Session = Depends(get_db)
 ):
     """
     Sucht Teams nach Name (case-insensitive, partial match).
-    Für Discord Bot Team-Claim Feature.
+    Unterstützt sowohl ?name= (Discord Bot) als auch ?search= (Admin-Panel).
     """
-    # Validation: min 2 chars
-    if len(name.strip()) < 2:
+    # search-Parameter hat Vorrang, Fallback auf name
+    query_str = search or name
+    if not query_str or len(query_str.strip()) < 2:
         raise HTTPException(
             status_code=400,
             detail="Suchbegriff muss mindestens 2 Zeichen lang sein"
         )
 
     teams = db.query(models.Team).filter(
-        models.Team.name.ilike(f"%{name}%")
-    ).limit(10).all()
+        models.Team.name.ilike(f"%{query_str}%")
+    ).limit(limit).all()
 
     return [{"id": t.id, "name": t.name} for t in teams]
 
@@ -1566,54 +1572,49 @@ def claim_team(
     )
 
 
-@router.get("/discord/participation-report", response_model=schemas.ParticipationReport)
+@router.get("/discord/participation-report")
 def get_participation_report(
     db: Session = Depends(get_db),
     _: str = Depends(get_current_user)  # Admin-Only
 ):
     """
     Admin-Endpoint: Report über Teilnahme-Status aller User.
+    Response enthält 'participating'-Liste im Format das das Frontend erwartet:
+    { participating: [{discord_id, discord_username, team_id, team_name, profile_url}] }
     """
-    # Alle User holen
     users = db.query(models.UserProfile).all()
-    
+
     total = len(users)
-    participating = sum(1 for u in users if u.participating_next is True)
-    not_participating = sum(1 for u in users if u.participating_next is False)
-    
-    # Participation Rate berechnen
-    rate = (participating / total * 100) if total > 0 else 0.0
-    
-    # User-Liste mit Team-Namen
-    user_responses = []
+    participating_count = sum(1 for u in users if u.participating_next is True)
+    not_participating_count = sum(1 for u in users if u.participating_next is False)
+    rate = (participating_count / total * 100) if total > 0 else 0.0
+
+    # Teilnehmende User mit team_name (Frontend-Format)
+    participating_list = []
     for user in users:
+        if not user.participating_next:
+            continue
         team_name = None
         if user.team_id:
             team = db.query(models.Team).filter(models.Team.id == user.team_id).first()
             if team:
                 team_name = team.name
-        
-        user_responses.append(schemas.UserProfileResponse(
-            id=user.id,
-            discord_id=user.discord_id,
-            discord_username=user.discord_username,
-            discord_avatar_url=user.discord_avatar_url,
-            team_id=user.team_id,
-            team_name=team_name,
-            profile_url=user.profile_url,
-            participating_next=user.participating_next,
-            crest_url=user.crest_url,
-            created_at=user.created_at,
-            updated_at=user.updated_at
-        ))
-    
-    return schemas.ParticipationReport(
-        total_users=total,
-        participating=participating,
-        not_participating=not_participating,
-        participation_rate=rate,
-        users=user_responses
-    )
+
+        participating_list.append({
+            "discord_id": user.discord_id,
+            "discord_username": user.discord_username,
+            "team_id": user.team_id,
+            "team_name": team_name,
+            "profile_url": user.profile_url,
+        })
+
+    return {
+        "total_users": total,
+        "participating_count": participating_count,
+        "not_participating_count": not_participating_count,
+        "participation_rate": rate,
+        "participating": participating_list,
+    }
 
 
 @router.get("/discord/users", response_model=list[schemas.UserProfileResponse])
