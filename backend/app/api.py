@@ -147,6 +147,29 @@ def list_groups(season_id: int, db: Session = Depends(get_db)):
     )
 
 
+@router.get("/teams/search", response_model=list[schemas.TeamRead])
+def search_teams(
+    name: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Sucht Teams nach Name (case-insensitive, partial match).
+    Für Discord Bot Team-Claim Feature.
+    """
+    # Validation: min 2 chars
+    if len(name.strip()) < 2:
+        raise HTTPException(
+            status_code=400,
+            detail="Suchbegriff muss mindestens 2 Zeichen lang sein"
+        )
+
+    teams = db.query(models.Team).filter(
+        models.Team.name.ilike(f"%{name}%")
+    ).limit(10).all()
+
+    return [{"id": t.id, "name": t.name} for t in teams]
+
+
 @router.get("/teams/{team_id}", response_model=schemas.TeamDetail)
 def get_team_detail(team_id: int, db: Session = Depends(get_db)):
     """Holt Team-Details mit letzten 5 Spielen"""
@@ -273,29 +296,6 @@ def update_team(team_id: int, update: schemas.TeamUpdate, db: Session = Depends(
     db.commit()
     db.refresh(team)
     return team
-
-
-@router.get("/teams/search", response_model=list[schemas.TeamRead])
-def search_teams(
-    name: str,
-    db: Session = Depends(get_db)
-):
-    """
-    Sucht Teams nach Name (case-insensitive, partial match).
-    Für Discord Bot Team-Claim Feature.
-    """
-    # Validation: min 2 chars
-    if len(name.strip()) < 2:
-        raise HTTPException(
-            status_code=400,
-            detail="Suchbegriff muss mindestens 2 Zeichen lang sein"
-        )
-
-    teams = db.query(models.Team).filter(
-        models.Team.name.ilike(f"%{name}%")
-    ).limit(10).all()
-
-    return [{"id": t.id, "name": t.name} for t in teams]
 
 
 @router.post("/seasons/{season_id}/teams", response_model=schemas.TeamRead)
