@@ -2,7 +2,7 @@ import math
 from datetime import datetime
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from . import models, schemas
 from .db import SessionLocal, engine
 from .auth import get_current_user, verify_credentials, create_jwt_token
@@ -1629,15 +1629,11 @@ def get_anmeldungen(
     Gibt is_complete, has_profile, team_name zurück.
     Sortierung: incomplete zuerst, dann alphabetisch.
     """
-    users = db.query(models.UserProfile).all()
+    users = db.query(models.UserProfile).options(selectinload(models.UserProfile.team)).all()
 
     result = []
     for user in users:
-        team_name = None
-        if user.team_id:
-            team = db.query(models.Team).filter(models.Team.id == user.team_id).first()
-            if team:
-                team_name = team.name
+        team_name = user.team.name if user.team else None
 
         has_profile = bool(user.profile_url and user.profile_url.strip())
         is_complete = (
