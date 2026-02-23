@@ -1658,6 +1658,88 @@ def get_anmeldungen(
     return result
 
 
+@router.post("/admin/anmeldungen/{discord_id}/season")
+def add_to_season(
+    discord_id: str,
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_user)
+):
+    """Fügt User-Team zur aktiven Saison hinzu (kleinste Gruppe)."""
+    season = db.query(models.Season).filter(models.Season.status == "active").first()
+    if not season:
+        raise HTTPException(status_code=404, detail="Keine aktive Saison gefunden")
+
+    user = db.query(models.UserProfile).filter(
+        models.UserProfile.discord_id == discord_id
+    ).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User nicht gefunden")
+    if not user.team_id:
+        raise HTTPException(status_code=400, detail="User hat kein Team zugewiesen")
+
+    existing = db.query(models.SeasonTeam).filter(
+        models.SeasonTeam.season_id == season.id,
+        models.SeasonTeam.team_id == user.team_id
+    ).first()
+    if existing:
+        raise HTTPException(status_code=409, detail="Team bereits in aktiver Saison")
+
+    groups = db.query(models.Group).filter(models.Group.season_id == season.id).all()
+    if not groups:
+        raise HTTPException(status_code=400, detail="Keine Gruppen in aktiver Saison")
+
+    group_sizes = {}
+    for g in groups:
+        count = db.query(models.SeasonTeam).filter(
+            models.SeasonTeam.group_id == g.id
+        ).count()
+        group_sizes[g.id] = count
+
+    smallest_group_id = min(group_sizes, key=group_sizes.get)
+
+    st = models.SeasonTeam(
+        season_id=season.id,
+        team_id=user.team_id,
+        group_id=smallest_group_id
+    )
+    db.add(st)
+    db.commit()
+    db.refresh(st)
+
+    return {"ok": True, "season_team_id": st.id}
+
+
+@router.delete("/admin/anmeldungen/{discord_id}/season")
+def remove_from_season(
+    discord_id: str,
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_user)
+):
+    """Entfernt User-Team aus der aktiven Saison."""
+    season = db.query(models.Season).filter(models.Season.status == "active").first()
+    if not season:
+        raise HTTPException(status_code=404, detail="Keine aktive Saison gefunden")
+
+    user = db.query(models.UserProfile).filter(
+        models.UserProfile.discord_id == discord_id
+    ).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User nicht gefunden")
+    if not user.team_id:
+        raise HTTPException(status_code=400, detail="User hat kein Team")
+
+    st = db.query(models.SeasonTeam).filter(
+        models.SeasonTeam.season_id == season.id,
+        models.SeasonTeam.team_id == user.team_id
+    ).first()
+    if not st:
+        raise HTTPException(status_code=404, detail="Team nicht in aktiver Saison")
+
+    db.delete(st)
+    db.commit()
+    return {"ok": True}
+
+
 @router.get("/discord/users", response_model=list[schemas.UserProfileResponse])
 def list_discord_users(
     search: Optional[str] = None,
