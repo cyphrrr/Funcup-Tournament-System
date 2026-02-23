@@ -2126,67 +2126,9 @@ function initDarkMode() {
 let userSearchTimeout = null;
 let currentTeamModalDiscordId = null;
 
-// Debounced search for users
-function debounceUserSearch() {
-  clearTimeout(userSearchTimeout);
-  userSearchTimeout = setTimeout(() => {
-    loadDiscordUsers();
-  }, 300);
-}
+// Legacy alias: loadDiscordUsers → loadAlleDiscordUser
+function loadDiscordUsers() { loadAlleDiscordUser(); }
 
-// Load all discord users with filters
-async function loadDiscordUsers() {
-  const search = document.getElementById('user-search').value.trim();
-  const hasTeamFilter = document.getElementById('user-filter-no-team').checked;
-
-  let url = `${API}/api/discord/users?`;
-  if (search) url += `search=${encodeURIComponent(search)}&`;
-  if (hasTeamFilter) url += `has_team=false&`;
-
-  try {
-    const users = await authFetch(url).then(r => r.json());
-    renderDiscordUsers(users);
-  } catch (e) {
-    toast('Fehler beim Laden der User: ' + e.message, 'error');
-  }
-}
-
-// Render users table
-function renderDiscordUsers(users) {
-  const tbody = document.getElementById('discord-users-list');
-
-  if (users.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted)">Keine User gefunden</td></tr>';
-    return;
-  }
-
-  tbody.innerHTML = users.map(user => {
-    const createdDate = new Date(user.created_at).toLocaleDateString('de-DE');
-    const profileUrlShort = user.profile_url
-      ? `<a href="${user.profile_url}" target="_blank" style="color:var(--primary);text-decoration:none">🔗 Link</a>`
-      : '<span style="color:var(--muted)">-</span>';
-    const teamName = user.team_id && user.team_name
-      ? `<a href="team.html?id=${user.team_id}" target="_blank" style="color:var(--primary);text-decoration:none">${user.team_name}</a>`
-      : '<span style="color:var(--muted)">Kein Team</span>';
-    const participating = user.participating_next
-      ? '<span style="color:var(--success)">✅ Ja</span>'
-      : '<span style="color:var(--danger)">❌ Nein</span>';
-
-    return `
-      <tr>
-        <td><strong>${user.discord_username || 'Unbekannt'}</strong><br><small style="color:var(--muted)">${user.discord_id}</small></td>
-        <td>${teamName}</td>
-        <td>${profileUrlShort}</td>
-        <td>${participating}</td>
-        <td>${createdDate}</td>
-        <td style="text-align:right">
-          <button class="btn btn-sm btn-primary" onclick="openTeamModal('${user.discord_id}', '${(user.discord_username || 'User').replace(/'/g, "\\'")}')">🔗 Team</button>
-          <button class="btn btn-sm btn-danger" onclick="deleteDiscordUser('${user.discord_id}', '${(user.discord_username || 'User').replace(/'/g, "\\'")}')">🗑️</button>
-        </td>
-      </tr>
-    `;
-  }).join('');
-}
 
 // Delete user with confirmation
 async function deleteDiscordUser(discordId, username) {
@@ -2240,7 +2182,7 @@ async function searchTeamsForModal() {
 
     resultsDiv.innerHTML = teams.map(team => `
       <div style="padding:.75rem;border:1px solid var(--border);border-radius:6px;margin-bottom:.5rem;cursor:pointer;background:var(--card)"
-           onclick="assignTeam(${team.id}, '${team.name.replace(/'/g, "\\'")}')">
+           onclick="assignTeamLegacy(${team.id}, '${team.name.replace(/'/g, "\\'")}')">
         <strong>${team.name}</strong>
         <small style="color:var(--muted);display:block">ID: ${team.id}</small>
       </div>
@@ -2250,8 +2192,8 @@ async function searchTeamsForModal() {
   }
 }
 
-// Assign team to user
-async function assignTeam(teamId, teamName) {
+// Assign team to user (legacy team modal)
+async function assignTeamLegacy(teamId, teamName) {
   if (!currentTeamModalDiscordId) return;
 
   try {
