@@ -1,6 +1,6 @@
 # BIW Pokal – Vollständige Projekt-Bestandsaufnahme
 
-> Stand: 2026-02-23 | Letzter Commit: `3613782` (feat(api): extend endpoints for admin season setup)
+> Stand: 2026-02-23 | Letzter Commit: `ba140c0` (feat(admin): eigene KO-Phase Section mit 3-Bracket-Verwaltung)
 
 ---
 
@@ -39,7 +39,7 @@ Funcup-Tournament-System/
 ├── backend/
 │   ├── app/
 │   │   ├── main.py              # FastAPI App-Init, CORS, Router, Static Files
-│   │   ├── api.py               # ALLE API-Endpoints (~2.654 Zeilen)
+│   │   ├── api.py               # ALLE API-Endpoints (~2.654 Zeilen, 65+ Endpoints)
 │   │   ├── models.py            # SQLAlchemy Models (9 Tabellen)
 │   │   ├── schemas.py           # Pydantic Schemas (~334 Zeilen)
 │   │   ├── auth.py              # JWT + API-Key Auth
@@ -56,7 +56,7 @@ Funcup-Tournament-System/
 │
 ├── frontend/
 │   ├── index.html               # Public Home (Gruppen, News, KO-Preview)
-│   ├── admin.html               # Admin-Panel (2.333 Zeilen, 4+ Tabs)
+│   ├── admin.html               # Admin-Panel (~2.683 Zeilen, 8 Sections)
 │   ├── turnier.html             # Turnier-Übersicht
 │   ├── ko.html                  # KO-Bracket Visualisierung
 │   ├── archiv.html              # Vergangene Saisons
@@ -197,23 +197,24 @@ user_profiles
 | POST | `/api/groups/{id}/generate-schedule` | JWT/Key | Round-Robin Spielplan generieren |
 | GET | `/api/groups/{id}/standings` | – | Tabelle berechnen (live) |
 
-### KO-Phase
+### KO-Phase (Legacy Single-Bracket)
 | Method | Route | Auth | Beschreibung |
 |--------|-------|------|-------------|
 | GET | `/api/seasons/{id}/ko-plan` | – | Logischer KO-Plan (ohne Persistenz) |
-| POST | `/api/seasons/{id}/ko-bracket/generate` | JWT/Key | KO-Bracket persistieren (einmalig) |
-| GET | `/api/seasons/{id}/ko-bracket` | – | Bracket abrufen |
-| PATCH | `/api/ko-matches/{id}` | JWT/Key | KO-Ergebnis + auto Sieger-Weiterleitung |
+| POST | `/api/seasons/{id}/ko-bracket/generate` | JWT/Key | Einzelnes KO-Bracket persistieren |
+| GET | `/api/seasons/{id}/ko-bracket` | – | Einzelnes Bracket abrufen |
 
-### 3-Bracket KO-System (neuere Endpoints)
+### KO-Phase (3-Bracket-System – aktiv genutzt)
 | Method | Route | Auth | Beschreibung |
 |--------|-------|------|-------------|
 | POST | `/api/seasons/{id}/ko-brackets/generate` | JWT/Key | 3 Brackets generieren (meister/lucky_loser/loser) |
-| GET | `/api/seasons/{id}/ko-brackets` | – | Alle Brackets einer Saison |
-| GET | `/api/seasons/{id}/ko-brackets/status` | – | Status aller 3 Brackets |
-| PATCH | `/api/ko-brackets/matches/{id}/result` | JWT/Key | KO-Ergebnis mit Ranking-Tiebreaker |
-| PATCH | `/api/ko-brackets/matches/{id}/set-team` | JWT/Key | Manuell Team setzen |
-| PATCH | `/api/ko-brackets/matches/{id}/set-bye` | JWT/Key | Manuell Freilos setzen |
+| GET | `/api/seasons/{id}/ko-brackets` | – | Alle Brackets einer Saison (mit Runden + Matches) |
+| GET | `/api/seasons/{id}/ko-brackets/status` | – | Status-Übersicht (matches_played/total pro Bracket) |
+| POST | `/api/seasons/{id}/ko-brackets/reset` | JWT/Key | Alle KO-Brackets + Matches löschen |
+| POST | `/api/seasons/{id}/ko-brackets/create-empty` | JWT/Key | Leeres Bracket-Gerüst (bracket_type, team_count) |
+| PATCH | `/api/ko-matches/{id}` | JWT/Key | KO-Ergebnis eintragen + Sieger-Weiterleitung |
+| PATCH | `/api/ko-matches/{id}/set-team` | JWT/Key | Manuell Team in Slot setzen (home/away) |
+| PATCH | `/api/ko-matches/{id}/set-bye` | JWT/Key | Match als Freilos markieren + weiterleiten |
 
 ### News
 | Method | Route | Auth | Beschreibung |
@@ -234,11 +235,12 @@ user_profiles
 | GET | `/api/matches/batch` | – | Mehrere Matches auf einmal (Komma-IDs) |
 | GET | `/api/ko-matches/batch` | – | Mehrere KO-Matches auf einmal |
 
-### Statistiken
+### Statistiken & Ranking
 | Method | Route | Auth | Beschreibung |
 |--------|-------|------|-------------|
 | GET | `/api/all-time-standings` | – | Ewige Tabelle (alle Saisons aggregiert) |
-| GET | `/api/teams/{name}/ranking` | – | Google Sheets Ranking für ein Team |
+| GET | `/api/ranking/team/{name}` | – | Google Sheets Ranking für ein Team |
+| GET | `/api/ranking/all` | – | Alle Rankings aus Google Sheets |
 
 ### Discord Bot Integration
 | Method | Route | Auth | Beschreibung |
@@ -346,12 +348,15 @@ table.sort(key=lambda x: (x["points"], x["goals_for"] - x["goals_against"], x["g
 | `ewige-tabelle.html` | Ewige Tabelle | all-time-standings |
 | `team.html` | Team-Profil | teams/{id} |
 
-### admin.html Tabs (aktuell)
-1. **Saison-Setup** – Saison erstellen, Teams importieren, Gruppen konfigurieren
-2. **Spieltage** – Ergebnisse eintragen, Spielplan generieren
-3. **KO-Phase** – 3 Brackets verwalten, manuell Teams setzen
-4. **News** – Artikel erstellen/bearbeiten
-5. **Discord Users** – Teilnahme-Report, User-Verwaltung, Team-Zuordnung
+### admin.html Sections (Sidebar-Navigation)
+1. **Dashboard** – Statistik-Übersicht, Schnellaktionen
+2. **Ergebnisse** – Gruppenphase-Ergebnisse eintragen, Spielplan generieren
+3. **KO-Phase** – Eigene Section: 3 Brackets (Meister/Lucky Loser/Loser), Status, Auto/Manuell-Generierung, Inline-Edit mit Winner-Select, Team-Setzen, Freilose, Reset
+4. **Teams** – Teams verwalten, Bulk-Import, Logo/URL bearbeiten
+5. **Saisons** – Saison erstellen/löschen, Status ändern
+6. **Discord Users** – Teilnahme-Report, User-Verwaltung, Team-Zuordnung
+7. **News** – Artikel CRUD mit Match-Inserter (Gruppen + KO)
+8. **Saison-Setup** – 4-Tab-Wizard (Saison, Teams, Gruppen, Spielplan)
 
 ---
 
@@ -451,9 +456,12 @@ UPLOAD_DIR, MAX_FILE_SIZE, CREST_MAX_WIDTH, CREST_MAX_HEIGHT
 
 ---
 
-## 13. Git-History (letzte 20 Commits)
+## 13. Git-History (letzte 25 Commits)
 
 ```
+ba140c0 feat(admin): eigene KO-Phase Section mit 3-Bracket-Verwaltung
+6f42edb feat(admin): KO-Phase auf 3-Bracket-System umstellen
+5854a1c docs: add comprehensive project inventory for context continuity
 3613782 feat(api): extend endpoints for admin season setup
 da4a740 feat(admin): Saison-Setup Panel mit 4 Tabs
 52d6fef fix: move /teams/search route before /teams/{team_id}
@@ -474,13 +482,16 @@ df56dbb feat: KO-Bracket API-Endpoints implementiert
 eba36b4 feat: 3-Bracket KO-System Datenmodell
 5fffef7 feat: Discord User-Verwaltung im Admin Panel
 07f4ac9 feature: Profile URL Validierung beim Team-Claim
+b59f90a refactor: Zentrale _ensure_user() Hilfsmethode für Auto-Registration
+17931bf feat: Discord Bot Auto-Registrierung + Enhanced /claim Command
 ```
 
 ---
 
-## 14. Nächste Schritte / Offene Punkte
+## 14. Aktueller Stand / Offene Punkte
 
-- Admin-Panel Saison-Setup (4 Tabs) wurde gerade implementiert (Commit `da4a740`)
-- API-Endpoints für Saison-Setup erweitert (Commit `3613782`)
+- **KO-Phase Admin** komplett auf 3-Bracket-System umgestellt (`ba140c0`): Eigene Section mit Status, Auto/Manuell-Generierung, Inline-Edit, Team-Setzen, Freilose
+- Admin-Panel hat 8 Sections (Dashboard, Ergebnisse, KO-Phase, Teams, Saisons, Discord Users, News, Saison-Setup)
 - Production-Deployment auf `beta.biw-pokal.de` läuft via Docker
 - n8n-Workflows sind unter `n8n-flows/` versioniert aber nicht im Detail dokumentiert
+- Legacy Single-Bracket Endpoints (`/ko-bracket`) existieren noch im Backend, werden aber nicht mehr vom Frontend genutzt
