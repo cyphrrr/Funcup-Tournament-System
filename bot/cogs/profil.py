@@ -171,7 +171,7 @@ class Profil(commands.Cog):
 
         # Dashboard URL aus Environment oder Default
         dashboard_url = os.getenv('DASHBOARD_URL', 'https://biw-pokal.de')
-        upload_url = f'{dashboard_url}/dashboard/wappen'
+        upload_url = f'{dashboard_url}/dashboard.html'
 
         # Info-Embed erstellen
         embed = discord.Embed(
