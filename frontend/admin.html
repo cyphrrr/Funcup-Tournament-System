@@ -5,25 +5,26 @@
   <title>BIW Pokal – Admin</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    :root{--bg:#111827;--card:#1f2937;--text:#f3f4f6;--muted:#9ca3af;--primary:#10b981;--border:#374151;--accent:#2d3748;--success:#10b981;--danger:#ef4444;--warning:#f59e0b}
+    :root{--bg:#f3f4f6;--card:#fff;--text:#111827;--muted:#6b7280;--primary:#10b981;--border:#e5e7eb;--accent:#eef2ff;--success:#16a34a;--danger:#dc2626;--warning:#f59e0b}
+    html.dark-mode{--bg:#111827;--card:#1f2937;--text:#f3f4f6;--muted:#9ca3af;--primary:#10b981;--border:#374151;--accent:#111827;--success:#10b981;--danger:#ef4444;--warning:#f59e0b}
     *{box-sizing:border-box}
-    body{margin:0;font-family:system-ui,-apple-system,sans-serif;background:url('img/logo-bg.png') repeat fixed;color:var(--text)}
+    body{margin:0;font-family:system-ui,-apple-system,sans-serif;background:url('img/logo-bg.png') repeat;color:var(--text)}
     
     /* Layout */
     .admin-layout{display:flex;min-height:100vh}
-    .sidebar{width:220px;background:#111827;color:#f3f4f6;padding:1.5rem 1rem;position:fixed;height:100vh}
+    .sidebar{width:220px;background:var(--text);color:#fff;padding:1.5rem 1rem;position:fixed;height:100vh}
     .sidebar h1{font-size:1.1rem;margin:0 0 .5rem;display:flex;align-items:center;gap:.5rem}
     .sidebar h1 span{font-size:1.3rem}
     .sidebar p{font-size:.75rem;color:#9ca3af;margin:0 0 2rem}
-    .sidebar nav a{display:block;padding:.6rem .8rem;color:#9ca3af;text-decoration:none;border-radius:6px;margin-bottom:.25rem;font-size:.9rem}
-    .sidebar nav a:hover{background:#1f2937;color:#f3f4f6}
+    .sidebar nav a{display:block;padding:.6rem .8rem;color:#d1d5db;text-decoration:none;border-radius:6px;margin-bottom:.25rem;font-size:.9rem}
+    .sidebar nav a:hover{background:rgba(255,255,255,.1)}
     .sidebar nav a.active{background:var(--primary);color:#fff}
     .main{margin-left:220px;flex:1;padding:2rem}
     
     /* Components */
-    .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.25rem;margin-bottom:1.5rem;box-shadow:0 8px 24px rgba(0,0,0,.2)}
-    .section h1{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1rem 1.5rem;margin-bottom:1.5rem;font-size:1.3rem;margin-top:0;box-shadow:0 8px 24px rgba(0,0,0,.06)}
-    .card h2{background:var(--accent);padding:.75rem 1rem;margin:0 -1.25rem 1rem -1.25rem;border-radius:8px 8px 0 0;font-size:1.1rem;display:flex;align-items:center;gap:.5rem;color:var(--text)}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.25rem;margin-bottom:1.5rem}
+    .section h1{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.25rem;margin-bottom:1.5rem;font-size:1.2rem;margin-top:0}
+    .card h2{background:var(--accent);padding:.75rem 1rem;margin:0 -1.25rem 1rem -1.25rem;border-radius:8px 8px 0 0;font-size:1.1rem;display:flex;align-items:center;gap:.5rem}
     .card h3{background:var(--bg);padding:.5rem .75rem;margin:1.5rem -1.25rem .75rem -1.25rem;font-size:.95rem;color:var(--muted);border-radius:4px}
     
     /* Forms */
@@ -51,13 +52,13 @@
     tr:hover{background:var(--accent)}
     
     /* Tabs */
-    .tabs{display:flex;gap:.5rem;margin-bottom:1.5rem;background:var(--card);border-radius:10px;padding:.5rem}
-    .tab{padding:.5rem 1.25rem;border:none;background:var(--accent);color:var(--text);cursor:pointer;font-size:.9rem;font-weight:500;border-radius:8px;transition:all .2s}
-    .tab.active{background:var(--primary);color:#fff;font-weight:600}
-    .tab:hover:not(.active){background:var(--border);color:var(--text)}
+    .tabs{display:flex;gap:.5rem;margin-bottom:1.5rem;border-bottom:1px solid var(--border);padding-bottom:.5rem}
+    .tab{padding:.5rem 1rem;border:none;background:none;cursor:pointer;font-size:.9rem;color:var(--muted);border-radius:6px 6px 0 0}
+    .tab.active{color:var(--primary);font-weight:600;background:var(--accent)}
+    .tab:hover{color:var(--text)}
     
     /* Match Card */
-    .match-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:1rem;margin-bottom:.75rem;box-shadow:0 4px 12px rgba(0,0,0,.15)}
+    .match-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:1rem;margin-bottom:.75rem}
     .match-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem}
     .match-teams{display:flex;align-items:center;gap:1rem}
     .match-team{min-width:120px}
@@ -65,9 +66,9 @@
     .match-score{display:flex;gap:.5rem;align-items:center}
     .match-score input{width:50px;text-align:center}
     .match-status{font-size:.75rem;padding:.2rem .5rem;border-radius:4px}
-    .match-status.played{background:rgba(16,185,129,.2);color:var(--success)}
-    .match-status.scheduled{background:rgba(16,185,129,.2);color:var(--primary)}
-    .match-status.pending{background:var(--accent);color:var(--muted)}
+    .match-status.played{background:#dcfce7;color:#166534}
+    .match-status.scheduled{background:#dbeafe;color:#1e40af}
+    .match-status.pending{background:#f3f4f6;color:#6b7280}
     
     /* Toast */
     .toast{position:fixed;bottom:2rem;right:2rem;padding:.75rem 1.25rem;border-radius:8px;color:#fff;font-size:.9rem;z-index:1000;animation:slideIn .3s}
@@ -81,7 +82,7 @@
     
     /* Stats */
     .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1rem;margin-bottom:1.5rem}
-    .stat{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:1rem;text-align:center;box-shadow:0 4px 12px rgba(0,0,0,.15)}
+    .stat{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:1rem;text-align:center}
     .stat-value{font-size:1.5rem;font-weight:700;color:var(--primary)}
     .stat-label{font-size:.75rem;color:var(--muted);margin-top:.25rem}
   </style>
@@ -111,15 +112,15 @@
       <nav>
         <a href="#dashboard" class="active" data-section="dashboard">📊 Dashboard</a>
         <a href="#matches" data-section="matches">🎮 Ergebnisse</a>
-        <a href="#ko-phase" data-section="ko-phase">🏆 KO-Phase</a>
         <a href="#teams" data-section="teams">👥 Teams</a>
         <a href="#seasons" data-section="seasons">📅 Saisons</a>
         <a href="#discord-users" data-section="discord-users">👤 Discord User</a>
         <a href="#news" data-section="news">📰 News</a>
+        <a href="#saison-setup" data-section="saison-setup" style="margin-top:.75rem;border-top:1px solid rgba(255,255,255,.1);padding-top:.75rem">🏆 Saison-Setup</a>
       </nav>
       <div style="position:absolute;bottom:1rem;left:1rem;right:1rem">
-        <a href="index.html" style="color:var(--muted);font-size:.8rem;text-decoration:none;display:block;margin-bottom:.5rem">← Zurück zur Übersicht</a>
-        <a href="#" onclick="logout();return false" style="color:var(--danger);font-size:.8rem;text-decoration:none">🚪 Abmelden</a>
+        <a href="index.html" style="color:#9ca3af;font-size:.8rem;text-decoration:none;display:block;margin-bottom:.5rem">← Zurück zur Übersicht</a>
+        <a href="#" onclick="logout();return false" style="color:#ef4444;font-size:.8rem;text-decoration:none">🚪 Abmelden</a>
       </div>
     </aside>
     
@@ -167,47 +168,6 @@
         <div id="matches-list"></div>
       </div>
       
-      <!-- KO-Phase -->
-      <div id="ko-phase" class="section">
-        <h1>KO-Phase verwalten</h1>
-        <div class="card">
-          <h2>📋 Saison & Status</h2>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Saison</label>
-              <select id="ko-season" onchange="loadKOStatus()">
-                <option value="">Wählen...</option>
-              </select>
-            </div>
-          </div>
-          <div id="ko-status-info" style="display:none;margin-top:1rem">
-            <div class="stats" id="ko-stats"></div>
-            <div id="ko-generate-area"></div>
-          </div>
-        </div>
-
-        <!-- Manual bracket builder -->
-        <div id="ko-manual-builder" style="display:none">
-          <div class="card">
-            <h2>🔧 Manueller Bracket-Aufbau</h2>
-            <div id="ko-manual-brackets"></div>
-          </div>
-        </div>
-
-        <div id="ko-brackets-area" style="display:none">
-          <div class="tabs" id="ko-bracket-tabs">
-            <button class="tab active" data-bracket="meister" onclick="switchKOTab('meister')">Meisterrunde</button>
-            <button class="tab" data-bracket="lucky_loser" onclick="switchKOTab('lucky_loser')">Lucky Loser</button>
-            <button class="tab" data-bracket="loser" onclick="switchKOTab('loser')">Loser</button>
-          </div>
-          <div id="ko-bracket-content"></div>
-        </div>
-
-        <div id="ko-reset-area" style="display:none;margin-top:1rem">
-          <button class="btn btn-danger" onclick="resetKOBrackets()">⚠️ Brackets zurücksetzen</button>
-        </div>
-      </div>
-
       <!-- Teams -->
       <div id="teams" class="section">
         <h1>Teams verwalten</h1>
@@ -456,6 +416,157 @@
           </div>
         </div>
       </div>
+
+      <!-- ========== SAISON-SETUP ========== -->
+      <div id="saison-setup" class="section">
+        <h1>🏆 Saison-Setup</h1>
+
+        <!-- Tab Navigation -->
+        <div class="tabs" style="margin-bottom:1.5rem">
+          <button class="tab active" data-tab="tab-participants" onclick="showSetupTab('tab-participants')">👥 Teilnehmer</button>
+          <button class="tab" data-tab="tab-draw" onclick="showSetupTab('tab-draw')">🎲 Auslosung</button>
+          <button class="tab" data-tab="tab-schedule" onclick="showSetupTab('tab-schedule')">📋 Spielplan</button>
+          <button class="tab" data-tab="tab-import" onclick="showSetupTab('tab-import')">📥 Ergebnis-Import</button>
+        </div>
+
+        <!-- Tab 1: Teilnehmer -->
+        <div id="tab-participants" class="setup-tab">
+          <div class="card">
+            <h2>👥 Angemeldete Teilnehmer</h2>
+            <p style="color:var(--muted);font-size:.9rem;margin-top:0">Alle Discord-User mit "Teilnahme: Ja" und zugewiesenem Team. Fehlende Team-Zuweisungen müssen vorher im Bereich <em>Discord User</em> gepflegt werden.</p>
+            <div style="display:flex;gap:.75rem;margin-bottom:1rem">
+              <button class="btn btn-primary" onclick="loadParticipants()">🔄 Laden</button>
+              <span id="participant-count" style="align-self:center;color:var(--muted);font-size:.9rem"></span>
+            </div>
+            <div style="overflow-x:auto">
+              <table>
+                <thead><tr><th>#</th><th>Discord User</th><th>Team</th><th>Onlineliga-Profil</th><th>Status</th></tr></thead>
+                <tbody id="participants-list">
+                  <tr><td colspan="5" style="text-align:center;color:var(--muted)">Noch nicht geladen</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card" style="border:2px dashed var(--border)">
+            <h2>➕ Teilnehmer manuell hinzufügen</h2>
+            <p style="color:var(--muted);font-size:.9rem;margin-top:0">Für Teilnehmer die sich per Zuruf angemeldet haben.</p>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Team suchen</label>
+                <input type="text" id="manual-team-search" placeholder="Teamname eingeben..." oninput="searchTeamForManual()">
+                <div id="manual-team-results" style="margin-top:.5rem"></div>
+              </div>
+              <div class="form-group" style="flex:0;align-self:flex-end">
+                <button class="btn btn-success" id="btn-add-manual" onclick="addManualParticipant()" disabled>✅ Zur Liste</button>
+              </div>
+            </div>
+            <div id="selected-manual-team" style="display:none;padding:.5rem;background:var(--accent);border-radius:6px;font-size:.9rem;margin-top:.5rem"></div>
+          </div>
+        </div>
+
+        <!-- Tab 2: Auslosung -->
+        <div id="tab-draw" class="setup-tab" style="display:none">
+          <div class="card">
+            <h2>⚙️ Gruppenphase konfigurieren</h2>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Saison-Name</label>
+                <input type="text" id="draw-season-name" placeholder="z.B. Saison 51">
+              </div>
+              <div class="form-group">
+                <label>Anzahl Gruppen</label>
+                <input type="number" id="draw-group-count" value="10" min="1" max="16" oninput="updateDrawPreview()">
+              </div>
+              <div class="form-group">
+                <label>Teams pro Gruppe</label>
+                <input type="number" id="draw-teams-per-group" value="4" min="3" max="6" oninput="updateDrawPreview()">
+              </div>
+            </div>
+            <div id="draw-preview" style="padding:.75rem;background:var(--accent);border-radius:6px;font-size:.9rem;margin-bottom:1rem">
+              Konfiguriere Gruppen und Teams/Gruppe für eine Vorschau.
+            </div>
+            <div style="display:flex;gap:.75rem">
+              <button class="btn btn-primary" onclick="previewDraw()">👁️ Auslosung vorab anzeigen</button>
+              <button class="btn btn-success" onclick="executeDraw()">🎲 Auslosung & Saison erstellen</button>
+            </div>
+          </div>
+
+          <div id="draw-result" style="display:none">
+            <div class="card">
+              <h2>🎲 Auslosungsergebnis</h2>
+              <div id="draw-result-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1rem"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 3: Spielplan -->
+        <div id="tab-schedule" class="setup-tab" style="display:none">
+          <div class="card">
+            <h2>📋 Spielplan einer Saison</h2>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Saison</label>
+                <select id="schedule-season-select" onchange="loadScheduleForSeason()">
+                  <option value="">Wählen...</option>
+                </select>
+              </div>
+              <div class="form-group" style="flex:0;align-self:flex-end">
+                <button class="btn btn-primary" onclick="generateScheduleForSeason()">⚡ Spielplan generieren</button>
+              </div>
+            </div>
+          </div>
+          <div id="schedule-groups-list"></div>
+        </div>
+
+        <!-- Tab 4: Ergebnis-Import -->
+        <div id="tab-import" class="setup-tab" style="display:none">
+          <div class="card">
+            <h2>📥 n8n JSON-Import</h2>
+            <p style="color:var(--muted);font-size:.9rem;margin-top:0">
+              Füge den Output deines n8n-Workflows hier ein. Das System matched Heim/Gast-Teamnamen gegen bestehende Matches und trägt die Ergebnisse ein.
+            </p>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Saison</label>
+                <select id="import-season-select">
+                  <option value="">Wählen...</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Spieltag</label>
+                <select id="import-matchday-select">
+                  <option value="SP1">SP1</option>
+                  <option value="SP2">SP2</option>
+                  <option value="SP3">SP3</option>
+                  <option value="SP4">SP4</option>
+                  <option value="SP5">SP5</option>
+                  <option value="SP6">SP6</option>
+                  <option value="SP7">SP7</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group" style="margin-bottom:1rem">
+              <label>JSON-Daten (Output aus n8n)</label>
+              <textarea id="import-json-input" style="min-height:200px;font-family:monospace;font-size:.8rem" placeholder='[&#10;  {"Heim": "FC Beispiel", "Gast": "VfB Test", "Heimtore": "2", "Gasttore": "1", "Saison": "51", "Spieltag": "SP1"}&#10;]'></textarea>
+            </div>
+            <div style="display:flex;gap:.75rem">
+              <button class="btn btn-secondary" onclick="validateImportJson()">🔍 Validieren</button>
+              <button class="btn btn-success" onclick="executeImport()">📥 Ergebnisse importieren</button>
+            </div>
+            <div id="import-validation-result" style="margin-top:1rem"></div>
+          </div>
+
+          <div id="import-result-card" style="display:none">
+            <div class="card">
+              <h2>📊 Import-Ergebnis</h2>
+              <div id="import-result-detail"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- ========== END SAISON-SETUP ========== -->
+
     </main>
   </div>
 
@@ -602,10 +713,497 @@ function showSection(name) {
   if (name === 'teams') loadTeamSeasons();
   if (name === 'seasons') loadSeasons();
   if (name === 'discord-users') loadDiscordUsers();
-  if (name === 'ko-phase') loadKOSeasons();
   if (name === 'news') {
     loadNews();
     loadMatchInserterSeasons();
+  }
+  if (name === 'saison-setup') initSaisonSetup();
+}
+
+// ========== SAISON-SETUP ==========
+
+// State für das Setup
+const setupState = {
+  participants: [],          // {team_id, team_name, discord_user, has_team}
+  manualTeamSelected: null,  // {id, name}
+  drawGroups: null,          // Nach Auslosung: [{name, teams:[]}]
+  createdSeasonId: null,     // ID der frisch erstellten Saison
+};
+
+function showSetupTab(tabId) {
+  document.querySelectorAll('.setup-tab').forEach(t => t.style.display = 'none');
+  document.querySelectorAll('.tab[data-tab]').forEach(t => t.classList.remove('active'));
+  document.getElementById(tabId).style.display = 'block';
+  document.querySelector(`.tab[data-tab="${tabId}"]`).classList.add('active');
+}
+
+async function initSaisonSetup() {
+  // Saison-Dropdowns für Tab 3 und 4 befüllen
+  try {
+    const seasons = await authFetch(`${API}/api/seasons`).then(r => r.json());
+    const activePlanned = seasons.filter(s => s.status !== 'archived').sort((a,b) => b.id - a.id);
+
+    ['schedule-season-select', 'import-season-select'].forEach(id => {
+      const sel = document.getElementById(id);
+      sel.innerHTML = '<option value="">Wählen...</option>';
+      activePlanned.forEach(s => {
+        sel.innerHTML += `<option value="${s.id}">${s.name} (${s.status})</option>`;
+      });
+    });
+  } catch(e) {
+    console.error('Fehler beim Laden der Saisons:', e);
+  }
+}
+
+// ---- Tab 1: Teilnehmer ----
+
+async function loadParticipants() {
+  const tbody = document.getElementById('participants-list');
+  const countEl = document.getElementById('participant-count');
+  tbody.innerHTML = '<tr><td colspan="5" style="text-align:center">Lade...</td></tr>';
+
+  try {
+    // Lade alle Discord-User die participating_next=true haben
+    const res = await authFetch(`${API}/api/discord/participation-report`);
+    const data = await res.json();
+
+    // participation-report gibt {participating, not_participating, ...} zurück
+    const participants = (data.participating || []);
+    setupState.participants = participants;
+
+    countEl.textContent = `${participants.length} Teilnehmer geladen`;
+
+    if (participants.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted)">Keine Teilnehmer gefunden</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = participants.map((p, i) => {
+      const hasTeam = !!p.team_id;
+      const statusBadge = hasTeam
+        ? `<span style="color:var(--success);font-weight:600">✅ Team zugewiesen</span>`
+        : `<span style="color:var(--danger);font-weight:600">⚠️ Kein Team</span>`;
+      const profileLink = p.profile_url
+        ? `<a href="${p.profile_url}" target="_blank" style="color:var(--primary);font-size:.8rem">🔗 Profil</a>`
+        : `<span style="color:var(--muted);font-size:.8rem">-</span>`;
+
+      return `<tr>
+        <td>${i+1}</td>
+        <td><strong>${p.discord_username || p.discord_id}</strong></td>
+        <td>${p.team_name || '<em style="color:var(--muted)">nicht zugewiesen</em>'}</td>
+        <td>${profileLink}</td>
+        <td>${statusBadge}</td>
+      </tr>`;
+    }).join('');
+
+    // Auch manuell hinzugefügte aus setupState.participants (manuelle Teams)
+    renderManualAdditions();
+
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="5" style="color:var(--danger)">Fehler: ${e.message}</td></tr>`;
+  }
+}
+
+function renderManualAdditions() {
+  // Manuell hinzugefügte werden nach der normalen Liste angezeigt
+  // (bereits in setupState.participants enthalten nach addManualParticipant)
+}
+
+async function searchTeamForManual() {
+  const q = document.getElementById('manual-team-search').value;
+  const resultsEl = document.getElementById('manual-team-results');
+  if (q.length < 2) { resultsEl.innerHTML = ''; return; }
+
+  try {
+    const res = await authFetch(`${API}/api/teams?search=${encodeURIComponent(q)}&limit=10`);
+    const teams = await res.json();
+    if (!teams.length) { resultsEl.innerHTML = '<em style="color:var(--muted);font-size:.85rem">Keine Teams gefunden</em>'; return; }
+
+    resultsEl.innerHTML = teams.slice(0, 8).map(t =>
+      `<div style="padding:.4rem .6rem;cursor:pointer;border-radius:4px;font-size:.9rem;hover:background:var(--accent)"
+            onmouseover="this.style.background='var(--accent)'" onmouseout="this.style.background=''"
+            onclick="selectManualTeam(${t.id}, '${t.name.replace(/'/g,"\\'")}')">
+        ${t.name}
+       </div>`
+    ).join('');
+  } catch(e) {
+    resultsEl.innerHTML = `<em style="color:var(--danger);font-size:.85rem">Fehler beim Suchen</em>`;
+  }
+}
+
+function selectManualTeam(id, name) {
+  setupState.manualTeamSelected = {id, name};
+  document.getElementById('manual-team-results').innerHTML = '';
+  document.getElementById('manual-team-search').value = name;
+  document.getElementById('btn-add-manual').disabled = false;
+  const infoEl = document.getElementById('selected-manual-team');
+  infoEl.style.display = 'block';
+  infoEl.textContent = `✅ Ausgewählt: ${name} (ID: ${id})`;
+}
+
+function addManualParticipant() {
+  const team = setupState.manualTeamSelected;
+  if (!team) return;
+
+  // Prüfen ob bereits vorhanden
+  const exists = setupState.participants.find(p => p.team_id === team.id);
+  if (exists) { toast(`${team.name} ist bereits in der Liste`, 'error'); return; }
+
+  setupState.participants.push({
+    team_id: team.id,
+    team_name: team.name,
+    discord_username: '(manuell)',
+    discord_id: null,
+    profile_url: null,
+    manual: true,
+  });
+
+  toast(`${team.name} zur Teilnehmerliste hinzugefügt`);
+
+  // Reset
+  setupState.manualTeamSelected = null;
+  document.getElementById('manual-team-search').value = '';
+  document.getElementById('selected-manual-team').style.display = 'none';
+  document.getElementById('btn-add-manual').disabled = true;
+
+  // Liste neu rendern
+  loadParticipants();
+}
+
+// ---- Tab 2: Auslosung ----
+
+function updateDrawPreview() {
+  const groups = parseInt(document.getElementById('draw-group-count').value) || 0;
+  const tpg = parseInt(document.getElementById('draw-teams-per-group').value) || 0;
+  const total = groups * tpg;
+  const participants = setupState.participants.filter(p => p.team_id);
+  const previewEl = document.getElementById('draw-preview');
+
+  previewEl.innerHTML = `
+    <strong>Konfiguration:</strong> ${groups} Gruppen × ${tpg} Teams = <strong>${total} Plätze</strong><br>
+    <strong>Teilnehmer mit Team:</strong> ${participants.length}<br>
+    ${participants.length > total ? `<span style="color:var(--danger)">⚠️ Zu viele Teilnehmer für diese Konfiguration!</span>` : ''}
+    ${participants.length < total ? `<span style="color:var(--warning)">ℹ️ ${total - participants.length} Platz/Plätze bleiben leer</span>` : ''}
+    ${participants.length === total ? `<span style="color:var(--success)">✅ Passt genau!</span>` : ''}
+  `;
+}
+
+function previewDraw() {
+  const groups = parseInt(document.getElementById('draw-group-count').value);
+  const tpg = parseInt(document.getElementById('draw-teams-per-group').value);
+  const participants = setupState.participants.filter(p => p.team_id);
+
+  if (!participants.length) {
+    toast('Bitte zuerst Teilnehmer laden (Tab 1)', 'error');
+    return;
+  }
+
+  // Shuffle
+  const shuffled = [...participants].sort(() => Math.random() - 0.5);
+  const groupNames = 'ABCDEFGHIJKLMNOP'.split('');
+
+  setupState.drawGroups = Array.from({length: groups}, (_, i) => ({
+    name: groupNames[i],
+    teams: shuffled.slice(i * tpg, (i + 1) * tpg),
+  }));
+
+  renderDrawResult();
+  document.getElementById('draw-result').style.display = 'block';
+}
+
+function renderDrawResult() {
+  const grid = document.getElementById('draw-result-grid');
+  grid.innerHTML = setupState.drawGroups.map(g => `
+    <div style="background:var(--accent);border-radius:8px;padding:.75rem;border:1px solid var(--border)">
+      <strong style="font-size:1rem;color:var(--primary)">Gruppe ${g.name}</strong>
+      <div style="margin-top:.5rem">
+        ${g.teams.map(t => `<div style="padding:.25rem 0;font-size:.85rem;border-bottom:1px solid var(--border)">${t.team_name}</div>`).join('')}
+        ${g.teams.length === 0 ? '<em style="color:var(--muted);font-size:.8rem">Leer</em>' : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+async function executeDraw() {
+  const name = document.getElementById('draw-season-name').value.trim();
+  if (!name) { toast('Bitte Saison-Name eingeben', 'error'); return; }
+
+  if (!setupState.drawGroups) {
+    // Auslosung noch nicht gemacht → jetzt erstellen
+    previewDraw();
+    if (!setupState.drawGroups) return;
+  }
+
+  if (!confirm(`Saison "${name}" mit ${setupState.drawGroups.length} Gruppen erstellen und Spielplan generieren?`)) return;
+
+  try {
+    // 1. Saison erstellen
+    // Wir nutzen den bestehenden POST /api/seasons Endpoint
+    // participant_count = total teams
+    const totalTeams = setupState.drawGroups.reduce((acc, g) => acc + g.teams.length, 0);
+    const seasonRes = await authFetch(`${API}/api/seasons`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        name,
+        participant_count: totalTeams,
+        status: 'planned',
+        // Custom group_count damit die Gruppen-Logik korrekt ist
+        group_count: setupState.drawGroups.length,
+      })
+    });
+
+    if (!seasonRes.ok) {
+      const err = await seasonRes.json();
+      throw new Error(err.detail || 'Saison konnte nicht erstellt werden');
+    }
+
+    const season = await seasonRes.json();
+    setupState.createdSeasonId = season.id;
+
+    // 2. Gruppen-IDs laden
+    const groupsRes = await authFetch(`${API}/api/seasons/${season.id}/groups`);
+    const groups = await groupsRes.json();
+
+    // Mapping: Gruppenname → group_id
+    const groupMap = {};
+    groups.forEach(g => { groupMap[g.name] = g.id; });
+
+    // 3. Teams den Gruppen zuweisen
+    let assignErrors = 0;
+    for (const drawGroup of setupState.drawGroups) {
+      const groupId = groupMap[drawGroup.name];
+      if (!groupId) { console.warn(`Gruppe ${drawGroup.name} nicht gefunden`); continue; }
+
+      for (const participant of drawGroup.teams) {
+        const assignRes = await authFetch(`${API}/api/seasons/${season.id}/teams`, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            team_id: participant.team_id,
+            group_id: groupId,
+          })
+        });
+        if (!assignRes.ok) {
+          console.warn(`Team ${participant.team_name} konnte nicht zugewiesen werden`);
+          assignErrors++;
+        }
+      }
+
+      // 4. Spielplan für jede Gruppe generieren
+      await authFetch(`${API}/api/groups/${groupId}/generate-schedule`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({})
+      });
+    }
+
+    if (assignErrors > 0) {
+      toast(`Saison erstellt, aber ${assignErrors} Teams konnten nicht zugewiesen werden`, 'error');
+    } else {
+      toast(`✅ Saison "${name}" erfolgreich erstellt!`);
+    }
+
+    // Zum Spielplan-Tab wechseln
+    await initSaisonSetup();
+    showSetupTab('tab-schedule');
+    document.getElementById('schedule-season-select').value = season.id;
+    loadScheduleForSeason();
+
+  } catch(e) {
+    toast(`Fehler: ${e.message}`, 'error');
+  }
+}
+
+// ---- Tab 3: Spielplan ----
+
+async function loadScheduleForSeason() {
+  const seasonId = document.getElementById('schedule-season-select').value;
+  const container = document.getElementById('schedule-groups-list');
+  if (!seasonId) { container.innerHTML = ''; return; }
+
+  container.innerHTML = '<div style="text-align:center;color:var(--muted);padding:2rem">Lade...</div>';
+
+  try {
+    const res = await authFetch(`${API}/api/seasons/${seasonId}/groups-with-teams`);
+    const groups = await res.json();
+
+    if (!groups.length) {
+      container.innerHTML = '<div style="text-align:center;color:var(--muted);padding:2rem">Keine Gruppen gefunden</div>';
+      return;
+    }
+
+    container.innerHTML = groups.map(g => {
+      const matches = g.matches || [];
+      const matchRows = matches.length
+        ? matches.map(m => `
+            <tr>
+              <td>${m.matchday || '-'}</td>
+              <td style="text-align:right">${m.home_team_name || m.home_team_id}</td>
+              <td style="text-align:center;font-weight:600;color:var(--primary)">
+                ${m.home_goals != null ? `${m.home_goals}:${m.away_goals}` : '–:–'}
+              </td>
+              <td>${m.away_team_name || m.away_team_id}</td>
+              <td><span class="match-status ${m.status}">${m.status === 'played' ? '✅' : '🕐'}</span></td>
+            </tr>`).join('')
+        : '<tr><td colspan="5" style="color:var(--muted)">Kein Spielplan vorhanden</td></tr>';
+
+      return `
+        <div class="card">
+          <h2>Gruppe ${g.name}</h2>
+          <div style="margin-bottom:.75rem;display:flex;gap:.5rem;flex-wrap:wrap">
+            ${(g.teams || []).map(t => `<span style="background:var(--accent);padding:.2rem .6rem;border-radius:4px;font-size:.85rem">${t.name}</span>`).join('')}
+          </div>
+          <table>
+            <thead><tr><th>ST</th><th style="text-align:right">Heim</th><th style="text-align:center">Ergebnis</th><th>Gast</th><th>Status</th></tr></thead>
+            <tbody>${matchRows}</tbody>
+          </table>
+        </div>`;
+    }).join('');
+
+  } catch(e) {
+    container.innerHTML = `<div style="color:var(--danger);padding:1rem">Fehler: ${e.message}</div>`;
+  }
+}
+
+async function generateScheduleForSeason() {
+  const seasonId = document.getElementById('schedule-season-select').value;
+  if (!seasonId) { toast('Bitte Saison wählen', 'error'); return; }
+  if (!confirm('Spielplan für alle Gruppen dieser Saison generieren?')) return;
+
+  try {
+    const res = await authFetch(`${API}/api/seasons/${seasonId}/groups`);
+    const groups = await res.json();
+
+    let ok = 0, fail = 0;
+    for (const g of groups) {
+      const r = await authFetch(`${API}/api/groups/${g.id}/generate-schedule`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({})
+      });
+      r.ok ? ok++ : fail++;
+    }
+
+    toast(`Spielplan generiert: ${ok} Gruppen OK, ${fail} Fehler`);
+    loadScheduleForSeason();
+  } catch(e) {
+    toast(`Fehler: ${e.message}`, 'error');
+  }
+}
+
+// ---- Tab 4: Ergebnis-Import ----
+
+function validateImportJson() {
+  const input = document.getElementById('import-json-input').value.trim();
+  const resultEl = document.getElementById('import-validation-result');
+
+  try {
+    const data = JSON.parse(input);
+    if (!Array.isArray(data)) throw new Error('Muss ein JSON-Array sein');
+    if (!data.length) throw new Error('Array ist leer');
+
+    const required = ['Heim', 'Gast', 'Heimtore', 'Gasttore'];
+    const missing = required.filter(k => !(k in data[0]));
+    if (missing.length) throw new Error(`Fehlende Felder: ${missing.join(', ')}`);
+
+    resultEl.innerHTML = `
+      <div style="background:#dcfce7;padding:.75rem;border-radius:6px;color:#166534">
+        ✅ JSON valide – <strong>${data.length} Spiele</strong> gefunden<br>
+        Saison: ${data[0].Saison || 'nicht angegeben'} | Spieltag: ${data[0].Spieltag || 'nicht angegeben'}
+      </div>`;
+    return data;
+  } catch(e) {
+    resultEl.innerHTML = `<div style="background:#fee2e2;padding:.75rem;border-radius:6px;color:#991b1b">❌ ${e.message}</div>`;
+    return null;
+  }
+}
+
+async function executeImport() {
+  const seasonId = document.getElementById('import-season-select').value;
+  const matchday = document.getElementById('import-matchday-select').value;
+
+  if (!seasonId) { toast('Bitte Saison wählen', 'error'); return; }
+
+  const data = validateImportJson();
+  if (!data) return;
+
+  const resultCard = document.getElementById('import-result-card');
+  const resultDetail = document.getElementById('import-result-detail');
+  resultCard.style.display = 'none';
+
+  try {
+    // Lade alle Matches der Saison um Teams zu matchen
+    const groupsRes = await authFetch(`${API}/api/seasons/${seasonId}/groups-with-teams`);
+    const groups = await groupsRes.json();
+
+    // Baue Match-Index: "teamA|teamB" → match_id
+    const matchIndex = {};
+    for (const g of groups) {
+      for (const m of (g.matches || [])) {
+        const home = (m.home_team_name || '').toLowerCase().trim();
+        const away = (m.away_team_name || '').toLowerCase().trim();
+        if (home && away) {
+          matchIndex[`${home}|${away}`] = m.id;
+          matchIndex[`${away}|${home}`] = {id: m.id, swapped: true};
+        }
+      }
+    }
+
+    let ok = 0, notFound = [], alreadyPlayed = 0;
+
+    for (const spiel of data) {
+      const heimNorm = (spiel.Heim || '').toLowerCase().trim();
+      const gastNorm = (spiel.Gast || '').toLowerCase().trim();
+      const heimTore = parseInt(spiel.Heimtore);
+      const gastTore = parseInt(spiel.Gasttore);
+
+      const key = `${heimNorm}|${gastNorm}`;
+      const match = matchIndex[key];
+
+      if (!match) {
+        notFound.push(`${spiel.Heim} vs ${spiel.Gast}`);
+        continue;
+      }
+
+      const matchId = typeof match === 'object' ? match.id : match;
+      const swapped = typeof match === 'object' && match.swapped;
+
+      const payload = swapped
+        ? { home_goals: gastTore, away_goals: heimTore }
+        : { home_goals: heimTore, away_goals: gastTore };
+
+      const res = await authFetch(`${API}/api/matches/${matchId}`, {
+        method: 'PATCH',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({...payload, status: 'played'})
+      });
+
+      if (res.ok) ok++;
+      else notFound.push(`${spiel.Heim} vs ${spiel.Gast} (API-Fehler)`);
+    }
+
+    resultCard.style.display = 'block';
+    resultDetail.innerHTML = `
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1rem">
+        <div class="stat"><div class="stat-value" style="color:var(--success)">${ok}</div><div class="stat-label">Importiert</div></div>
+        <div class="stat"><div class="stat-value" style="color:var(--danger)">${notFound.length}</div><div class="stat-label">Nicht gefunden</div></div>
+        <div class="stat"><div class="stat-value">${data.length}</div><div class="stat-label">Gesamt</div></div>
+      </div>
+      ${notFound.length ? `
+        <div style="background:#fee2e2;border-radius:6px;padding:.75rem">
+          <strong style="color:#991b1b">Nicht gefundene Spiele:</strong>
+          <ul style="margin:.5rem 0 0;padding-left:1.25rem;font-size:.85rem">
+            ${notFound.map(n => `<li>${n}</li>`).join('')}
+          </ul>
+        </div>` : ''}
+    `;
+
+    toast(`Import: ${ok}/${data.length} Ergebnisse eingetragen`);
+    loadScheduleForSeason();
+
+  } catch(e) {
+    toast(`Fehler: ${e.message}`, 'error');
   }
 }
 
@@ -1033,9 +1631,9 @@ async function loadSeasons() {
 
     // Status Badge
     const statusColors = {
-      'planned': 'color:#60a5fa;background:rgba(96,165,250,.15)',
-      'active': 'color:#10b981;background:rgba(16,185,129,.15)',
-      'archived': 'color:var(--muted);background:var(--accent)'
+      'planned': 'color:#1e40af;background:#dbeafe',
+      'active': 'color:#166534;background:#dcfce7',
+      'archived': 'color:#6b7280;background:#f3f4f6'
     };
     const statusStyle = statusColors[s.status] || '';
 
@@ -1503,477 +2101,26 @@ function insertAtCursor(textarea, text) {
   textarea.focus();
 }
 
-// ========== KO-PHASE ==========
-let currentKOBracketTab = 'meister';
-let currentKOBracketsData = null;
-let koSeasonTeams = []; // All teams in the season for manual builder
+// Dark Mode Toggle
+function initDarkMode() {
+  const isDarkMode = localStorage.getItem('biw_dark_mode') === 'true';
+  const toggle = document.getElementById('dark-mode-toggle');
 
-async function loadKOSeasons() {
-  const seasons = await fetch(`${API}/api/seasons`).then(r => r.json());
-  const select = document.getElementById('ko-season');
-  select.innerHTML = '<option value="">Wählen...</option>' +
-    seasons.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
-}
-
-async function loadKOStatus() {
-  const seasonId = document.getElementById('ko-season').value;
-  const infoDiv = document.getElementById('ko-status-info');
-  const bracketsArea = document.getElementById('ko-brackets-area');
-  const manualBuilder = document.getElementById('ko-manual-builder');
-  const resetArea = document.getElementById('ko-reset-area');
-
-  if (!seasonId) {
-    infoDiv.style.display = 'none';
-    bracketsArea.style.display = 'none';
-    manualBuilder.style.display = 'none';
-    resetArea.style.display = 'none';
-    return;
-  }
-
-  infoDiv.style.display = 'block';
-  bracketsArea.style.display = 'none';
-  manualBuilder.style.display = 'none';
-  resetArea.style.display = 'none';
-  document.getElementById('ko-stats').innerHTML = '<div class="stat"><div class="stat-value">...</div><div class="stat-label">Lade...</div></div>';
-  document.getElementById('ko-generate-area').innerHTML = '';
-
-  // Cache season teams
-  try {
-    const groups = await fetch(`${API}/api/seasons/${seasonId}/groups-with-teams`).then(r => r.json());
-    koSeasonTeams = [];
-    groups.forEach(g => g.teams.forEach(t => {
-      teamCache[t.id] = t.name;
-      koSeasonTeams.push({id: t.id, name: t.name});
-    }));
-  } catch (e) {}
-
-  try {
-    const status = await fetch(`${API}/api/seasons/${seasonId}/ko-brackets/status`).then(r => r.json());
-
-    // Stats
-    let statsHtml = `
-      <div class="stat">
-        <div class="stat-value" style="color:${status.all_groups_completed ? 'var(--success)' : 'var(--warning)'}">${status.all_groups_completed ? 'Ja' : 'Nein'}</div>
-        <div class="stat-label">Gruppen abgeschlossen</div>
-      </div>
-      <div class="stat">
-        <div class="stat-value" style="color:${status.brackets_generated ? 'var(--success)' : 'var(--muted)'}">${status.brackets_generated ? 'Ja' : 'Nein'}</div>
-        <div class="stat-label">Brackets generiert</div>
-      </div>`;
-
-    if (status.brackets_generated) {
-      for (const [type, data] of Object.entries(status.brackets)) {
-        if (!data) continue;
-        const label = {meister: 'Meister', lucky_loser: 'Lucky Loser', loser: 'Loser'}[type];
-        statsHtml += `
-          <div class="stat">
-            <div class="stat-value">${data.matches_played}/${data.matches_total}</div>
-            <div class="stat-label">${label} (${data.status})</div>
-          </div>`;
-      }
+  if (toggle) {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark-mode');
+      toggle.checked = true;
     }
-    document.getElementById('ko-stats').innerHTML = statsHtml;
 
-    if (!status.brackets_generated) {
-      // Show both auto-generate and manual buttons
-      let genHtml = '<div style="display:flex;gap:1rem;flex-wrap:wrap">';
-      if (status.all_groups_completed) {
-        genHtml += `<button class="btn btn-primary" onclick="generateKOBrackets(${seasonId})" id="ko-generate-btn">🤖 Automatisch generieren</button>`;
-      }
-      genHtml += `<button class="btn btn-secondary" onclick="showManualBuilder(${seasonId})">🔧 Manuell aufbauen</button>`;
-      genHtml += '</div>';
-      if (!status.all_groups_completed) {
-        genHtml += '<p style="color:var(--muted);font-size:.85rem;margin-top:.5rem">Auto-Generate benötigt abgeschlossene Gruppenphase. Manueller Aufbau ist jederzeit möglich.</p>';
-      }
-      document.getElementById('ko-generate-area').innerHTML = genHtml;
-    } else {
-      await loadKOBrackets(seasonId);
-      resetArea.style.display = 'block';
-    }
-  } catch (e) {
-    document.getElementById('ko-stats').innerHTML = `<div class="stat"><div class="stat-value" style="color:var(--danger)">!</div><div class="stat-label">Fehler: ${e.message}</div></div>`;
-  }
-}
-
-async function generateKOBrackets(seasonId) {
-  const btn = document.getElementById('ko-generate-btn');
-  if (btn) { btn.disabled = true; btn.textContent = 'Generiere...'; }
-
-  try {
-    const res = await authFetch(`${API}/api/seasons/${seasonId}/ko-brackets/generate`, { method: 'POST' });
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.detail || 'Fehler beim Generieren');
-    }
-    toast('KO-Brackets erfolgreich generiert!');
-    loadKOStatus();
-  } catch (e) {
-    if (e.message === 'Session abgelaufen') {
-      toast('Nicht eingeloggt – bitte neu anmelden', 'error');
-    } else {
-      toast('Fehler: ' + e.message, 'error');
-    }
-    if (btn) { btn.disabled = false; btn.textContent = '🤖 Automatisch generieren'; }
-  }
-}
-
-async function resetKOBrackets() {
-  const seasonId = document.getElementById('ko-season').value;
-  if (!seasonId) return;
-  if (!confirm('⚠️ Alle KO-Brackets und Matches dieser Saison wirklich löschen?\n\nDiese Aktion kann nicht rückgängig gemacht werden!')) return;
-
-  try {
-    const res = await authFetch(`${API}/api/seasons/${seasonId}/ko-brackets/reset`, { method: 'POST' });
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.detail || 'Fehler');
-    }
-    toast('Brackets zurückgesetzt');
-    loadKOStatus();
-  } catch (e) {
-    toast('Fehler: ' + e.message, 'error');
-  }
-}
-
-// ---- Manual Builder ----
-
-function showManualBuilder(seasonId) {
-  const builder = document.getElementById('ko-manual-builder');
-  builder.style.display = 'block';
-
-  const types = [
-    {key: 'meister', label: 'Meisterrunde'},
-    {key: 'lucky_loser', label: 'Lucky Loser'},
-    {key: 'loser', label: 'Loser'}
-  ];
-
-  let html = '';
-  for (const t of types) {
-    html += `
-      <div style="padding:1rem;background:var(--bg);border-radius:8px;margin-bottom:1rem" id="manual-bracket-${t.key}">
-        <h3 style="margin:0 0 .75rem">${t.label}</h3>
-        <div class="form-row">
-          <div class="form-group" style="flex:0;min-width:150px">
-            <label>Teamanzahl</label>
-            <select id="manual-count-${t.key}">
-              <option value="2">2</option>
-              <option value="4" selected>4</option>
-              <option value="8">8</option>
-              <option value="16">16</option>
-              <option value="32">32</option>
-            </select>
-          </div>
-          <div class="form-group" style="flex:0;display:flex;align-items:flex-end">
-            <button class="btn btn-primary btn-sm" onclick="createEmptyBracket(${seasonId}, '${t.key}')">Gerüst erstellen</button>
-          </div>
-        </div>
-      </div>`;
-  }
-  document.getElementById('ko-manual-brackets').innerHTML = html;
-}
-
-async function createEmptyBracket(seasonId, bracketType) {
-  const count = parseInt(document.getElementById(`manual-count-${bracketType}`).value);
-
-  try {
-    const res = await authFetch(`${API}/api/seasons/${seasonId}/ko-brackets/create-empty`, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({bracket_type: bracketType, team_count: count})
-    });
-
-    if (!res.ok) {
-      const err = await res.json();
-      if (res.status === 409) {
-        toast(err.detail + ' Bitte zuerst zurücksetzen.', 'error');
+    toggle.addEventListener('change', () => {
+      if (toggle.checked) {
+        document.documentElement.classList.add('dark-mode');
+        localStorage.setItem('biw_dark_mode', 'true');
       } else {
-        throw new Error(err.detail || 'Fehler');
+        document.documentElement.classList.remove('dark-mode');
+        localStorage.setItem('biw_dark_mode', 'false');
       }
-      return;
-    }
-
-    toast(`${bracketType} Gerüst erstellt!`);
-    loadKOStatus();
-  } catch (e) {
-    toast('Fehler: ' + e.message, 'error');
-  }
-}
-
-// ---- Bracket display with team assignment ----
-
-async function loadKOBrackets(seasonId) {
-  try {
-    const data = await fetch(`${API}/api/seasons/${seasonId}/ko-brackets`).then(r => r.json());
-    currentKOBracketsData = data;
-
-    document.getElementById('ko-brackets-area').style.display = 'block';
-    document.getElementById('ko-manual-builder').style.display = 'none';
-    renderKOBracketTab(currentKOBracketTab);
-  } catch (e) {
-    document.getElementById('ko-bracket-content').innerHTML = `<div class="card" style="color:var(--danger)">Fehler: ${e.message}</div>`;
-  }
-}
-
-function switchKOTab(bracketType) {
-  currentKOBracketTab = bracketType;
-  document.querySelectorAll('#ko-bracket-tabs .tab').forEach(t => t.classList.remove('active'));
-  document.querySelector(`#ko-bracket-tabs .tab[data-bracket="${bracketType}"]`).classList.add('active');
-  renderKOBracketTab(bracketType);
-}
-
-function getAssignedTeamIds(bracket) {
-  // Collect all team IDs currently assigned in this bracket
-  const ids = new Set();
-  if (!bracket || !bracket.rounds) return ids;
-  for (const matches of Object.values(bracket.rounds)) {
-    for (const m of matches) {
-      if (m.home_team) ids.add(m.home_team.id);
-      if (m.away_team) ids.add(m.away_team.id);
-    }
-  }
-  return ids;
-}
-
-function renderKOBracketTab(bracketType) {
-  const container = document.getElementById('ko-bracket-content');
-  if (!currentKOBracketsData) { container.innerHTML = ''; return; }
-
-  const bracket = currentKOBracketsData.brackets[bracketType];
-  if (!bracket) {
-    container.innerHTML = '<div class="card"><em style="color:var(--muted)">Kein Bracket für diese Kategorie vorhanden</em></div>';
-    return;
-  }
-
-  const assignedIds = getAssignedTeamIds(bracket);
-
-  let html = '';
-  const roundKeys = Object.keys(bracket.rounds).sort((a, b) => {
-    const numA = parseInt(a.split('_')[1]);
-    const numB = parseInt(b.split('_')[1]);
-    return numA - numB;
-  });
-
-  for (const roundKey of roundKeys) {
-    const matches = bracket.rounds[roundKey];
-    if (matches.length === 0) continue;
-
-    const roundLabel = formatRoundName(matches[0].round);
-    html += `<div class="card"><h2>${roundLabel}</h2>`;
-
-    for (const m of matches) {
-      if (m.is_bye) {
-        const byeTeam = m.home_team ? m.home_team.name : 'TBD';
-        html += `<div class="match-card" style="opacity:.6"><em>${byeTeam} – Freilos</em></div>`;
-        continue;
-      }
-
-      const homeName = m.home_team ? m.home_team.name : null;
-      const awayName = m.away_team ? m.away_team.name : null;
-      const hasBothTeams = m.home_team && m.away_team;
-      const isPlayed = m.status === 'played';
-      const matchId = m.match_id;
-      const isRound1 = roundKey === roundKeys[0]; // Only round 1 gets team selects
-
-      html += `<div class="match-card" ${!hasBothTeams && !isRound1 ? 'style="opacity:.5"' : ''}>`;
-      html += `<div class="match-header">
-        <div class="match-teams">
-          <span class="match-team">${homeName || '???'}</span>
-          <span class="match-vs">vs</span>
-          <span class="match-team">${awayName || '???'}</span>
-        </div>
-        <div style="display:flex;gap:.5rem;align-items:center">
-          <span style="font-size:.75rem;color:var(--muted)">KO-ID: ${matchId}</span>
-          <span class="match-status ${m.status}">${m.status}</span>
-        </div>
-      </div>`;
-
-      // Score display for played matches
-      if (isPlayed && !m.is_bye) {
-        const winnerMark = m.winner_id === (m.home_team?.id) ? ' ★' : '';
-        const winnerMarkAway = m.winner_id === (m.away_team?.id) ? ' ★' : '';
-        html += `<div style="font-size:1.1rem;font-weight:600;margin:.5rem 0">
-          ${m.home_goals}${winnerMark} : ${m.away_goals}${winnerMarkAway}
-        </div>`;
-      }
-
-      // Team assignment for round 1 (unplayed matches)
-      if (isRound1 && !isPlayed) {
-        html += `<div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;margin-top:.5rem">`;
-
-        // Home team select
-        html += buildTeamSelect(matchId, 'home', m.home_team, assignedIds, m.away_team?.id);
-
-        // Away team select
-        html += buildTeamSelect(matchId, 'away', m.away_team, assignedIds, m.home_team?.id);
-
-        // Bye button (only if no result yet)
-        if (m.home_team && !m.away_team) {
-          html += `<button class="btn btn-sm btn-secondary" onclick="setMatchBye(${matchId}, ${m.home_team.id})" title="Als Freilos markieren">Bye</button>`;
-        }
-        html += `</div>`;
-      }
-
-      // Edit area for matches with both teams (result entry)
-      if (hasBothTeams && !isRound1) {
-        html += `<div id="ko-edit-area-${matchId}">`;
-        if (!isPlayed) {
-          html += `<button class="btn btn-sm btn-primary" onclick="showKOEditForm(${matchId}, ${m.home_team.id}, '${m.home_team.name.replace(/'/g, "\\'")}', ${m.away_team.id}, '${m.away_team.name.replace(/'/g, "\\'")}')">Ergebnis eintragen</button>`;
-        } else {
-          html += `<button class="btn btn-sm btn-secondary" onclick="showKOEditForm(${matchId}, ${m.home_team.id}, '${m.home_team.name.replace(/'/g, "\\'")}', ${m.away_team.id}, '${m.away_team.name.replace(/'/g, "\\'")}', ${m.home_goals}, ${m.away_goals}, ${m.winner_id || 'null'})">Bearbeiten</button>`;
-        }
-        html += `</div>`;
-      }
-
-      // For round 1 matches with both teams, also show result entry
-      if (hasBothTeams && isRound1) {
-        html += `<div id="ko-edit-area-${matchId}" style="margin-top:.5rem">`;
-        if (!isPlayed) {
-          html += `<button class="btn btn-sm btn-primary" onclick="showKOEditForm(${matchId}, ${m.home_team.id}, '${m.home_team.name.replace(/'/g, "\\'")}', ${m.away_team.id}, '${m.away_team.name.replace(/'/g, "\\'")}')">Ergebnis eintragen</button>`;
-        } else {
-          html += `<button class="btn btn-sm btn-secondary" onclick="showKOEditForm(${matchId}, ${m.home_team.id}, '${m.home_team.name.replace(/'/g, "\\'")}', ${m.away_team.id}, '${m.away_team.name.replace(/'/g, "\\'")}', ${m.home_goals}, ${m.away_goals}, ${m.winner_id || 'null'})">Bearbeiten</button>`;
-        }
-        html += `</div>`;
-      }
-
-      html += `</div>`;
-    }
-    html += '</div>';
-  }
-
-  container.innerHTML = html || '<div class="card"><em>Keine Matches in diesem Bracket</em></div>';
-}
-
-function buildTeamSelect(matchId, slot, currentTeam, assignedIds, otherTeamId) {
-  let html = `<select onchange="setMatchTeam(${matchId}, '${slot}', this.value)" style="min-width:160px;padding:.4rem">`;
-  html += `<option value="">-- ${slot === 'home' ? 'Heim' : 'Auswärts'} --</option>`;
-
-  for (const t of koSeasonTeams) {
-    const selected = currentTeam && currentTeam.id === t.id;
-    // Show: current team, or teams not assigned elsewhere (except other slot of same match)
-    const isAssignedElsewhere = assignedIds.has(t.id) && !(currentTeam && currentTeam.id === t.id) && t.id !== otherTeamId;
-    if (isAssignedElsewhere) continue;
-
-    html += `<option value="${t.id}" ${selected ? 'selected' : ''}>${t.name}</option>`;
-  }
-  html += `</select>`;
-  return html;
-}
-
-async function setMatchTeam(matchId, slot, teamIdStr) {
-  const teamId = teamIdStr ? parseInt(teamIdStr) : null;
-
-  try {
-    const res = await authFetch(`${API}/api/ko-matches/${matchId}/set-team`, {
-      method: 'PATCH',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({slot, team_id: teamId})
     });
-
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.detail || 'Fehler');
-    }
-    // Reload to refresh all selects
-    loadKOStatus();
-  } catch (e) {
-    toast('Fehler: ' + e.message, 'error');
-  }
-}
-
-async function setMatchBye(matchId, teamId) {
-  try {
-    const res = await authFetch(`${API}/api/ko-matches/${matchId}/set-bye`, {
-      method: 'PATCH',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({team_id: teamId})
-    });
-
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.detail || 'Fehler');
-    }
-    toast('Freilos gesetzt');
-    loadKOStatus();
-  } catch (e) {
-    toast('Fehler: ' + e.message, 'error');
-  }
-}
-
-function formatRoundName(name) {
-  const map = {finale: 'Finale', halbfinale: 'Halbfinale', viertelfinale: 'Viertelfinale', achtelfinale: 'Achtelfinale'};
-  if (map[name]) return map[name];
-  if (name.startsWith('runde_')) return `Runde ${name.split('_')[1]}`;
-  return name;
-}
-
-function showKOEditForm(matchId, homeId, homeName, awayId, awayName, homeGoals, awayGoals, winnerId) {
-  const area = document.getElementById(`ko-edit-area-${matchId}`);
-  const hg = homeGoals !== undefined ? homeGoals : '';
-  const ag = awayGoals !== undefined ? awayGoals : '';
-
-  area.innerHTML = `
-    <div style="display:flex;gap:.75rem;align-items:flex-end;flex-wrap:wrap;margin-top:.5rem;padding:.75rem;background:var(--bg);border-radius:6px">
-      <div class="form-group" style="flex:0;min-width:70px">
-        <label>${homeName}</label>
-        <input type="number" min="0" id="ko-edit-home-${matchId}" value="${hg}" placeholder="-" style="width:60px;text-align:center">
-      </div>
-      <span style="padding-bottom:.5rem">:</span>
-      <div class="form-group" style="flex:0;min-width:70px">
-        <label>${awayName}</label>
-        <input type="number" min="0" id="ko-edit-away-${matchId}" value="${ag}" placeholder="-" style="width:60px;text-align:center">
-      </div>
-      <div class="form-group" style="flex:0;min-width:150px">
-        <label>Sieger (bei Unentschieden)</label>
-        <select id="ko-edit-winner-${matchId}" style="min-width:140px">
-          <option value="">Automatisch</option>
-          <option value="${homeId}" ${winnerId === homeId ? 'selected' : ''}>${homeName}</option>
-          <option value="${awayId}" ${winnerId === awayId ? 'selected' : ''}>${awayName}</option>
-        </select>
-      </div>
-      <button class="btn btn-sm btn-success" onclick="saveKOEditMatch(${matchId})">Speichern</button>
-      <button class="btn btn-sm btn-secondary" onclick="loadKOStatus()">Abbrechen</button>
-    </div>
-    <div id="ko-edit-msg-${matchId}" style="margin-top:.5rem"></div>`;
-}
-
-async function saveKOEditMatch(matchId) {
-  const home = document.getElementById(`ko-edit-home-${matchId}`).value;
-  const away = document.getElementById(`ko-edit-away-${matchId}`).value;
-  const winnerVal = document.getElementById(`ko-edit-winner-${matchId}`).value;
-  const msgDiv = document.getElementById(`ko-edit-msg-${matchId}`);
-
-  if (home === '' || away === '') {
-    msgDiv.innerHTML = '<span style="color:var(--danger);font-size:.85rem">Bitte beide Ergebnisse eingeben</span>';
-    return;
-  }
-
-  const body = {
-    home_goals: parseInt(home),
-    away_goals: parseInt(away)
-  };
-  if (winnerVal) body.winner_id = parseInt(winnerVal);
-
-  try {
-    const res = await authFetch(`${API}/api/ko-matches/${matchId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    });
-
-    if (!res.ok) {
-      const err = await res.json();
-      if (res.status === 401) {
-        toast('Nicht eingeloggt – bitte neu anmelden', 'error');
-        return;
-      }
-      throw new Error(err.detail || 'Fehler beim Speichern');
-    }
-
-    const result = await res.json();
-    toast('Ergebnis gespeichert!' + (result.tiebreaker_used ? ` (Tiebreaker: ${result.tiebreaker_reason})` : ''));
-    loadKOStatus();
-  } catch (e) {
-    msgDiv.innerHTML = `<span style="color:var(--danger);font-size:.85rem">${e.message}</span>`;
   }
 }
 
@@ -2180,6 +2327,7 @@ async function registerDiscordUser() {
 
 // Init
 checkAuth();
+initDarkMode();
 </script>
 </body>
 </html>
