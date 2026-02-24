@@ -1733,7 +1733,9 @@ def add_to_season(
     _: str = Depends(get_current_user)
 ):
     """Fügt User-Team zur aktiven Saison hinzu (kleinste Gruppe)."""
-    season = db.query(models.Season).filter(models.Season.status == "active").first()
+    season = db.query(models.Season).filter(
+        models.Season.status.in_(["active", "planned"])
+    ).order_by(models.Season.id.desc()).first()
     if not season:
         raise HTTPException(status_code=404, detail="Keine aktive Saison gefunden")
 
@@ -1784,7 +1786,9 @@ def remove_from_season(
     _: str = Depends(get_current_user)
 ):
     """Entfernt User-Team aus der aktiven Saison."""
-    season = db.query(models.Season).filter(models.Season.status == "active").first()
+    season = db.query(models.Season).filter(
+        models.Season.status.in_(["active", "planned"])
+    ).order_by(models.Season.id.desc()).first()
     if not season:
         raise HTTPException(status_code=404, detail="Keine aktive Saison gefunden")
 
