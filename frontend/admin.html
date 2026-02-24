@@ -500,27 +500,41 @@ tr.row-inactive td:first-child   { border-left:3px solid #d1d5db; }
         <!-- Tab: Registrieren -->
         <div id="anm-tab-registrieren" class="anm-tab-content" style="display:none">
           <div class="card">
-            <h2>➕ User manuell registrieren</h2>
-            <div class="form-row">
+            <h2>➕ Teilnehmer registrieren</h2>
+            <form id="register-form" style="display:contents">
               <div class="form-group">
-                <label>Discord ID</label>
-                <input type="text" id="register-discord-id" placeholder="272170332125659137">
+                <label>Team <span style="color:red">*</span></label>
+                <input type="text" id="reg-team-search" placeholder="Teamname suchen…" autocomplete="off" oninput="searchRegTeams()">
+                <input type="hidden" id="reg-team-id">
+                <div id="reg-team-suggestions" style="max-height:150px;overflow-y:auto;margin-top:4px"></div>
               </div>
+
               <div class="form-group">
-                <label>Discord Username</label>
-                <input type="text" id="register-username" placeholder="Julian">
+                <label>Discord Username <span style="color:#999">(optional)</span></label>
+                <input type="text" id="reg-discord-username" placeholder="z.B. cyphrrr">
               </div>
-              <div class="form-group" style="display:flex;align-items:flex-end">
-                <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;padding:.5rem 0">
-                  <input type="checkbox" id="register-participating" checked>
-                  <span>Teilnahme aktiv</span>
+
+              <div class="form-group">
+                <label>Discord ID <span style="color:#999">(optional)</span></label>
+                <input type="text" id="reg-discord-id" placeholder="18-stellige ID, z.B. 272170332125659137">
+                <small style="color:#999">Nur nötig wenn der User auch den Discord Bot nutzen soll.</small>
+              </div>
+
+              <div class="form-group">
+                <label>Profil-URL <span style="color:#999">(optional)</span></label>
+                <input type="url" id="reg-profile-url" placeholder="https://www.onlineliga.de/...">
+              </div>
+
+              <div class="form-group">
+                <label>
+                  <input type="checkbox" id="reg-participating" checked>
+                  Für aktive Saison anmelden
                 </label>
               </div>
-              <div class="form-group" style="flex:0;display:flex;align-items:flex-end">
-                <button class="btn btn-primary" onclick="registerDiscordUser()">Registrieren</button>
-              </div>
-            </div>
-            <div id="register-result" style="margin-top:1rem"></div>
+
+              <button type="button" onclick="submitRegistration()" class="btn btn-primary" style="margin-top:12px">Teilnehmer registrieren</button>
+            </form>
+            <div id="register-result" style="margin-top:12px"></div>
           </div>
         </div>
 
@@ -2265,6 +2279,66 @@ async function registerDiscordUser() {
     loadDiscordUsers();
   } catch (e) {
     toast('Fehler bei Registrierung: ' + e.message, 'error');
+  }
+}
+
+async function searchRegTeams() {
+  const q = document.getElementById('reg-team-search').value.trim();
+  if (q.length < 2) {
+    document.getElementById('reg-team-suggestions').innerHTML = '';
+    return;
+  }
+  try {
+    const teams = await fetchAPI(`/teams/search?name=${encodeURIComponent(q)}`);
+    const results = document.getElementById('reg-team-suggestions');
+    results.innerHTML = '';
+    teams.forEach(t => {
+      const div = document.createElement('div');
+      div.style.cssText = 'padding:8px;cursor:pointer;border-bottom:1px solid #e5e7eb';
+      div.textContent = t.name;
+      div.onmouseover = () => div.style.background = '#f3f4f6';
+      div.onmouseout = () => div.style.background = '';
+      div.onclick = () => {
+        document.getElementById('reg-team-search').value = t.name;
+        document.getElementById('reg-team-id').value = t.id;
+        results.innerHTML = '';
+      };
+      results.appendChild(div);
+    });
+    if (!teams.length) results.innerHTML = '<div style="padding:8px;color:#999">Keine Teams gefunden</div>';
+  } catch(e) {
+    console.error(e);
+  }
+}
+
+async function submitRegistration() {
+  const teamId = document.getElementById('reg-team-id').value;
+  if (!teamId) {
+    toast('Bitte ein Team auswählen', 'warning');
+    return;
+  }
+
+  const payload = {
+    team_id: parseInt(teamId),
+    discord_username: document.getElementById('reg-discord-username').value || null,
+    discord_id: document.getElementById('reg-discord-id').value || null,
+    profile_url: document.getElementById('reg-profile-url').value || null,
+    participating_next: document.getElementById('reg-participating').checked
+  };
+
+  try {
+    await authFetch(`${API}/api/discord/users/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    toast('Teilnehmer registriert ✅', 'success');
+    document.getElementById('register-form').reset();
+    document.getElementById('reg-team-id').value = '';
+    document.getElementById('reg-team-suggestions').innerHTML = '';
+    loadAnmeldungen();
+  } catch(e) {
+    toast('Fehler: ' + (e.message || e), 'error');
   }
 }
 
