@@ -463,11 +463,11 @@ tr.row-inactive td:first-child   { border-left:3px solid #d1d5db; }
             <div class="form-row">
               <div class="form-group">
                 <label>Suche nach Username</label>
-                <input type="text" id="anm-user-search" placeholder="Username eingeben..." oninput="debounceAnmUserSearch()">
+                <input type="text" id="anm-user-search" placeholder="Discord oder Teamname suchen…" oninput="debounceAnmUserSearch()">
               </div>
               <div class="form-group" style="display:flex;align-items:flex-end">
                 <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;padding:.5rem 0">
-                  <input type="checkbox" id="anm-filter-no-team" onchange="loadAlleDiscordUser()">
+                  <input type="checkbox" id="anm-filter-no-team" onchange="debounceAnmUserSearch()">
                   <span>Nur ohne Team</span>
                 </label>
               </div>
@@ -2920,8 +2920,8 @@ async function loadAlleDiscordUser() {
     users.forEach(user => {
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td>${escapeHtml(user.discord_username)}</td>
-        <td>${user.team_name ? escapeHtml(user.team_name) : '<span class="missing">—</span>'}</td>
+        <td data-discord="${escapeHtml(user.discord_username)}">${escapeHtml(user.discord_username)}</td>
+        <td data-team="${escapeHtml(user.team_name || '')}">${user.team_name ? escapeHtml(user.team_name) : '<span class="missing">—</span>'}</td>
         <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis">${user.profile_url ? `<a href="${escapeHtml(user.profile_url)}" target="_blank" style="color:var(--primary)">${escapeHtml(user.profile_url)}</a>` : '<span class="missing">—</span>'}</td>
         <td>
           <input type="checkbox" class="participation-checkbox" ${user.participating_next ? 'checked' : ''} onchange="toggleParticipation('${user.discord_id}', this.checked)">
@@ -2941,7 +2941,19 @@ async function loadAlleDiscordUser() {
 let anmUserSearchTimeout;
 function debounceAnmUserSearch() {
   clearTimeout(anmUserSearchTimeout);
-  anmUserSearchTimeout = setTimeout(loadAlleDiscordUser, 300);
+  const term = document.getElementById('anm-user-search')?.value?.toLowerCase()?.trim() || '';
+  const noTeam = document.getElementById('anm-filter-no-team')?.checked || false;
+
+  document.querySelectorAll('#anm-alle-user-tbody tr').forEach(tr => {
+    const d = tr.querySelector('[data-discord]')?.dataset.discord?.toLowerCase() || '';
+    const t = tr.querySelector('[data-team]')?.dataset.team?.toLowerCase() || '';
+    const hasTeam = tr.querySelector('[data-team]')?.dataset.team?.trim();
+
+    const matchesSearch = !term || d.includes(term) || t.includes(term);
+    const matchesTeamFilter = !noTeam || !hasTeam;
+    tr.style.display = (matchesSearch && matchesTeamFilter) ? '' : 'none';
+  });
+  anmUserSearchTimeout = setTimeout(() => {}, 300);
 }
 
 async function toggleParticipation(discordId, newStatus) {
