@@ -2747,7 +2747,7 @@ async function loadAnmeldungen() {
 function renderAnmeldungenTable(users) {
   const tbody = document.getElementById('anm-aktive-saison-tbody');
   if (!users.length) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted)">Keine Einträge</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted)">Keine Teilnehmer mit aktivem Dabei-Status</td></tr>';
     return;
   }
 
