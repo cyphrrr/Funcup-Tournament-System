@@ -104,9 +104,6 @@
 .stat-dabei { background:#1a4a1a; color:#6fcf6f; border-color:#4caf50; }
 .stat-incomplete { background:#4a2e00; color:#ffb74d; border-color:#ff9800; }
 
-
-
-
 .anm-tab-bar { display:flex; gap:4px; margin-bottom:16px; border-bottom:1px solid var(--border,#e5e7eb); padding-bottom:4px; }
 .anm-tab-btn { padding:7px 16px; border-radius:6px 6px 0 0; border:1px solid transparent; background:transparent; color:var(--muted,#6b7280); cursor:pointer; font-size:.9rem; }
 .anm-tab-btn.active { background:var(--primary,#3b82f6); color:#fff; border-color:var(--primary,#3b82f6); }
@@ -127,6 +124,8 @@ tr.row-inactive td:first-child   { border-left:3px solid #d1d5db; }
 
 .toggle-participation-btn { padding:3px 8px; border-radius:4px; border:none; cursor:pointer; background:#f3f4f6; color:#374151; font-size:.85rem; }
 .toggle-participation-btn.is-dabei { background:#dcfce7; color:#166534; }
+
+.participation-checkbox { width:18px; height:18px; cursor:pointer; accent-color:#4caf50; }
   </style>
 </head>
 <body>
@@ -464,11 +463,11 @@ tr.row-inactive td:first-child   { border-left:3px solid #d1d5db; }
             <div class="form-row">
               <div class="form-group">
                 <label>Suche nach Username</label>
-                <input type="text" id="anm-user-search" placeholder="Username eingeben..." oninput="debounceAnmUserSearch()">
+                <input type="text" id="anm-user-search" placeholder="Discord oder Teamname suchen…" oninput="debounceAnmUserSearch()">
               </div>
               <div class="form-group" style="display:flex;align-items:flex-end">
                 <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;padding:.5rem 0">
-                  <input type="checkbox" id="anm-filter-no-team" onchange="loadAlleDiscordUser()">
+                  <input type="checkbox" id="anm-filter-no-team" onchange="debounceAnmUserSearch()">
                   <span>Nur ohne Team</span>
                 </label>
               </div>
@@ -501,27 +500,41 @@ tr.row-inactive td:first-child   { border-left:3px solid #d1d5db; }
         <!-- Tab: Registrieren -->
         <div id="anm-tab-registrieren" class="anm-tab-content" style="display:none">
           <div class="card">
-            <h2>➕ User manuell registrieren</h2>
-            <div class="form-row">
+            <h2>➕ Teilnehmer registrieren</h2>
+            <form id="register-form" style="display:contents">
               <div class="form-group">
-                <label>Discord ID</label>
-                <input type="text" id="register-discord-id" placeholder="272170332125659137">
+                <label>Team <span style="color:red">*</span></label>
+                <input type="text" id="reg-team-search" placeholder="Teamname suchen…" autocomplete="off" oninput="searchRegTeams()">
+                <input type="hidden" id="reg-team-id">
+                <div id="reg-team-suggestions" style="max-height:150px;overflow-y:auto;margin-top:4px"></div>
               </div>
+
               <div class="form-group">
-                <label>Discord Username</label>
-                <input type="text" id="register-username" placeholder="Julian">
+                <label>Discord Username <span style="color:#999">(optional)</span></label>
+                <input type="text" id="reg-discord-username" placeholder="z.B. cyphrrr">
               </div>
-              <div class="form-group" style="display:flex;align-items:flex-end">
-                <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;padding:.5rem 0">
-                  <input type="checkbox" id="register-participating" checked>
-                  <span>Teilnahme aktiv</span>
+
+              <div class="form-group">
+                <label>Discord ID <span style="color:#999">(optional)</span></label>
+                <input type="text" id="reg-discord-id" placeholder="18-stellige ID, z.B. 272170332125659137">
+                <small style="color:#999">Nur nötig wenn der User auch den Discord Bot nutzen soll.</small>
+              </div>
+
+              <div class="form-group">
+                <label>Profil-URL <span style="color:#999">(optional)</span></label>
+                <input type="url" id="reg-profile-url" placeholder="https://www.onlineliga.de/...">
+              </div>
+
+              <div class="form-group">
+                <label>
+                  <input type="checkbox" id="reg-participating" checked>
+                  Für aktive Saison anmelden
                 </label>
               </div>
-              <div class="form-group" style="flex:0;display:flex;align-items:flex-end">
-                <button class="btn btn-primary" onclick="registerDiscordUser()">Registrieren</button>
-              </div>
-            </div>
-            <div id="register-result" style="margin-top:1rem"></div>
+
+              <button type="button" onclick="submitRegistration()" class="btn btn-primary" style="margin-top:12px">Teilnehmer registrieren</button>
+            </form>
+            <div id="register-result" style="margin-top:12px"></div>
           </div>
         </div>
 
@@ -2269,6 +2282,66 @@ async function registerDiscordUser() {
   }
 }
 
+async function searchRegTeams() {
+  const q = document.getElementById('reg-team-search').value.trim();
+  if (q.length < 2) {
+    document.getElementById('reg-team-suggestions').innerHTML = '';
+    return;
+  }
+  try {
+    const teams = await fetchAPI(`/teams/search?name=${encodeURIComponent(q)}`);
+    const results = document.getElementById('reg-team-suggestions');
+    results.innerHTML = '';
+    teams.forEach(t => {
+      const div = document.createElement('div');
+      div.style.cssText = 'padding:8px;cursor:pointer;border-bottom:1px solid #e5e7eb';
+      div.textContent = t.name;
+      div.onmouseover = () => div.style.background = '#f3f4f6';
+      div.onmouseout = () => div.style.background = '';
+      div.onclick = () => {
+        document.getElementById('reg-team-search').value = t.name;
+        document.getElementById('reg-team-id').value = t.id;
+        results.innerHTML = '';
+      };
+      results.appendChild(div);
+    });
+    if (!teams.length) results.innerHTML = '<div style="padding:8px;color:#999">Keine Teams gefunden</div>';
+  } catch(e) {
+    console.error(e);
+  }
+}
+
+async function submitRegistration() {
+  const teamId = document.getElementById('reg-team-id').value;
+  if (!teamId) {
+    toast('Bitte ein Team auswählen', 'warning');
+    return;
+  }
+
+  const payload = {
+    team_id: parseInt(teamId),
+    discord_username: document.getElementById('reg-discord-username').value || null,
+    discord_id: document.getElementById('reg-discord-id').value || null,
+    profile_url: document.getElementById('reg-profile-url').value || null,
+    participating_next: document.getElementById('reg-participating').checked
+  };
+
+  try {
+    await authFetch(`${API}/api/discord/users/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    toast('Teilnehmer registriert ✅', 'success');
+    document.getElementById('register-form').reset();
+    document.getElementById('reg-team-id').value = '';
+    document.getElementById('reg-team-suggestions').innerHTML = '';
+    loadAnmeldungen();
+  } catch(e) {
+    toast('Fehler: ' + (e.message || e), 'error');
+  }
+}
+
 // ========== KO-PHASE ==========
 const KO_TAB_LABELS = { meister: 'Meisterrunde', lucky_loser: 'Lucky Loser', loser: 'Loser' };
 const KO_ROUND_ORDER = ['runde_1','runde_2','runde_3','runde_4','viertelfinale','halbfinale','finale'];
@@ -2750,7 +2823,7 @@ async function loadAnmeldungen() {
 function renderAnmeldungenTable(users) {
   const tbody = document.getElementById('anm-aktive-saison-tbody');
   if (!users.length) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted)">Keine Einträge</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted)">Keine Teilnehmer mit aktivem Dabei-Status</td></tr>';
     return;
   }
 
@@ -2921,10 +2994,12 @@ async function loadAlleDiscordUser() {
     users.forEach(user => {
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td>${escapeHtml(user.discord_username)}</td>
-        <td>${user.team_name ? escapeHtml(user.team_name) : '<span class="missing">—</span>'}</td>
+        <td data-discord="${escapeHtml(user.discord_username)}">${escapeHtml(user.discord_username)}</td>
+        <td data-team="${escapeHtml(user.team_name || '')}">${user.team_name ? escapeHtml(user.team_name) : '<span class="missing">—</span>'}</td>
         <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis">${user.profile_url ? `<a href="${escapeHtml(user.profile_url)}" target="_blank" style="color:var(--primary)">${escapeHtml(user.profile_url)}</a>` : '<span class="missing">—</span>'}</td>
-        <td>${user.participating_next ? '✅' : '❌'}</td>
+        <td>
+          <input type="checkbox" class="participation-checkbox" ${user.participating_next ? 'checked' : ''} onchange="toggleParticipation('${user.discord_id}', this.checked)">
+        </td>
         <td style="color:var(--muted);font-size:.85rem">${user.created_at ? new Date(user.created_at).toLocaleDateString('de-DE') : '—'}</td>
         <td style="text-align:right">
           <button class="btn btn-sm" onclick="openTeamAssignModal('${user.discord_id}')" title="Team zuweisen">🔗 Team</button>
@@ -2940,7 +3015,33 @@ async function loadAlleDiscordUser() {
 let anmUserSearchTimeout;
 function debounceAnmUserSearch() {
   clearTimeout(anmUserSearchTimeout);
-  anmUserSearchTimeout = setTimeout(loadAlleDiscordUser, 300);
+  const term = document.getElementById('anm-user-search')?.value?.toLowerCase()?.trim() || '';
+  const noTeam = document.getElementById('anm-filter-no-team')?.checked || false;
+
+  document.querySelectorAll('#anm-alle-user-tbody tr').forEach(tr => {
+    const d = tr.querySelector('[data-discord]')?.dataset.discord?.toLowerCase() || '';
+    const t = tr.querySelector('[data-team]')?.dataset.team?.toLowerCase() || '';
+    const hasTeam = tr.querySelector('[data-team]')?.dataset.team?.trim();
+
+    const matchesSearch = !term || d.includes(term) || t.includes(term);
+    const matchesTeamFilter = !noTeam || !hasTeam;
+    tr.style.display = (matchesSearch && matchesTeamFilter) ? '' : 'none';
+  });
+  anmUserSearchTimeout = setTimeout(() => {}, 300);
+}
+
+async function toggleParticipation(discordId, newStatus) {
+  const checkbox = event.target;
+  try {
+    await fetchAPI(`/discord/users/${discordId}/participation`, {
+      method: 'PATCH',
+      body: JSON.stringify({ participating: newStatus })
+    });
+    toast('Teilnahme aktualisiert', 'success');
+  } catch(e) {
+    toast('Fehler beim Aktualisieren', 'error');
+    checkbox.checked = !newStatus; // Rollback
+  }
 }
 
 // Init

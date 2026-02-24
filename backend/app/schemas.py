@@ -204,7 +204,7 @@ class NewsRead(BaseModel):
 
 class UserProfileBase(BaseModel):
     """Basis-Schema für UserProfile"""
-    discord_id: str
+    discord_id: Optional[str] = None
     discord_username: Optional[str] = None
     profile_url: Optional[HttpUrl] = None
     participating_next: bool = True
@@ -234,7 +234,7 @@ class UserProfileAdminUpdate(BaseModel):
 class UserProfileResponse(BaseModel):
     """Response-Schema mit verknüpften Team-Daten"""
     id: int
-    discord_id: str
+    discord_id: Optional[str] = None
     discord_username: Optional[str] = None
     discord_avatar_url: Optional[str] = None
     team_id: Optional[int] = None
