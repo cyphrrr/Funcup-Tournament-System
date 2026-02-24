@@ -132,7 +132,7 @@ class UserProfile(Base):
     id = Column(Integer, primary_key=True, index=True)
 
     # Discord-Daten
-    discord_id = Column(String, unique=True, index=True, nullable=False)  # Discord Snowflake ID
+    discord_id = Column(String, unique=True, index=True, nullable=True)  # Discord Snowflake ID
     discord_username = Column(String, nullable=True)  # z.B. "Max#1234"
     discord_avatar_url = Column(String, nullable=True)  # Discord Avatar URL
 

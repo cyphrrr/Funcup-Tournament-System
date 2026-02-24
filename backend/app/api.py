@@ -1,4 +1,5 @@
 import math
+import uuid
 from datetime import datetime
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
@@ -1475,23 +1476,25 @@ def register_discord_user(
     _: str = Depends(get_current_user)  # Admin-Only
 ):
     """
-    Registriert neuen Discord User.
+    Registriert neuen Discord User oder Non-Discord-Teilnehmer.
     Admin-Only Endpoint (erfordert Auth).
     """
-    # Prüfe ob User bereits existiert
-    existing = db.query(models.UserProfile).filter(
-        models.UserProfile.discord_id == user_data.discord_id
-    ).first()
+    # Generiere discord_id falls nicht vorhanden
+    discord_id = user_data.discord_id
+    if not discord_id:
+        discord_id = f"no-discord-{uuid.uuid4().hex[:8]}"
 
-    if existing:
-        raise HTTPException(
-            status_code=400,
-            detail=f"User mit Discord ID {user_data.discord_id} existiert bereits"
-        )
+    # Prüfe Duplikat nur wenn discord_id angegeben wurde
+    if user_data.discord_id:
+        existing = db.query(models.UserProfile).filter(
+            models.UserProfile.discord_id == discord_id
+        ).first()
+        if existing:
+            raise HTTPException(status_code=400, detail=f"User mit Discord ID {discord_id} existiert bereits")
 
     # Neuen User anlegen
     user = models.UserProfile(
-        discord_id=user_data.discord_id,
+        discord_id=discord_id,
         discord_username=user_data.discord_username,
         profile_url=str(user_data.profile_url) if user_data.profile_url else None,
         team_id=user_data.team_id,
@@ -1501,6 +1504,34 @@ def register_discord_user(
     db.add(user)
     db.commit()
     db.refresh(user)
+
+    # Wenn participating_next=True und team_id gesetzt → zur aktiven Saison hinzufügen
+    if user_data.participating_next and user_data.team_id:
+        season = db.query(models.Season).filter(models.Season.status == "active").first()
+        if season:
+            existing_st = db.query(models.SeasonTeam).filter(
+                models.SeasonTeam.season_id == season.id,
+                models.SeasonTeam.team_id == user_data.team_id
+            ).first()
+            if not existing_st:
+                # Kleinste Gruppe finden
+                groups = db.query(models.Group).filter(models.Group.season_id == season.id).all()
+                if groups:
+                    group_sizes = {}
+                    for g in groups:
+                        count = db.query(models.SeasonTeam).filter(
+                            models.SeasonTeam.group_id == g.id
+                        ).count()
+                        group_sizes[g.id] = count
+                    smallest_group_id = min(group_sizes, key=group_sizes.get)
+
+                    st = models.SeasonTeam(
+                        season_id=season.id,
+                        team_id=user_data.team_id,
+                        group_id=smallest_group_id
+                    )
+                    db.add(st)
+                    db.commit()
 
     # Team-Name joinen
     team_name = None
