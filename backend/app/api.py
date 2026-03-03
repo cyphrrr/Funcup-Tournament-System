@@ -1,4 +1,5 @@
 import math
+import time
 import uuid
 from datetime import datetime
 from typing import Optional
@@ -95,10 +96,24 @@ def update_season(season_id: int, update: schemas.SeasonUpdate, db: Session = De
     if not season:
         raise HTTPException(status_code=404, detail="Season not found")
 
-    if update.name is not None:
-        season.name = update.name
-    if update.status is not None:
+    if update.status is not None and update.status != season.status:
+        valid_transitions = {
+            "planned": ["active"],
+            "active": ["archived"],
+            "archived": []
+        }
+        allowed = valid_transitions.get(season.status, [])
+        if update.status not in allowed:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Ungültiger Status-Übergang: '{season.status}' → '{update.status}'. Erlaubt: {allowed}"
+            )
         season.status = update.status
+
+    if update.name is not None:
+        if season.status == "archived":
+            raise HTTPException(status_code=400, detail="Archivierte Saisons können nicht bearbeitet werden")
+        season.name = update.name
 
     db.commit()
     db.refresh(season)
@@ -118,7 +133,10 @@ def delete_season(season_id: int, db: Session = Depends(get_db), _: str = Depend
     # 1. KO-Matches löschen
     db.query(models.KOMatch).filter(models.KOMatch.season_id == season_id).delete()
 
-    # 2. Matches löschen
+    # 2. KO-Brackets löschen
+    db.query(models.KOBracket).filter(models.KOBracket.season_id == season_id).delete()
+
+    # 3. Matches löschen
     db.query(models.Match).filter(models.Match.season_id == season_id).delete()
 
     # 3. SeasonTeams löschen
@@ -1928,7 +1946,15 @@ import secrets
 discord_oauth = DiscordOAuth2Client()
 
 # State Storage (in Production: Redis verwenden!)
-oauth_states = {}
+oauth_states = {}  # {state: timestamp}
+OAUTH_STATE_TTL = 600  # 10 Minuten
+
+def _cleanup_oauth_states():
+    """Entfernt abgelaufene OAuth States."""
+    now = time.time()
+    expired = [k for k, v in oauth_states.items() if now - v > OAUTH_STATE_TTL]
+    for k in expired:
+        del oauth_states[k]
 
 
 @router.get("/auth/discord/login")
@@ -1939,7 +1965,8 @@ def discord_login():
     """
     # CSRF State Token generieren
     state = secrets.token_urlsafe(32)
-    oauth_states[state] = True  # Markiere State als gültig
+    _cleanup_oauth_states()
+    oauth_states[state] = time.time()
     
     # Authorization URL generieren
     auth_url = discord_oauth.get_authorization_url(state)
@@ -1958,6 +1985,7 @@ async def discord_callback(
     Tauscht Authorization Code gegen Access Token und erstellt/updated User.
     """
     # State validieren (CSRF Protection)
+    _cleanup_oauth_states()
     if state not in oauth_states:
         raise HTTPException(status_code=400, detail="Ungültiger State (CSRF)")
     
@@ -2324,7 +2352,7 @@ def _get_round_name(round_num: int, total_rounds: int) -> str:
 @router.patch("/ko-matches/{match_id}")
 def update_ko_match_result(
     match_id: int,
-    update: dict,
+    update: schemas.KOMatchResultUpdate,
     db: Session = Depends(get_db),
     _: str = Depends(get_current_user)
 ):
@@ -2357,22 +2385,9 @@ def update_ko_match_result(
     if match.is_bye == 1:
         raise HTTPException(status_code=400, detail="Freilos-Matches können nicht aktualisiert werden")
 
-    # Validierung
-    home_goals = update.get("home_goals")
-    away_goals = update.get("away_goals")
-    winner_id = update.get("winner_id")
-
-    if home_goals is None or away_goals is None:
-        raise HTTPException(
-            status_code=400,
-            detail="home_goals und away_goals sind erforderlich"
-        )
-
-    if home_goals < 0 or away_goals < 0:
-        raise HTTPException(
-            status_code=400,
-            detail="Tore müssen >= 0 sein"
-        )
+    home_goals = update.home_goals
+    away_goals = update.away_goals
+    winner_id = update.winner_id
 
     # Tiebreaker-Tracking
     tiebreaker_used = False
@@ -2613,7 +2628,7 @@ def reset_ko_brackets(
 @router.post("/seasons/{season_id}/ko-brackets/create-empty", status_code=201)
 def create_empty_bracket(
     season_id: int,
-    body: dict,
+    body: schemas.KOBracketCreate,
     db: Session = Depends(get_db),
     _: str = Depends(get_current_user)
 ):
@@ -2624,15 +2639,8 @@ def create_empty_bracket(
         bracket_type: "meister" | "lucky_loser" | "loser"
         team_count: 2, 4, 8, 16, 32
     """
-    bracket_type = body.get("bracket_type")
-    team_count = body.get("team_count")
-
-    if bracket_type not in ("meister", "lucky_loser", "loser"):
-        raise HTTPException(status_code=400, detail="bracket_type muss 'meister', 'lucky_loser' oder 'loser' sein")
-
-    valid_counts = [2, 4, 8, 16, 32]
-    if team_count not in valid_counts:
-        raise HTTPException(status_code=400, detail=f"team_count muss einer von {valid_counts} sein")
+    bracket_type = body.bracket_type
+    team_count = body.team_count
 
     # Prüfe ob Bracket dieses Typs bereits existiert
     existing = db.query(models.KOBracket).filter(
@@ -2698,16 +2706,13 @@ def create_empty_bracket(
 @router.patch("/ko-matches/{match_id}/set-team")
 def set_ko_match_team(
     match_id: int,
-    body: dict,
+    body: schemas.KOMatchSetTeam,
     db: Session = Depends(get_db),
     _: str = Depends(get_current_user)
 ):
     """Setzt ein Team in einen Home- oder Away-Slot eines KO-Matches."""
-    slot = body.get("slot")
-    team_id = body.get("team_id")
-
-    if slot not in ("home", "away"):
-        raise HTTPException(status_code=400, detail="slot muss 'home' oder 'away' sein")
+    slot = body.slot
+    team_id = body.team_id
 
     match = db.query(models.KOMatch).filter(models.KOMatch.id == match_id).first()
     if not match:
@@ -2753,14 +2758,12 @@ def set_ko_match_team(
 @router.patch("/ko-matches/{match_id}/set-bye")
 def set_ko_match_bye(
     match_id: int,
-    body: dict,
+    body: schemas.KOMatchSetBye,
     db: Session = Depends(get_db),
     _: str = Depends(get_current_user)
 ):
     """Markiert ein KO-Match als Freilos und leitet Team in nächste Runde weiter."""
-    team_id = body.get("team_id")
-    if not team_id:
-        raise HTTPException(status_code=400, detail="team_id ist erforderlich")
+    team_id = body.team_id
 
     match = db.query(models.KOMatch).filter(models.KOMatch.id == match_id).first()
     if not match:
