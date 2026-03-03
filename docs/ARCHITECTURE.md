@@ -34,14 +34,26 @@ Kein CMS. Keine Plugins. Keine implizite Logik.
 ### Schnittstelle zum Backend
 - **REST API** (HTTP)
 - n8n schreibt **niemals direkt** in die Datenbank
+- Authentifizierung via `X-API-Key` Header
 
-**Beispiel:**
+**Endpoints:**
 ```
 POST /api/matches/import          # Bulk-Import mit Swap-Erkennung + Filterung
 POST /api/matchdays/complete
 POST /api/posts
 GET  /api/exports/matchday/{id}
 ```
+
+### Ergebnis‑Import (Hauptworkflow)
+
+```
+onlineliga.de → n8n (Scrape) → Aggregate → POST /api/matches/import → Backend
+```
+
+n8n sammelt Rohdaten und sendet sie als Array. Das **Backend** übernimmt:
+- Team‑Auflösung (Name → ID, case‑insensitive)
+- Swap‑Erkennung (vertauschte Heim/Gast aus Ingame‑Friendlies)
+- Filterung (unbekannte Teams, fehlende Paarungen, Duplikate)
 
 ---
 

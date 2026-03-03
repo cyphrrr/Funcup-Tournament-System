@@ -261,3 +261,43 @@ Typische n8n-Workflows:
 - Matchday-Abschluss-Erkennung
 - Auto-Exports (CSV/XLSX/JSON)
 - Discord-Webhooks
+
+### Ergebnis-Import Flow (n8n → Backend)
+
+**Node-Kette:** Scrape/Fetch → Aggregate → HTTP Request
+
+1. **Vorherige Node** liefert einzelne Items mit Feldern: `Heim`, `Gast`, `Heimtore`, `Gasttore`, `Saison`, `Spieltag`
+2. **Aggregate Node** (Transform Data): Bündelt alle Items zu einem Array
+   - Operation: `Aggregate All Item Data`
+   - Output Field Name: `payload`
+3. **HTTP Request Node**:
+   - Method: `POST`
+   - URL: `https://beta.biw-pokal.de/api/matches/import`
+   - Header: `X-API-Key` = API-Key
+   - Body: JSON → `={{ $json.payload }}`
+
+**Input-Format** (JSON Array):
+```json
+[{
+  "Heim": "VFB_Münster",
+  "Gast": "FC Honda",
+  "Heimtore": "2",
+  "Gasttore": "0",
+  "Saison": "test",
+  "Spieltag": "SP2"
+}]
+```
+
+**Response-Format**:
+```json
+{
+  "imported": 15,
+  "skipped": 5,
+  "swapped": 2,
+  "errors": [
+    {"heim": "Fronx Finest", "gast": "Grootmania", "reason": "no_match"}
+  ]
+}
+```
+
+**Skip-Gründe**: `not_found` (Team unbekannt), `no_match` (Paarung nicht im Spielplan), `already_played` (bereits eingetragen)
