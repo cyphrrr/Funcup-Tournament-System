@@ -150,6 +150,10 @@ POST /api/news                               # Artikel erstellen
 GET  /api/news                               # Alle Artikel (default: nur published)
 PATCH /api/news/{id}                         # Artikel aktualisieren
 DELETE /api/news/{id}                        # Artikel löschen
+
+# Traffic Stats
+POST /api/track                              # Page View tracken (öffentlich, kein Auth)
+GET  /api/admin/stats?days=7                 # Besucherstatistiken (Auth erforderlich)
 ```
 
 ## Wichtige Code-Patterns

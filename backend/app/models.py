@@ -156,3 +156,12 @@ class UserProfile(Base):
 
     # Relationship zu Team (optional)
     team = relationship("Team", backref="user_profile", foreign_keys=[team_id])
+
+
+class PageView(Base):
+    __tablename__ = "page_views"
+    id = Column(Integer, primary_key=True, index=True)
+    path = Column(String, nullable=False)
+    visitor_id = Column(String, nullable=False, index=True)
+    timestamp = Column(DateTime(timezone=True), server_default=func.now())
+    referrer = Column(String, nullable=True)

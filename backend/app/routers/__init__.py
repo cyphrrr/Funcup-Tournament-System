@@ -9,6 +9,7 @@ from .users import router as users_router
 from .admin import router as admin_router
 from .oauth import router as oauth_router
 from .uploads import router as uploads_router
+from .tracking import router as tracking_router
 from ..services.standings import router as standings_router
 
 router = APIRouter()
@@ -26,4 +27,5 @@ router.include_router(users_router)
 router.include_router(admin_router)
 router.include_router(oauth_router)
 router.include_router(uploads_router)
+router.include_router(tracking_router)
 router.include_router(standings_router)
