@@ -546,6 +546,7 @@ tr.row-inactive td:first-child   { border-left:3px solid #d1d5db; }
         <!-- Tab Navigation -->
         <div class="tabs" style="margin-bottom:1.5rem">
           <button class="tab active" data-tab="tab-participants" onclick="showSetupTab('tab-participants')">👥 Teilnehmer</button>
+          <button class="tab" data-tab="tab-register" onclick="showSetupTab('tab-register')">➕ Registrieren</button>
           <button class="tab" data-tab="tab-draw" onclick="showSetupTab('tab-draw')">🎲 Auslosung</button>
           <button class="tab" data-tab="tab-schedule" onclick="showSetupTab('tab-schedule')">📋 Spielplan</button>
           <button class="tab" data-tab="tab-import" onclick="showSetupTab('tab-import')">📥 Ergebnis-Import</button>
@@ -570,6 +571,47 @@ tr.row-inactive td:first-child   { border-left:3px solid #d1d5db; }
                 </tbody>
               </table>
             </div>
+          </div>
+        </div>
+
+        <!-- Tab: Registrieren (im Setup) -->
+        <div id="tab-register" class="setup-tab" style="display:none">
+          <div class="card">
+            <h2>➕ Teilnehmer registrieren</h2>
+            <form id="setup-register-form" style="display:contents">
+              <div class="form-group">
+                <label>Team <span style="color:red">*</span></label>
+                <input type="text" id="setup-reg-team-search" placeholder="Teamname suchen…" autocomplete="off" oninput="searchSetupRegTeams()">
+                <input type="hidden" id="setup-reg-team-id">
+                <div id="setup-reg-team-suggestions" style="max-height:150px;overflow-y:auto;margin-top:4px"></div>
+              </div>
+
+              <div class="form-group">
+                <label>Discord Username <span style="color:var(--text-muted)">(optional)</span></label>
+                <input type="text" id="setup-reg-discord-username" placeholder="z.B. cyphrrr">
+              </div>
+
+              <div class="form-group">
+                <label>Discord ID <span style="color:var(--text-muted)">(optional)</span></label>
+                <input type="text" id="setup-reg-discord-id" placeholder="18-stellige ID, z.B. 272170332125659137">
+                <small style="color:var(--text-muted)">Nur nötig wenn der User auch den Discord Bot nutzen soll.</small>
+              </div>
+
+              <div class="form-group">
+                <label>Profil-URL <span style="color:var(--text-muted)">(optional)</span></label>
+                <input type="url" id="setup-reg-profile-url" placeholder="https://www.onlineliga.de/...">
+              </div>
+
+              <div class="form-group">
+                <label>
+                  <input type="checkbox" id="setup-reg-participating" checked>
+                  Für aktive Saison anmelden
+                </label>
+              </div>
+
+              <button type="button" onclick="submitSetupRegistration()" class="btn btn-primary" style="margin-top:12px">Teilnehmer registrieren</button>
+            </form>
+            <div id="setup-register-result" style="margin-top:12px"></div>
           </div>
         </div>
 

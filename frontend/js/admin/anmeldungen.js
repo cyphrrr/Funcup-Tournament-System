@@ -244,6 +244,66 @@ async function searchRegTeams() {
   }
 }
 
+async function searchSetupRegTeams() {
+  const q = document.getElementById('setup-reg-team-search').value.trim();
+  if (q.length < 2) {
+    document.getElementById('setup-reg-team-suggestions').innerHTML = '';
+    return;
+  }
+  try {
+    const teams = await fetchAPI(`/teams/search?name=${encodeURIComponent(q)}`);
+    const results = document.getElementById('setup-reg-team-suggestions');
+    results.innerHTML = '';
+    teams.forEach(t => {
+      const div = document.createElement('div');
+      div.style.cssText = 'padding:8px;cursor:pointer;border-bottom:1px solid #e5e7eb';
+      div.textContent = t.name;
+      div.onmouseover = () => div.style.background = '#f3f4f6';
+      div.onmouseout = () => div.style.background = '';
+      div.onclick = () => {
+        document.getElementById('setup-reg-team-search').value = t.name;
+        document.getElementById('setup-reg-team-id').value = t.id;
+        results.innerHTML = '';
+      };
+      results.appendChild(div);
+    });
+    if (!teams.length) results.innerHTML = '<div style="padding:8px;color:#aaaabc">Keine Teams gefunden</div>';
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+async function submitSetupRegistration() {
+  const teamId = document.getElementById('setup-reg-team-id').value;
+  if (!teamId) {
+    toast('Bitte ein Team auswählen', 'warning');
+    return;
+  }
+
+  const payload = {
+    team_id: parseInt(teamId),
+    discord_username: document.getElementById('setup-reg-discord-username').value || null,
+    discord_id: document.getElementById('setup-reg-discord-id').value || null,
+    profile_url: document.getElementById('setup-reg-profile-url').value || null,
+    participating_next: document.getElementById('setup-reg-participating').checked
+  };
+
+  try {
+    await authFetch(`${API_URL}/api/discord/users/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    toast('Teilnehmer registriert ✅', 'success');
+    document.getElementById('setup-register-form').reset();
+    document.getElementById('setup-reg-team-id').value = '';
+    document.getElementById('setup-reg-team-suggestions').innerHTML = '';
+    loadParticipants();
+  } catch (e) {
+    toast('Fehler: ' + (e.message || e), 'error');
+  }
+}
+
 async function submitRegistration() {
   const teamId = document.getElementById('reg-team-id').value;
   if (!teamId) {
