@@ -83,6 +83,7 @@ services:
       - DISCORD_GUILD_ID=${DISCORD_GUILD_ID}
       - BACKEND_URL=http://backend:8000
       - DASHBOARD_URL=${DASHBOARD_URL:-https://biw-pokal.de}
+      - API_KEY=${API_KEY:-biw-n8n-secret-key-change-me}
     depends_on:
       backend:
         condition: service_healthy
