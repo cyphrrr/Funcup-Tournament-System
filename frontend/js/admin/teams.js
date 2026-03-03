@@ -4,7 +4,7 @@ let allTeamsData = [];
 
 async function loadAllTeams() {
   const tbody = document.getElementById('teams-list');
-  tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted)">Lade...</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-muted)">Lade...</td></tr>';
 
   try {
     const res = await fetch(`${API_URL}/api/teams`);
@@ -28,14 +28,14 @@ function renderTeamsList(teams) {
   const tbody = document.getElementById('teams-list');
 
   if (!teams.length) {
-    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted)">Keine Teams gefunden</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-muted)">Keine Teams gefunden</td></tr>';
     return;
   }
 
   tbody.innerHTML = teams.map(t => {
     const discord = t.discord_user
       ? t.discord_user.discord_username || t.discord_user.discord_id
-      : '<span style="color:var(--muted)">–</span>';
+      : '<span style="color:var(--text-muted)">–</span>';
 
     const seasonCount = t.seasons.length;
     const seasonBadge = seasonCount > 0
@@ -44,7 +44,7 @@ function renderTeamsList(teams) {
 
     const seasonDetails = t.seasons.length ? `
       <tr id="team-seasons-${t.id}" style="display:none">
-        <td colspan="4" style="padding:.5rem 1rem;background:var(--accent)">
+        <td colspan="4" style="padding:.5rem 1rem;background:var(--bg-elevated)">
           <div style="display:flex;flex-wrap:wrap;gap:.5rem">
             ${t.seasons.map(s => {
               const statusColors = { planned: '#1e40af', active: '#166534', archived: '#888' };

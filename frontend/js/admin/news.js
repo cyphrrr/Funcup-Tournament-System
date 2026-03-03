@@ -5,7 +5,7 @@ async function loadNews() {
     const news = await fetch(`${API_URL}/api/news?published_only=false`).then(r => r.json());
 
     if (news.length === 0) {
-      document.getElementById('news-list').innerHTML = '<em style="color:var(--muted)">Noch keine Artikel vorhanden</em>';
+      document.getElementById('news-list').innerHTML = '<em style="color:var(--text-muted)">Noch keine Artikel vorhanden</em>';
       return;
     }
 
@@ -13,7 +13,7 @@ async function loadNews() {
 
     news.forEach(n => {
       const date = new Date(n.created_at).toLocaleDateString('de-DE');
-      const status = n.published ? '<span style="color:var(--success)">✓ Online</span>' : '<span style="color:var(--muted)">Entwurf</span>';
+      const status = n.published ? '<span style="color:var(--success)">✓ Online</span>' : '<span style="color:var(--text-muted)">Entwurf</span>';
       html += `
         <tr>
           <td><strong>${escapeHtml(n.title)}</strong></td>

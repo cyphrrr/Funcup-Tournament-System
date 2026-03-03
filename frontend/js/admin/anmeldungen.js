@@ -23,7 +23,7 @@ async function loadAnmeldungen() {
 function renderAnmeldungenTable(users) {
   const tbody = document.getElementById('anm-aktive-saison-tbody');
   if (!users.length) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted)">Keine Teilnehmer mit aktivem Dabei-Status</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted)">Keine Teilnehmer mit aktivem Dabei-Status</td></tr>';
     return;
   }
 
@@ -159,7 +159,7 @@ async function loadAlleDiscordUser() {
     tbody.innerHTML = '';
 
     if (!users.length) {
-      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted)">Keine User</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted)">Keine User</td></tr>';
       return;
     }
 
@@ -172,7 +172,7 @@ async function loadAlleDiscordUser() {
         <td>
           <input type="checkbox" class="participation-checkbox" ${user.participating_next ? 'checked' : ''} onchange="toggleParticipation('${user.discord_id}', this.checked)">
         </td>
-        <td style="color:var(--muted);font-size:.85rem">${user.created_at ? new Date(user.created_at).toLocaleDateString('de-DE') : '—'}</td>
+        <td style="color:var(--text-muted);font-size:.85rem">${user.created_at ? new Date(user.created_at).toLocaleDateString('de-DE') : '—'}</td>
         <td style="text-align:right">
           <button class="btn btn-sm" onclick="openTeamAssignModal('${user.discord_id}')" title="Team zuweisen">🔗 Team</button>
         </td>

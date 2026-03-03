@@ -38,7 +38,7 @@ async function searchTeamsForModal() {
   const resultsDiv = document.getElementById('team-search-results');
 
   if (query.length < 2) {
-    resultsDiv.innerHTML = '<p style="color:var(--muted);text-align:center;padding:1rem">Mindestens 2 Zeichen eingeben...</p>';
+    resultsDiv.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:1rem">Mindestens 2 Zeichen eingeben...</p>';
     return;
   }
 
@@ -46,16 +46,16 @@ async function searchTeamsForModal() {
     const teams = await authFetch(`${API_URL}/api/teams/search?name=${encodeURIComponent(query)}`).then(r => r.json());
 
     if (teams.length === 0) {
-      resultsDiv.innerHTML = '<p style="color:var(--muted);text-align:center;padding:1rem">Keine Teams gefunden</p>';
+      resultsDiv.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:1rem">Keine Teams gefunden</p>';
       return;
     }
 
     resultsDiv.innerHTML = teams.map(team => `
-      <div style="padding:.75rem;border:1px solid var(--border);border-radius:6px;margin-bottom:.5rem;cursor:pointer;background:var(--card)"
+      <div style="padding:.75rem;border:1px solid var(--border-dark);border-radius:6px;margin-bottom:.5rem;cursor:pointer;background:var(--bg-section)"
            data-team-id="${team.id}" data-team-name="${escapeHtml(team.name)}"
            onclick="assignTeamLegacy(+this.dataset.teamId, this.dataset.teamName)">
         <strong>${escapeHtml(team.name)}</strong>
-        <small style="color:var(--muted);display:block">ID: ${team.id}</small>
+        <small style="color:var(--text-muted);display:block">ID: ${team.id}</small>
       </div>
     `).join('');
   } catch (e) {

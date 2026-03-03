@@ -80,7 +80,7 @@ function renderParticipantsList(teams, selectedIds) {
   countEl.textContent = `${selected} von ${teams.length} Teams ausgewählt`;
 
   if (!teams.length) {
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted)">Keine Teams gefunden</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted)">Keine Teams gefunden</td></tr>';
     return;
   }
 
@@ -93,7 +93,7 @@ function renderParticipantsList(teams, selectedIds) {
     const checked = selectedIds.has(t.id) ? 'checked' : '';
     const discord = t.discord_user
       ? t.discord_user.discord_username || t.discord_user.discord_id
-      : '<span style="color:var(--muted)">–</span>';
+      : '<span style="color:var(--text-muted)">–</span>';
 
     let status, statusStyle;
     if (t.discord_user && selectedIds.has(t.id)) {
@@ -104,7 +104,7 @@ function renderParticipantsList(teams, selectedIds) {
       statusStyle = 'color:var(--warning);font-weight:600';
     } else {
       status = '–';
-      statusStyle = 'color:var(--muted)';
+      statusStyle = 'color:var(--text-muted)';
     }
 
     // Setzplatz-Dropdown
@@ -322,11 +322,11 @@ function previewDraw() {
 function renderDrawResult() {
   const grid = document.getElementById('draw-result-grid');
   grid.innerHTML = setupState.drawGroups.map(g => `
-    <div style="background:var(--accent);border-radius:8px;padding:.75rem;border:1px solid var(--border)">
+    <div style="background:var(--bg-elevated);border-radius:8px;padding:.75rem;border:1px solid var(--border-dark)">
       <strong style="font-size:1rem;color:var(--primary)">Gruppe ${g.name}</strong>
       <div style="margin-top:.5rem">
-        ${g.teams.map(t => `<div style="padding:.25rem 0;font-size:.85rem;border-bottom:1px solid var(--border)">${t.team_name}</div>`).join('')}
-        ${g.teams.length === 0 ? '<em style="color:var(--muted);font-size:.8rem">Leer</em>' : ''}
+        ${g.teams.map(t => `<div style="padding:.25rem 0;font-size:.85rem;border-bottom:1px solid var(--border-dark)">${t.team_name}</div>`).join('')}
+        ${g.teams.length === 0 ? '<em style="color:var(--text-muted);font-size:.8rem">Leer</em>' : ''}
       </div>
     </div>
   `).join('');
@@ -420,14 +420,14 @@ async function loadScheduleForSeason() {
   const container = document.getElementById('schedule-groups-list');
   if (!seasonId) { container.innerHTML = ''; return; }
 
-  container.innerHTML = '<div style="text-align:center;color:var(--muted);padding:2rem">Lade...</div>';
+  container.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:2rem">Lade...</div>';
 
   try {
     const res = await authFetch(`${API_URL}/api/seasons/${seasonId}/groups-with-teams`);
     const groups = await res.json();
 
     if (!groups.length) {
-      container.innerHTML = '<div style="text-align:center;color:var(--muted);padding:2rem">Keine Gruppen gefunden</div>';
+      container.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:2rem">Keine Gruppen gefunden</div>';
       return;
     }
 
@@ -444,13 +444,13 @@ async function loadScheduleForSeason() {
               <td>${m.away_team_name || m.away_team_id}</td>
               <td><span class="match-status ${m.status}">${m.status === 'played' ? '✅' : '🕐'}</span></td>
             </tr>`).join('')
-        : '<tr><td colspan="5" style="color:var(--muted)">Kein Spielplan vorhanden</td></tr>';
+        : '<tr><td colspan="5" style="color:var(--text-muted)">Kein Spielplan vorhanden</td></tr>';
 
       return `
         <div class="card">
           <h2>Gruppe ${g.name}</h2>
           <div style="margin-bottom:.75rem;display:flex;gap:.5rem;flex-wrap:wrap">
-            ${(g.teams || []).map(t => `<span style="background:var(--accent);padding:.2rem .6rem;border-radius:4px;font-size:.85rem">${t.name}</span>`).join('')}
+            ${(g.teams || []).map(t => `<span style="background:var(--bg-elevated);padding:.2rem .6rem;border-radius:4px;font-size:.85rem">${t.name}</span>`).join('')}
           </div>
           <table>
             <thead><tr><th>ST</th><th style="text-align:right">Heim</th><th style="text-align:center">Ergebnis</th><th>Gast</th><th>Status</th></tr></thead>

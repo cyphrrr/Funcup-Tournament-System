@@ -47,7 +47,7 @@ async function loadKOStatus() {
       <div class="stat-label">Gruppen abgeschlossen</div>
     </div>`;
     html += `<div class="stat" style="flex:1;min-width:150px">
-      <div class="stat-value" style="font-size:1.2rem;color:${status.brackets_generated ? 'var(--success)' : 'var(--muted)'}">
+      <div class="stat-value" style="font-size:1.2rem;color:${status.brackets_generated ? 'var(--success)' : 'var(--text-muted)'}">
         ${status.brackets_generated ? 'Ja' : 'Nein'}
       </div>
       <div class="stat-label">Brackets generiert</div>
@@ -239,7 +239,7 @@ function renderKOBracket() {
         html += `<div class="ko-admin-match bye">
           <div style="display:flex;justify-content:space-between;align-items:center">
             <span>${teamName} – Freilos</span>
-            <span style="font-size:.7rem;color:var(--muted)">ID: ${m.match_id}</span>
+            <span style="font-size:.7rem;color:var(--text-muted)">ID: ${m.match_id}</span>
           </div>
         </div>`;
         return;
@@ -255,7 +255,7 @@ function renderKOBracket() {
         html += `<div class="ko-admin-match pending" style="opacity:.5">
           <div style="display:flex;justify-content:space-between;align-items:center">
             <span>? vs ?</span>
-            <span style="font-size:.7rem;color:var(--muted)">ID: ${m.match_id}</span>
+            <span style="font-size:.7rem;color:var(--text-muted)">ID: ${m.match_id}</span>
           </div>`;
 
         const availableTeams = koSeasonTeams.filter(t => !assignedTeamIds.has(t.id));
@@ -285,7 +285,7 @@ function renderKOBracket() {
           ${m.winner_id ? `<span style="font-size:.7rem;color:var(--success);margin-left:.25rem">✓</span>` : ''}
         </div>
         <div style="display:flex;gap:.25rem;align-items:center">
-          <span style="font-size:.7rem;color:var(--muted)">ID: ${m.match_id}</span>
+          <span style="font-size:.7rem;color:var(--text-muted)">ID: ${m.match_id}</span>
           ${hasBothTeams && !hasResult ? `<button class="btn btn-sm btn-secondary" onclick="editKOMatch(${m.match_id})">Bearbeiten</button>` : ''}
         </div>
       </div>`;

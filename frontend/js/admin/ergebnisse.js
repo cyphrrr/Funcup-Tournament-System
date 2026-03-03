@@ -68,7 +68,7 @@ async function loadGroupMatches(seasonId, container) {
             </div>
             <div style="display:flex;gap:.5rem;align-items:center">
               ${matchdayLabel ? `<span style="font-size:.75rem;color:var(--primary);font-weight:600" title="Spieltag">${matchdayLabel}</span>` : ''}
-              <span style="font-size:.75rem;color:var(--muted)" title="Match-ID für News">ID: ${m.id}</span>
+              <span style="font-size:.75rem;color:var(--text-muted)" title="Match-ID für News">ID: ${m.id}</span>
               <span class="match-status ${m.status}">${m.status}</span>
             </div>
           </div>
