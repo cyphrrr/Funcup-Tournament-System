@@ -115,7 +115,7 @@ def generate_round_robin(db: Session, group_id: int, season_id: int, start_week:
 
 
 @router.post("/groups/{group_id}/generate-schedule")
-def generate_group_schedule(group_id: int, start_week: int | None = None, db: Session = Depends(get_db), _: str = Depends(get_current_user)):
+def generate_group_schedule(group_id: int, start_week: int = 39, db: Session = Depends(get_db), _: str = Depends(get_current_user)):
     """
     Generiert einen vollständigen Gruppen-Spielplan (Round-Robin) mit Spieltagen.
     Verwendet Circle-Methode für gleichmäßige Spieltag-Verteilung.
