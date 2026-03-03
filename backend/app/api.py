@@ -193,14 +193,27 @@ def get_team_detail(team_id: int, db: Session = Depends(get_db)):
         (models.KOMatch.home_team_id == team_id) | (models.KOMatch.away_team_id == team_id)
     ).order_by(models.KOMatch.id.desc()).all()
 
+    # Pre-load all referenced teams and seasons to avoid N+1 queries
+    _team_ids = set()
+    _season_ids = set()
+    for m in group_matches:
+        _team_ids.update([m.home_team_id, m.away_team_id])
+        _season_ids.add(m.season_id)
+    for m in ko_matches:
+        if m.home_team_id: _team_ids.add(m.home_team_id)
+        if m.away_team_id: _team_ids.add(m.away_team_id)
+        _season_ids.add(m.season_id)
+    teams_map = {t.id: t for t in db.query(models.Team).filter(models.Team.id.in_(_team_ids)).all()} if _team_ids else {}
+    seasons_map = {s.id: s for s in db.query(models.Season).filter(models.Season.id.in_(_season_ids)).all()} if _season_ids else {}
+
     # Kombinieren und sortieren
     all_matches = []
 
     for m in group_matches:
         is_home = m.home_team_id == team_id
         opponent_id = m.away_team_id if is_home else m.home_team_id
-        opponent = db.query(models.Team).filter(models.Team.id == opponent_id).first()
-        season = db.query(models.Season).filter(models.Season.id == m.season_id).first()
+        opponent = teams_map.get(opponent_id)
+        season = seasons_map.get(m.season_id)
 
         own_goals = m.home_goals if is_home else m.away_goals
         opp_goals = m.away_goals if is_home else m.home_goals
@@ -231,8 +244,8 @@ def get_team_detail(team_id: int, db: Session = Depends(get_db)):
             is_home = m.home_team_id == team_id
             opponent_id = m.away_team_id if is_home else m.home_team_id
             if opponent_id:
-                opponent = db.query(models.Team).filter(models.Team.id == opponent_id).first()
-                season = db.query(models.Season).filter(models.Season.id == m.season_id).first()
+                opponent = teams_map.get(opponent_id)
+                season = seasons_map.get(m.season_id)
 
                 own_goals = m.home_goals if is_home else m.away_goals
                 opp_goals = m.away_goals if is_home else m.home_goals
@@ -358,6 +371,9 @@ def bulk_add_teams(season_id: int, payload: schemas.BulkTeamCreate, db: Session 
     if not groups:
         raise HTTPException(status_code=400, detail="No groups for season")
 
+    # Pre-load group counts into memory to avoid re-querying each iteration
+    counts = {g.id: db.query(models.SeasonTeam).filter(models.SeasonTeam.group_id == g.id).count() for g in groups}
+
     created = []
     for name in payload.teams:
         # Prüfen, ob Team mit diesem Namen bereits existiert
@@ -370,22 +386,23 @@ def bulk_add_teams(season_id: int, payload: schemas.BulkTeamCreate, db: Session 
             # Neues Team erstellen
             t = models.Team(name=name)
             db.add(t)
-            db.commit()
-            db.refresh(t)
+            db.flush()
 
         existing_st = db.query(models.SeasonTeam).filter_by(season_id=season_id, team_id=t.id).first()
         if existing_st:
             continue  # Skip duplicates silently in bulk mode
 
-        counts = {g.id: db.query(models.SeasonTeam).filter(models.SeasonTeam.group_id == g.id).count() for g in groups}
         target_group_id = min(counts, key=counts.get)
 
         st = models.SeasonTeam(season_id=season_id, team_id=t.id, group_id=target_group_id)
         db.add(st)
-        db.commit()
+
+        # Update in-memory counter
+        counts[target_group_id] += 1
 
         created.append({"id": t.id, "name": t.name, "group_id": target_group_id})
 
+    db.commit()
     return {
         "created": created,
         "count": len(created)
@@ -1012,117 +1029,88 @@ def get_all_time_standings(db: Session = Depends(get_db)):
     Berücksichtigt sowohl Gruppenphase als auch KO-Phase Spiele.
     Gruppiert nach Team-Namen (wegen historischer Duplikate).
     """
-    # Alle Teams holen
-    teams = db.query(models.Team).all()
+    # Bulk: Alle gespielten Matches laden (2 Queries statt 4*N)
+    all_matches = db.query(models.Match).filter(models.Match.status == "played").all()
+    all_ko = db.query(models.KOMatch).filter(
+        models.KOMatch.status == "played",
+        models.KOMatch.is_bye == False
+    ).all()
 
-    # Nach Team-Namen gruppieren (wegen Duplikaten aus Saison-Importen)
-    team_stats = {}  # team_name -> stats dict
+    # Alle Teams laden für Name-Mapping
+    teams = {t.id: t.name for t in db.query(models.Team).all()}
 
-    for team in teams:
-        if team.name not in team_stats:
-            team_stats[team.name] = {
-                "team_id": team.id,  # Erste gefundene ID verwenden
-                "team_name": team.name,
-                "played": 0,
-                "won": 0,
-                "draw": 0,
-                "lost": 0,
-                "goals_for": 0,
-                "goals_against": 0,
-                "points": 0
+    # Stats pro Team-Name aggregieren (wegen historischer Duplikate)
+    team_stats = {}
+
+    def ensure_stats(team_id):
+        name = teams.get(team_id, "?")
+        if name not in team_stats:
+            team_stats[name] = {
+                "team_id": team_id,
+                "team_name": name,
+                "played": 0, "won": 0, "draw": 0, "lost": 0,
+                "goals_for": 0, "goals_against": 0, "points": 0
             }
+        return team_stats[name]
 
-        stats = team_stats[team.name]
+    # Gruppenphase aggregieren
+    for m in all_matches:
+        if m.home_goals is None or m.away_goals is None:
+            continue
+        # Home
+        s = ensure_stats(m.home_team_id)
+        s["played"] += 1
+        s["goals_for"] += m.home_goals
+        s["goals_against"] += m.away_goals
+        if m.home_goals > m.away_goals:
+            s["won"] += 1; s["points"] += 3
+        elif m.home_goals == m.away_goals:
+            s["draw"] += 1; s["points"] += 1
+        else:
+            s["lost"] += 1
 
-        # Gruppenphase-Matches (als Heim-Team)
-        home_matches = db.query(models.Match).filter(
-            models.Match.home_team_id == team.id,
-            models.Match.status == "played"
-        ).all()
+        # Away
+        s = ensure_stats(m.away_team_id)
+        s["played"] += 1
+        s["goals_for"] += m.away_goals
+        s["goals_against"] += m.home_goals
+        if m.away_goals > m.home_goals:
+            s["won"] += 1; s["points"] += 3
+        elif m.away_goals == m.home_goals:
+            s["draw"] += 1; s["points"] += 1
+        else:
+            s["lost"] += 1
 
-        for match in home_matches:
-            stats["played"] += 1
-            stats["goals_for"] += match.home_goals
-            stats["goals_against"] += match.away_goals
+    # KO-Phase aggregieren
+    for m in all_ko:
+        if m.home_goals is None or m.away_goals is None:
+            continue
+        # Home
+        s = ensure_stats(m.home_team_id)
+        s["played"] += 1
+        s["goals_for"] += m.home_goals
+        s["goals_against"] += m.away_goals
+        if m.home_goals > m.away_goals:
+            s["won"] += 1; s["points"] += 3
+        else:
+            s["lost"] += 1
 
-            if match.home_goals > match.away_goals:
-                stats["won"] += 1
-                stats["points"] += 3
-            elif match.home_goals == match.away_goals:
-                stats["draw"] += 1
-                stats["points"] += 1
-            else:
-                stats["lost"] += 1
+        # Away
+        s = ensure_stats(m.away_team_id)
+        s["played"] += 1
+        s["goals_for"] += m.away_goals
+        s["goals_against"] += m.home_goals
+        if m.away_goals > m.home_goals:
+            s["won"] += 1; s["points"] += 3
+        else:
+            s["lost"] += 1
 
-        # Gruppenphase-Matches (als Auswärts-Team)
-        away_matches = db.query(models.Match).filter(
-            models.Match.away_team_id == team.id,
-            models.Match.status == "played"
-        ).all()
-
-        for match in away_matches:
-            stats["played"] += 1
-            stats["goals_for"] += match.away_goals
-            stats["goals_against"] += match.home_goals
-
-            if match.away_goals > match.home_goals:
-                stats["won"] += 1
-                stats["points"] += 3
-            elif match.away_goals == match.home_goals:
-                stats["draw"] += 1
-                stats["points"] += 1
-            else:
-                stats["lost"] += 1
-
-        # KO-Phase-Matches (als Heim-Team)
-        ko_home_matches = db.query(models.KOMatch).filter(
-            models.KOMatch.home_team_id == team.id,
-            models.KOMatch.status == "played",
-            models.KOMatch.is_bye == False
-        ).all()
-
-        for match in ko_home_matches:
-            stats["played"] += 1
-            stats["goals_for"] += match.home_goals
-            stats["goals_against"] += match.away_goals
-
-            if match.home_goals > match.away_goals:
-                stats["won"] += 1
-                stats["points"] += 3
-            else:
-                stats["lost"] += 1
-
-        # KO-Phase-Matches (als Auswärts-Team)
-        ko_away_matches = db.query(models.KOMatch).filter(
-            models.KOMatch.away_team_id == team.id,
-            models.KOMatch.status == "played",
-            models.KOMatch.is_bye == False
-        ).all()
-
-        for match in ko_away_matches:
-            stats["played"] += 1
-            stats["goals_for"] += match.away_goals
-            stats["goals_against"] += match.home_goals
-
-            if match.away_goals > match.home_goals:
-                stats["won"] += 1
-                stats["points"] += 3
-            else:
-                stats["lost"] += 1
-
-    # Nur Teams mit mindestens einem Spiel aufnehmen
-    standings = [stats for stats in team_stats.values() if stats["played"] > 0]
-
-    # Sortiere nach Punkten, Tordifferenz, Tore geschossen
+    # Nur Teams mit Spielen, sortiert
+    standings = [s for s in team_stats.values() if s["played"] > 0]
     standings.sort(
-        key=lambda x: (
-            x["points"],
-            x["goals_for"] - x["goals_against"],
-            x["goals_for"]
-        ),
+        key=lambda x: (x["points"], x["goals_for"] - x["goals_against"], x["goals_for"]),
         reverse=True
     )
-
     return standings
 
 # ============================================================
@@ -1616,16 +1604,16 @@ def get_participation_report(
     not_participating_count = sum(1 for u in users if u.participating_next is False)
     rate = (participating_count / total * 100) if total > 0 else 0.0
 
+    # Pre-load all teams to avoid N+1 queries
+    _p_team_ids = [u.team_id for u in users if u.team_id]
+    _p_teams_map = {t.id: t.name for t in db.query(models.Team).filter(models.Team.id.in_(_p_team_ids)).all()} if _p_team_ids else {}
+
     # Teilnehmende User mit team_name (Frontend-Format)
     participating_list = []
     for user in users:
         if not user.participating_next:
             continue
-        team_name = None
-        if user.team_id:
-            team = db.query(models.Team).filter(models.Team.id == user.team_id).first()
-            if team:
-                team_name = team.name
+        team_name = _p_teams_map.get(user.team_id) if user.team_id else None
 
         participating_list.append({
             "discord_id": user.discord_id,
@@ -1807,14 +1795,14 @@ def list_discord_users(
     # Order by created_at desc
     users = query.order_by(models.UserProfile.created_at.desc()).all()
 
+    # Pre-load all teams to avoid N+1 queries
+    _du_team_ids = [u.team_id for u in users if u.team_id]
+    _du_teams_map = {t.id: t.name for t in db.query(models.Team).filter(models.Team.id.in_(_du_team_ids)).all()} if _du_team_ids else {}
+
     # Response mit team_name
     user_responses = []
     for user in users:
-        team_name = None
-        if user.team_id:
-            team = db.query(models.Team).filter(models.Team.id == user.team_id).first()
-            if team:
-                team_name = team.name
+        team_name = _du_teams_map.get(user.team_id) if user.team_id else None
 
         user_responses.append(schemas.UserProfileResponse(
             id=user.id,
@@ -2254,6 +2242,13 @@ def get_season_ko_brackets(season_id: int, db: Session = Depends(get_db)):
             models.KOMatch.bracket_type == bracket_type
         ).order_by(models.KOMatch.round, models.KOMatch.id).all()
 
+        # Pre-load all teams for this bracket to avoid N+1 queries
+        _ko_team_ids = set()
+        for match in matches:
+            if match.home_team_id: _ko_team_ids.add(match.home_team_id)
+            if match.away_team_id: _ko_team_ids.add(match.away_team_id)
+        _ko_teams_map = {t.id: t for t in db.query(models.Team).filter(models.Team.id.in_(_ko_team_ids)).all()} if _ko_team_ids else {}
+
         # Nach Runden gruppieren
         rounds_dict = {}
         for match in matches:
@@ -2266,12 +2261,12 @@ def get_season_ko_brackets(season_id: int, db: Session = Depends(get_db)):
             away_team = None
 
             if match.home_team_id:
-                home = db.get(models.Team, match.home_team_id)
+                home = _ko_teams_map.get(match.home_team_id)
                 if home:
                     home_team = {"id": home.id, "name": home.name}
 
             if match.away_team_id:
-                away = db.get(models.Team, match.away_team_id)
+                away = _ko_teams_map.get(match.away_team_id)
                 if away:
                     away_team = {"id": away.id, "name": away.name}
 

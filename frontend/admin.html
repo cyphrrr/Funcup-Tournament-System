@@ -746,6 +746,7 @@ const API_URL = (() => {
 
 const API = API_URL;
 let teamCache = {};
+let groupsCache = null;
 let currentSeason = null;
 
 let authToken = localStorage.getItem('biw_token');
@@ -1363,8 +1364,10 @@ async function loadDashboard() {
     document.getElementById('stat-seasons').textContent = seasons.length;
     
     let totalTeams = 0, played = 0, pending = 0;
-    for (const s of seasons) {
-      const groups = await fetch(`${API}/api/seasons/${s.id}/groups-with-teams`).then(r => r.json());
+    const allGroups = await Promise.all(
+      seasons.map(s => fetch(`${API}/api/seasons/${s.id}/groups-with-teams`).then(r => r.json()))
+    );
+    allGroups.forEach(groups => {
       groups.forEach(g => {
         totalTeams += g.teams.length;
         g.matches.forEach(m => {
@@ -1372,7 +1375,7 @@ async function loadDashboard() {
           else pending++;
         });
       });
-    }
+    });
     document.getElementById('stat-teams').textContent = totalTeams;
     document.getElementById('stat-matches').textContent = played;
     document.getElementById('stat-pending').textContent = pending;
@@ -1397,10 +1400,11 @@ async function loadMatchesForSeason() {
   }
   currentSeason = seasonId;
   
-  // Cache teams
+  // Cache teams and groups data
   const groups = await fetch(`${API}/api/seasons/${seasonId}/groups-with-teams`).then(r => r.json());
   groups.forEach(g => g.teams.forEach(t => teamCache[t.id] = t.name));
-  
+  groupsCache = { seasonId, groups };
+
   loadMatchesForPhase();
 }
 
@@ -1418,7 +1422,9 @@ async function loadMatchesForPhase() {
 }
 
 async function loadGroupMatches(seasonId, container) {
-  const groups = await fetch(`${API}/api/seasons/${seasonId}/groups-with-teams`).then(r => r.json());
+  const groups = (groupsCache && groupsCache.seasonId === seasonId)
+    ? groupsCache.groups
+    : await fetch(`${API}/api/seasons/${seasonId}/groups-with-teams`).then(r => r.json());
   
   let html = '';
   for (const g of groups) {
@@ -1636,9 +1642,13 @@ async function saveTeamEdit() {
 async function loadSeasons() {
   const seasons = await fetch(`${API}/api/seasons`).then(r => r.json());
 
+  const allGroups = await Promise.all(
+    seasons.map(s => fetch(`${API}/api/seasons/${s.id}/groups-with-teams`).then(r => r.json()))
+  );
+
   let html = '';
-  for (const s of seasons) {
-    const groups = await fetch(`${API}/api/seasons/${s.id}/groups-with-teams`).then(r => r.json());
+  seasons.forEach((s, i) => {
+    const groups = allGroups[i];
     const teamCount = groups.reduce((sum, g) => sum + g.teams.length, 0);
 
     // Status Badge
@@ -1661,7 +1671,7 @@ async function loadSeasons() {
           <button class="btn btn-sm btn-danger" onclick="deleteSeason(${s.id})" title="Löschen">🗑️</button>
         </td>
       </tr>`;
-  }
+  });
 
   document.getElementById('seasons-list').innerHTML = html || '<tr><td colspan="5"><em>Keine Saisons</em></td></tr>';
 }
