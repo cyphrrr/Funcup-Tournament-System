@@ -44,8 +44,22 @@ async function loadParticipants() {
     const res = await fetch(`${API_URL}/api/teams`);
     allParticipantTeams = await res.json();
 
-    // Vorauswahl: Teams die participating_next haben oder bereits in setupState sind
+    // Vorauswahl: Teams mit participating_next ODER in geplanter Saison
     const selectedIds = new Set(setupState.participants.map(p => p.team_id));
+    if (selectedIds.size === 0) {
+      allParticipantTeams.forEach(t => {
+        const inPlanned = (t.seasons || []).some(s => s.status === 'planned');
+        if (t.participating_next || inPlanned) {
+          selectedIds.add(t.id);
+        }
+      });
+      // setupState synchron befüllen
+      allParticipantTeams.forEach(t => {
+        if (selectedIds.has(t.id)) {
+          setupState.participants.push({ team_id: t.id, team_name: t.name });
+        }
+      });
+    }
 
     renderParticipantsList(allParticipantTeams, selectedIds);
   } catch (e) {

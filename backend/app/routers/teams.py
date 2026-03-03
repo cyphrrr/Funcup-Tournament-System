@@ -57,6 +57,7 @@ def list_all_teams(
             "name": t.name,
             "logo_url": t.logo_url,
             "onlineliga_url": t.onlineliga_url,
+            "participating_next": profile.participating_next if profile else False,
             "discord_user": {
                 "discord_id": profile.discord_id,
                 "discord_username": profile.discord_username,
