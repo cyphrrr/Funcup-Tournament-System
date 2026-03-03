@@ -2,7 +2,12 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from .api import router
+from .routers import router
+from .db import engine
+from . import models
+
+# DB-Tabellen erstellen
+models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="BIW Pokal API", version="0.1.0")
 
