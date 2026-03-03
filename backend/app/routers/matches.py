@@ -1,3 +1,4 @@
+import re
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from .. import models, schemas
@@ -5,6 +6,110 @@ from ..db import get_db
 from ..auth import get_current_user
 
 router = APIRouter()
+
+
+@router.post("/matches/import", response_model=schemas.MatchImportResponse)
+def import_matches(items: list[schemas.MatchImportItem], db: Session = Depends(get_db), _: str = Depends(get_current_user)):
+    """
+    Bulk-Import von Spielergebnissen (für n8n).
+    Erkennt vertauschte Heim/Gast-Zuordnungen und filtert ungültige Paarungen.
+    """
+    if not items:
+        return schemas.MatchImportResponse(imported=0, skipped=0, swapped=0, errors=[])
+
+    # Alle Items müssen dieselbe Saison + Spieltag haben
+    saison_name = items[0].Saison
+    spieltag_raw = items[0].Spieltag
+
+    # Spieltag parsen: "SP2" → 2
+    m = re.match(r"SP(\d+)", spieltag_raw, re.IGNORECASE)
+    if not m:
+        raise HTTPException(status_code=400, detail=f"Ungültiges Spieltag-Format: {spieltag_raw}")
+    matchday = int(m.group(1))
+
+    # Saison finden (case-insensitive)
+    season = db.query(models.Season).filter(
+        models.Season.name.ilike(saison_name)
+    ).first()
+    if not season:
+        raise HTTPException(status_code=404, detail=f"Saison '{saison_name}' nicht gefunden")
+
+    # Alle scheduled Matches für diese Saison + Spieltag laden
+    scheduled_matches = db.query(models.Match).filter(
+        models.Match.season_id == season.id,
+        models.Match.matchday == matchday,
+    ).all()
+
+    # Match-Lookup: (home_team_id, away_team_id) → Match
+    match_lookup = {}
+    for match in scheduled_matches:
+        match_lookup[(match.home_team_id, match.away_team_id)] = match
+
+    # Team-Name → ID Map (case-insensitive) für diese Saison
+    season_teams = db.query(models.SeasonTeam).filter(
+        models.SeasonTeam.season_id == season.id
+    ).all()
+    team_ids = [st.team_id for st in season_teams]
+    teams = db.query(models.Team).filter(models.Team.id.in_(team_ids)).all()
+    name_to_id = {t.name.lower(): t.id for t in teams}
+
+    imported = 0
+    skipped = 0
+    swapped = 0
+    errors = []
+
+    for item in items:
+        home_name = item.Heim.strip()
+        away_name = item.Gast.strip()
+        home_id = name_to_id.get(home_name.lower())
+        away_id = name_to_id.get(away_name.lower())
+
+        # Team nicht gefunden
+        if home_id is None or away_id is None:
+            skipped += 1
+            errors.append(schemas.MatchImportError(heim=home_name, gast=away_name, reason="not_found"))
+            continue
+
+        home_goals = int(item.Heimtore)
+        away_goals = int(item.Gasttore)
+        was_swapped = False
+
+        # Match suchen
+        match = match_lookup.get((home_id, away_id))
+        if not match:
+            # Swap versuchen
+            match = match_lookup.get((away_id, home_id))
+            if match:
+                home_goals, away_goals = away_goals, home_goals
+                was_swapped = True
+
+        if not match:
+            skipped += 1
+            errors.append(schemas.MatchImportError(heim=home_name, gast=away_name, reason="no_match"))
+            continue
+
+        if match.status == "played":
+            skipped += 1
+            errors.append(schemas.MatchImportError(heim=home_name, gast=away_name, reason="already_played"))
+            continue
+
+        # Ergebnis eintragen
+        match.home_goals = home_goals
+        match.away_goals = away_goals
+        match.status = "played"
+
+        imported += 1
+        if was_swapped:
+            swapped += 1
+
+    db.commit()
+
+    return schemas.MatchImportResponse(
+        imported=imported,
+        skipped=skipped,
+        swapped=swapped,
+        errors=errors,
+    )
 
 
 @router.post("/groups/{group_id}/matches", response_model=schemas.MatchRead)

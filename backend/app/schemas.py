@@ -372,3 +372,30 @@ class KOMatchSetTeam(BaseModel):
 class KOMatchSetBye(BaseModel):
     """Body für PATCH /ko-matches/{id}/set-bye"""
     team_id: int
+
+
+# ============================================================
+# Match Import Schemas (n8n)
+# ============================================================
+
+class MatchImportItem(BaseModel):
+    """Ein Ergebnis aus dem n8n-Import"""
+    Heim: str
+    Gast: str
+    Heimtore: str
+    Gasttore: str
+    Saison: str
+    Spieltag: str
+
+
+class MatchImportError(BaseModel):
+    heim: str
+    gast: str
+    reason: str
+
+
+class MatchImportResponse(BaseModel):
+    imported: int
+    skipped: int
+    swapped: int
+    errors: list[MatchImportError]
