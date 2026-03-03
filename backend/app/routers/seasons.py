@@ -135,6 +135,8 @@ def list_groups_with_teams(season_id: int, db: Session = Depends(get_db)):
                     "home_goals": m.home_goals,
                     "away_goals": m.away_goals,
                     "status": m.status,
+                    "matchday": m.matchday,
+                    "ingame_week": m.ingame_week,
                 }
                 for m in matches
             ],

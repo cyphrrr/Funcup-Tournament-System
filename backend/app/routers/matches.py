@@ -58,10 +58,11 @@ def update_match(match_id: int, update: schemas.MatchUpdate, db: Session = Depen
     return match
 
 
-def generate_round_robin(db: Session, group_id: int, season_id: int):
+def generate_round_robin(db: Session, group_id: int, season_id: int, start_week: int | None = None):
     """
     Hilfsfunktion: Generiert Round-Robin-Spielplan für eine Gruppe.
     Kann von sync-Endpoint und HTTP-Endpoint genutzt werden.
+    start_week: Ingame-Startwoche (z.B. 39). ingame_week = start_week + matchday - 1.
     Gibt dict mit group_id, matches_created, matchdays zurück.
     """
     team_ids = [
@@ -104,7 +105,8 @@ def generate_round_robin(db: Session, group_id: int, season_id: int):
                 home_team_id=home_id,
                 away_team_id=away_id,
                 status="scheduled",
-                matchday=matchday_num
+                matchday=matchday_num,
+                ingame_week=start_week + matchday_num - 1 if start_week else None
             )
             db.add(m)
             created.append(m)
@@ -113,7 +115,7 @@ def generate_round_robin(db: Session, group_id: int, season_id: int):
 
 
 @router.post("/groups/{group_id}/generate-schedule")
-def generate_group_schedule(group_id: int, db: Session = Depends(get_db), _: str = Depends(get_current_user)):
+def generate_group_schedule(group_id: int, start_week: int | None = None, db: Session = Depends(get_db), _: str = Depends(get_current_user)):
     """
     Generiert einen vollständigen Gruppen-Spielplan (Round-Robin) mit Spieltagen.
     Verwendet Circle-Methode für gleichmäßige Spieltag-Verteilung.
@@ -133,7 +135,7 @@ def generate_group_schedule(group_id: int, db: Session = Depends(get_db), _: str
         raise HTTPException(status_code=400, detail="Schedule already exists")
 
     group = db.get(models.Group, group_id)
-    result = generate_round_robin(db, group_id, group.season_id)
+    result = generate_round_robin(db, group_id, group.season_id, start_week=start_week)
     db.commit()
     return result
 
