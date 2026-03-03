@@ -1,4 +1,4 @@
-from pydantic import BaseModel, HttpUrl, Field
+from pydantic import BaseModel, HttpUrl, Field, validator
 from datetime import datetime
 from typing import Optional
 
@@ -332,3 +332,37 @@ class CrestUploadResponse(BaseModel):
 class CrestDeleteResponse(BaseModel):
     """Response nach Wappen-Löschung"""
     message: str = "Wappen erfolgreich gelöscht"
+
+
+# ============================================================
+# KO-Match Typed Request Schemas
+# ============================================================
+
+class KOMatchResultUpdate(BaseModel):
+    """Body für PATCH /ko-matches/{id} (Ergebnis eintragen)"""
+    home_goals: int = Field(..., ge=0)
+    away_goals: int = Field(..., ge=0)
+    winner_id: Optional[int] = None
+
+
+class KOBracketCreate(BaseModel):
+    """Body für POST /seasons/{id}/ko-brackets/create-empty"""
+    bracket_type: str = Field(..., pattern="^(meister|lucky_loser|loser)$")
+    team_count: int
+
+    @validator('team_count')
+    def valid_team_count(cls, v):
+        if v not in [2, 4, 8, 16, 32]:
+            raise ValueError('team_count muss 2, 4, 8, 16 oder 32 sein')
+        return v
+
+
+class KOMatchSetTeam(BaseModel):
+    """Body für PATCH /ko-matches/{id}/set-team"""
+    slot: str = Field(..., pattern="^(home|away)$")
+    team_id: Optional[int] = None
+
+
+class KOMatchSetBye(BaseModel):
+    """Body für PATCH /ko-matches/{id}/set-bye"""
+    team_id: int

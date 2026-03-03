@@ -1,4 +1,5 @@
 import math
+import time
 import uuid
 from datetime import datetime
 from typing import Optional
@@ -95,10 +96,24 @@ def update_season(season_id: int, update: schemas.SeasonUpdate, db: Session = De
     if not season:
         raise HTTPException(status_code=404, detail="Season not found")
 
-    if update.name is not None:
-        season.name = update.name
-    if update.status is not None:
+    if update.status is not None and update.status != season.status:
+        valid_transitions = {
+            "planned": ["active"],
+            "active": ["archived"],
+            "archived": []
+        }
+        allowed = valid_transitions.get(season.status, [])
+        if update.status not in allowed:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Ungültiger Status-Übergang: '{season.status}' → '{update.status}'. Erlaubt: {allowed}"
+            )
         season.status = update.status
+
+    if update.name is not None:
+        if season.status == "archived":
+            raise HTTPException(status_code=400, detail="Archivierte Saisons können nicht bearbeitet werden")
+        season.name = update.name
 
     db.commit()
     db.refresh(season)
@@ -118,7 +133,10 @@ def delete_season(season_id: int, db: Session = Depends(get_db), _: str = Depend
     # 1. KO-Matches löschen
     db.query(models.KOMatch).filter(models.KOMatch.season_id == season_id).delete()
 
-    # 2. Matches löschen
+    # 2. KO-Brackets löschen
+    db.query(models.KOBracket).filter(models.KOBracket.season_id == season_id).delete()
+
+    # 3. Matches löschen
     db.query(models.Match).filter(models.Match.season_id == season_id).delete()
 
     # 3. SeasonTeams löschen
@@ -193,14 +211,27 @@ def get_team_detail(team_id: int, db: Session = Depends(get_db)):
         (models.KOMatch.home_team_id == team_id) | (models.KOMatch.away_team_id == team_id)
     ).order_by(models.KOMatch.id.desc()).all()
 
+    # Pre-load all referenced teams and seasons to avoid N+1 queries
+    _team_ids = set()
+    _season_ids = set()
+    for m in group_matches:
+        _team_ids.update([m.home_team_id, m.away_team_id])
+        _season_ids.add(m.season_id)
+    for m in ko_matches:
+        if m.home_team_id: _team_ids.add(m.home_team_id)
+        if m.away_team_id: _team_ids.add(m.away_team_id)
+        _season_ids.add(m.season_id)
+    teams_map = {t.id: t for t in db.query(models.Team).filter(models.Team.id.in_(_team_ids)).all()} if _team_ids else {}
+    seasons_map = {s.id: s for s in db.query(models.Season).filter(models.Season.id.in_(_season_ids)).all()} if _season_ids else {}
+
     # Kombinieren und sortieren
     all_matches = []
 
     for m in group_matches:
         is_home = m.home_team_id == team_id
         opponent_id = m.away_team_id if is_home else m.home_team_id
-        opponent = db.query(models.Team).filter(models.Team.id == opponent_id).first()
-        season = db.query(models.Season).filter(models.Season.id == m.season_id).first()
+        opponent = teams_map.get(opponent_id)
+        season = seasons_map.get(m.season_id)
 
         own_goals = m.home_goals if is_home else m.away_goals
         opp_goals = m.away_goals if is_home else m.home_goals
@@ -231,8 +262,8 @@ def get_team_detail(team_id: int, db: Session = Depends(get_db)):
             is_home = m.home_team_id == team_id
             opponent_id = m.away_team_id if is_home else m.home_team_id
             if opponent_id:
-                opponent = db.query(models.Team).filter(models.Team.id == opponent_id).first()
-                season = db.query(models.Season).filter(models.Season.id == m.season_id).first()
+                opponent = teams_map.get(opponent_id)
+                season = seasons_map.get(m.season_id)
 
                 own_goals = m.home_goals if is_home else m.away_goals
                 opp_goals = m.away_goals if is_home else m.home_goals
@@ -341,6 +372,10 @@ def add_team_to_season(season_id: int, team: schemas.TeamCreate, db: Session = D
         counts = {g.id: db.query(models.SeasonTeam).filter(models.SeasonTeam.group_id == g.id).count() for g in groups}
         target_group_id = min(counts, key=counts.get)
 
+    existing_st = db.query(models.SeasonTeam).filter_by(season_id=season_id, team_id=t.id).first()
+    if existing_st:
+        raise HTTPException(status_code=400, detail=f"Team '{t.name}' ist bereits in dieser Saison")
+
     st = models.SeasonTeam(season_id=season_id, team_id=t.id, group_id=target_group_id)
     db.add(st)
     db.commit()
@@ -354,6 +389,9 @@ def bulk_add_teams(season_id: int, payload: schemas.BulkTeamCreate, db: Session 
     if not groups:
         raise HTTPException(status_code=400, detail="No groups for season")
 
+    # Pre-load group counts into memory to avoid re-querying each iteration
+    counts = {g.id: db.query(models.SeasonTeam).filter(models.SeasonTeam.group_id == g.id).count() for g in groups}
+
     created = []
     for name in payload.teams:
         # Prüfen, ob Team mit diesem Namen bereits existiert
@@ -366,18 +404,23 @@ def bulk_add_teams(season_id: int, payload: schemas.BulkTeamCreate, db: Session 
             # Neues Team erstellen
             t = models.Team(name=name)
             db.add(t)
-            db.commit()
-            db.refresh(t)
+            db.flush()
 
-        counts = {g.id: db.query(models.SeasonTeam).filter(models.SeasonTeam.group_id == g.id).count() for g in groups}
+        existing_st = db.query(models.SeasonTeam).filter_by(season_id=season_id, team_id=t.id).first()
+        if existing_st:
+            continue  # Skip duplicates silently in bulk mode
+
         target_group_id = min(counts, key=counts.get)
 
         st = models.SeasonTeam(season_id=season_id, team_id=t.id, group_id=target_group_id)
         db.add(st)
-        db.commit()
+
+        # Update in-memory counter
+        counts[target_group_id] += 1
 
         created.append({"id": t.id, "name": t.name, "group_id": target_group_id})
 
+    db.commit()
     return {
         "created": created,
         "count": len(created)
@@ -790,59 +833,6 @@ def get_ko_bracket(season_id: int, db: Session = Depends(get_db)):
     )
 
 
-@router.patch("/ko-matches/{match_id}", response_model=schemas.KOMatchRead)
-def update_ko_match(match_id: int, update: schemas.KOMatchUpdate, db: Session = Depends(get_db), _: str = Depends(get_current_user)):
-    """
-    Ergebnis eines KO-Matches eintragen.
-    Sieger wird automatisch ins nächste Match übertragen.
-    """
-    match = db.query(models.KOMatch).filter(models.KOMatch.id == match_id).first()
-    if not match:
-        raise HTTPException(status_code=404, detail="KO match not found")
-
-    if match.is_bye:
-        raise HTTPException(status_code=400, detail="Cannot update bye match")
-
-    if update.home_team_id is not None:
-        match.home_team_id = update.home_team_id
-    if update.away_team_id is not None:
-        match.away_team_id = update.away_team_id
-    if update.home_goals is not None:
-        match.home_goals = update.home_goals
-    if update.away_goals is not None:
-        match.away_goals = update.away_goals
-    if update.status is not None:
-        match.status = update.status
-    if update.ingame_week is not None:
-        match.ingame_week = update.ingame_week
-
-    # Auto-Status und Sieger-Weiterleitung
-    if match.home_goals is not None and match.away_goals is not None:
-        match.status = "played"
-
-        # Sieger ermitteln (bei Unentschieden: keine Auto-Weiterleitung)
-        winner_id = None
-        if match.home_goals > match.away_goals:
-            winner_id = match.home_team_id
-        elif match.away_goals > match.home_goals:
-            winner_id = match.away_team_id
-
-        # Sieger ins nächste Match eintragen
-        if winner_id and match.next_match_id:
-            next_match = db.get(models.KOMatch, match.next_match_id)
-            if next_match:
-                if match.next_match_slot == "home":
-                    next_match.home_team_id = winner_id
-                else:
-                    next_match.away_team_id = winner_id
-                # Wenn beide Teams da → scheduled
-                if next_match.home_team_id and next_match.away_team_id:
-                    next_match.status = "scheduled"
-
-    db.commit()
-    db.refresh(match)
-    return match
-
 
 # ============ NEWS ============
 
@@ -1057,117 +1047,88 @@ def get_all_time_standings(db: Session = Depends(get_db)):
     Berücksichtigt sowohl Gruppenphase als auch KO-Phase Spiele.
     Gruppiert nach Team-Namen (wegen historischer Duplikate).
     """
-    # Alle Teams holen
-    teams = db.query(models.Team).all()
+    # Bulk: Alle gespielten Matches laden (2 Queries statt 4*N)
+    all_matches = db.query(models.Match).filter(models.Match.status == "played").all()
+    all_ko = db.query(models.KOMatch).filter(
+        models.KOMatch.status == "played",
+        models.KOMatch.is_bye == False
+    ).all()
 
-    # Nach Team-Namen gruppieren (wegen Duplikaten aus Saison-Importen)
-    team_stats = {}  # team_name -> stats dict
+    # Alle Teams laden für Name-Mapping
+    teams = {t.id: t.name for t in db.query(models.Team).all()}
 
-    for team in teams:
-        if team.name not in team_stats:
-            team_stats[team.name] = {
-                "team_id": team.id,  # Erste gefundene ID verwenden
-                "team_name": team.name,
-                "played": 0,
-                "won": 0,
-                "draw": 0,
-                "lost": 0,
-                "goals_for": 0,
-                "goals_against": 0,
-                "points": 0
+    # Stats pro Team-Name aggregieren (wegen historischer Duplikate)
+    team_stats = {}
+
+    def ensure_stats(team_id):
+        name = teams.get(team_id, "?")
+        if name not in team_stats:
+            team_stats[name] = {
+                "team_id": team_id,
+                "team_name": name,
+                "played": 0, "won": 0, "draw": 0, "lost": 0,
+                "goals_for": 0, "goals_against": 0, "points": 0
             }
+        return team_stats[name]
 
-        stats = team_stats[team.name]
+    # Gruppenphase aggregieren
+    for m in all_matches:
+        if m.home_goals is None or m.away_goals is None:
+            continue
+        # Home
+        s = ensure_stats(m.home_team_id)
+        s["played"] += 1
+        s["goals_for"] += m.home_goals
+        s["goals_against"] += m.away_goals
+        if m.home_goals > m.away_goals:
+            s["won"] += 1; s["points"] += 3
+        elif m.home_goals == m.away_goals:
+            s["draw"] += 1; s["points"] += 1
+        else:
+            s["lost"] += 1
 
-        # Gruppenphase-Matches (als Heim-Team)
-        home_matches = db.query(models.Match).filter(
-            models.Match.home_team_id == team.id,
-            models.Match.status == "played"
-        ).all()
+        # Away
+        s = ensure_stats(m.away_team_id)
+        s["played"] += 1
+        s["goals_for"] += m.away_goals
+        s["goals_against"] += m.home_goals
+        if m.away_goals > m.home_goals:
+            s["won"] += 1; s["points"] += 3
+        elif m.away_goals == m.home_goals:
+            s["draw"] += 1; s["points"] += 1
+        else:
+            s["lost"] += 1
 
-        for match in home_matches:
-            stats["played"] += 1
-            stats["goals_for"] += match.home_goals
-            stats["goals_against"] += match.away_goals
+    # KO-Phase aggregieren
+    for m in all_ko:
+        if m.home_goals is None or m.away_goals is None:
+            continue
+        # Home
+        s = ensure_stats(m.home_team_id)
+        s["played"] += 1
+        s["goals_for"] += m.home_goals
+        s["goals_against"] += m.away_goals
+        if m.home_goals > m.away_goals:
+            s["won"] += 1; s["points"] += 3
+        else:
+            s["lost"] += 1
 
-            if match.home_goals > match.away_goals:
-                stats["won"] += 1
-                stats["points"] += 3
-            elif match.home_goals == match.away_goals:
-                stats["draw"] += 1
-                stats["points"] += 1
-            else:
-                stats["lost"] += 1
+        # Away
+        s = ensure_stats(m.away_team_id)
+        s["played"] += 1
+        s["goals_for"] += m.away_goals
+        s["goals_against"] += m.home_goals
+        if m.away_goals > m.home_goals:
+            s["won"] += 1; s["points"] += 3
+        else:
+            s["lost"] += 1
 
-        # Gruppenphase-Matches (als Auswärts-Team)
-        away_matches = db.query(models.Match).filter(
-            models.Match.away_team_id == team.id,
-            models.Match.status == "played"
-        ).all()
-
-        for match in away_matches:
-            stats["played"] += 1
-            stats["goals_for"] += match.away_goals
-            stats["goals_against"] += match.home_goals
-
-            if match.away_goals > match.home_goals:
-                stats["won"] += 1
-                stats["points"] += 3
-            elif match.away_goals == match.home_goals:
-                stats["draw"] += 1
-                stats["points"] += 1
-            else:
-                stats["lost"] += 1
-
-        # KO-Phase-Matches (als Heim-Team)
-        ko_home_matches = db.query(models.KOMatch).filter(
-            models.KOMatch.home_team_id == team.id,
-            models.KOMatch.status == "played",
-            models.KOMatch.is_bye == False
-        ).all()
-
-        for match in ko_home_matches:
-            stats["played"] += 1
-            stats["goals_for"] += match.home_goals
-            stats["goals_against"] += match.away_goals
-
-            if match.home_goals > match.away_goals:
-                stats["won"] += 1
-                stats["points"] += 3
-            else:
-                stats["lost"] += 1
-
-        # KO-Phase-Matches (als Auswärts-Team)
-        ko_away_matches = db.query(models.KOMatch).filter(
-            models.KOMatch.away_team_id == team.id,
-            models.KOMatch.status == "played",
-            models.KOMatch.is_bye == False
-        ).all()
-
-        for match in ko_away_matches:
-            stats["played"] += 1
-            stats["goals_for"] += match.away_goals
-            stats["goals_against"] += match.home_goals
-
-            if match.away_goals > match.home_goals:
-                stats["won"] += 1
-                stats["points"] += 3
-            else:
-                stats["lost"] += 1
-
-    # Nur Teams mit mindestens einem Spiel aufnehmen
-    standings = [stats for stats in team_stats.values() if stats["played"] > 0]
-
-    # Sortiere nach Punkten, Tordifferenz, Tore geschossen
+    # Nur Teams mit Spielen, sortiert
+    standings = [s for s in team_stats.values() if s["played"] > 0]
     standings.sort(
-        key=lambda x: (
-            x["points"],
-            x["goals_for"] - x["goals_against"],
-            x["goals_for"]
-        ),
+        key=lambda x: (x["points"], x["goals_for"] - x["goals_against"], x["goals_for"]),
         reverse=True
     )
-
     return standings
 
 # ============================================================
@@ -1177,7 +1138,8 @@ def get_all_time_standings(db: Session = Depends(get_db)):
 @router.post("/discord/users/ensure", response_model=schemas.UserProfileResponse)
 def ensure_user(
     user_data: schemas.UserEnsureRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_user)
 ):
     """
     Upsert-Endpoint: Erstellt User falls nicht vorhanden, aktualisiert sonst username/avatar.
@@ -1285,7 +1247,8 @@ def get_user_by_discord_id(
 def update_participation(
     discord_id: str,
     update: schemas.ParticipationUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_user)
 ):
     """
     Setzt Teilnahme-Status für nächsten Pokal.
@@ -1332,7 +1295,8 @@ def update_participation(
 def update_profile_url(
     discord_id: str,
     update: schemas.ProfileUrlUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_user)
 ):
     """
     Speichert Onlineliga Profil-URL.
@@ -1559,7 +1523,8 @@ def register_discord_user(
 def claim_team(
     discord_id: str,
     claim_data: schemas.TeamClaimRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_user)
 ):
     """
     User claimed ein Team (Self-Service).
@@ -1657,16 +1622,16 @@ def get_participation_report(
     not_participating_count = sum(1 for u in users if u.participating_next is False)
     rate = (participating_count / total * 100) if total > 0 else 0.0
 
+    # Pre-load all teams to avoid N+1 queries
+    _p_team_ids = [u.team_id for u in users if u.team_id]
+    _p_teams_map = {t.id: t.name for t in db.query(models.Team).filter(models.Team.id.in_(_p_team_ids)).all()} if _p_team_ids else {}
+
     # Teilnehmende User mit team_name (Frontend-Format)
     participating_list = []
     for user in users:
         if not user.participating_next:
             continue
-        team_name = None
-        if user.team_id:
-            team = db.query(models.Team).filter(models.Team.id == user.team_id).first()
-            if team:
-                team_name = team.name
+        team_name = _p_teams_map.get(user.team_id) if user.team_id else None
 
         participating_list.append({
             "discord_id": user.discord_id,
@@ -1848,14 +1813,14 @@ def list_discord_users(
     # Order by created_at desc
     users = query.order_by(models.UserProfile.created_at.desc()).all()
 
+    # Pre-load all teams to avoid N+1 queries
+    _du_team_ids = [u.team_id for u in users if u.team_id]
+    _du_teams_map = {t.id: t.name for t in db.query(models.Team).filter(models.Team.id.in_(_du_team_ids)).all()} if _du_team_ids else {}
+
     # Response mit team_name
     user_responses = []
     for user in users:
-        team_name = None
-        if user.team_id:
-            team = db.query(models.Team).filter(models.Team.id == user.team_id).first()
-            if team:
-                team_name = team.name
+        team_name = _du_teams_map.get(user.team_id) if user.team_id else None
 
         user_responses.append(schemas.UserProfileResponse(
             id=user.id,
@@ -1981,7 +1946,15 @@ import secrets
 discord_oauth = DiscordOAuth2Client()
 
 # State Storage (in Production: Redis verwenden!)
-oauth_states = {}
+oauth_states = {}  # {state: timestamp}
+OAUTH_STATE_TTL = 600  # 10 Minuten
+
+def _cleanup_oauth_states():
+    """Entfernt abgelaufene OAuth States."""
+    now = time.time()
+    expired = [k for k, v in oauth_states.items() if now - v > OAUTH_STATE_TTL]
+    for k in expired:
+        del oauth_states[k]
 
 
 @router.get("/auth/discord/login")
@@ -1992,7 +1965,8 @@ def discord_login():
     """
     # CSRF State Token generieren
     state = secrets.token_urlsafe(32)
-    oauth_states[state] = True  # Markiere State als gültig
+    _cleanup_oauth_states()
+    oauth_states[state] = time.time()
     
     # Authorization URL generieren
     auth_url = discord_oauth.get_authorization_url(state)
@@ -2011,6 +1985,7 @@ async def discord_callback(
     Tauscht Authorization Code gegen Access Token und erstellt/updated User.
     """
     # State validieren (CSRF Protection)
+    _cleanup_oauth_states()
     if state not in oauth_states:
         raise HTTPException(status_code=400, detail="Ungültiger State (CSRF)")
     
@@ -2295,6 +2270,13 @@ def get_season_ko_brackets(season_id: int, db: Session = Depends(get_db)):
             models.KOMatch.bracket_type == bracket_type
         ).order_by(models.KOMatch.round, models.KOMatch.id).all()
 
+        # Pre-load all teams for this bracket to avoid N+1 queries
+        _ko_team_ids = set()
+        for match in matches:
+            if match.home_team_id: _ko_team_ids.add(match.home_team_id)
+            if match.away_team_id: _ko_team_ids.add(match.away_team_id)
+        _ko_teams_map = {t.id: t for t in db.query(models.Team).filter(models.Team.id.in_(_ko_team_ids)).all()} if _ko_team_ids else {}
+
         # Nach Runden gruppieren
         rounds_dict = {}
         for match in matches:
@@ -2307,12 +2289,12 @@ def get_season_ko_brackets(season_id: int, db: Session = Depends(get_db)):
             away_team = None
 
             if match.home_team_id:
-                home = db.get(models.Team, match.home_team_id)
+                home = _ko_teams_map.get(match.home_team_id)
                 if home:
                     home_team = {"id": home.id, "name": home.name}
 
             if match.away_team_id:
-                away = db.get(models.Team, match.away_team_id)
+                away = _ko_teams_map.get(match.away_team_id)
                 if away:
                     away_team = {"id": away.id, "name": away.name}
 
@@ -2370,7 +2352,7 @@ def _get_round_name(round_num: int, total_rounds: int) -> str:
 @router.patch("/ko-matches/{match_id}")
 def update_ko_match_result(
     match_id: int,
-    update: dict,
+    update: schemas.KOMatchResultUpdate,
     db: Session = Depends(get_db),
     _: str = Depends(get_current_user)
 ):
@@ -2403,22 +2385,9 @@ def update_ko_match_result(
     if match.is_bye == 1:
         raise HTTPException(status_code=400, detail="Freilos-Matches können nicht aktualisiert werden")
 
-    # Validierung
-    home_goals = update.get("home_goals")
-    away_goals = update.get("away_goals")
-    winner_id = update.get("winner_id")
-
-    if home_goals is None or away_goals is None:
-        raise HTTPException(
-            status_code=400,
-            detail="home_goals und away_goals sind erforderlich"
-        )
-
-    if home_goals < 0 or away_goals < 0:
-        raise HTTPException(
-            status_code=400,
-            detail="Tore müssen >= 0 sein"
-        )
+    home_goals = update.home_goals
+    away_goals = update.away_goals
+    winner_id = update.winner_id
 
     # Tiebreaker-Tracking
     tiebreaker_used = False
@@ -2659,7 +2628,7 @@ def reset_ko_brackets(
 @router.post("/seasons/{season_id}/ko-brackets/create-empty", status_code=201)
 def create_empty_bracket(
     season_id: int,
-    body: dict,
+    body: schemas.KOBracketCreate,
     db: Session = Depends(get_db),
     _: str = Depends(get_current_user)
 ):
@@ -2670,15 +2639,8 @@ def create_empty_bracket(
         bracket_type: "meister" | "lucky_loser" | "loser"
         team_count: 2, 4, 8, 16, 32
     """
-    bracket_type = body.get("bracket_type")
-    team_count = body.get("team_count")
-
-    if bracket_type not in ("meister", "lucky_loser", "loser"):
-        raise HTTPException(status_code=400, detail="bracket_type muss 'meister', 'lucky_loser' oder 'loser' sein")
-
-    valid_counts = [2, 4, 8, 16, 32]
-    if team_count not in valid_counts:
-        raise HTTPException(status_code=400, detail=f"team_count muss einer von {valid_counts} sein")
+    bracket_type = body.bracket_type
+    team_count = body.team_count
 
     # Prüfe ob Bracket dieses Typs bereits existiert
     existing = db.query(models.KOBracket).filter(
@@ -2744,16 +2706,13 @@ def create_empty_bracket(
 @router.patch("/ko-matches/{match_id}/set-team")
 def set_ko_match_team(
     match_id: int,
-    body: dict,
+    body: schemas.KOMatchSetTeam,
     db: Session = Depends(get_db),
     _: str = Depends(get_current_user)
 ):
     """Setzt ein Team in einen Home- oder Away-Slot eines KO-Matches."""
-    slot = body.get("slot")
-    team_id = body.get("team_id")
-
-    if slot not in ("home", "away"):
-        raise HTTPException(status_code=400, detail="slot muss 'home' oder 'away' sein")
+    slot = body.slot
+    team_id = body.team_id
 
     match = db.query(models.KOMatch).filter(models.KOMatch.id == match_id).first()
     if not match:
@@ -2799,14 +2758,12 @@ def set_ko_match_team(
 @router.patch("/ko-matches/{match_id}/set-bye")
 def set_ko_match_bye(
     match_id: int,
-    body: dict,
+    body: schemas.KOMatchSetBye,
     db: Session = Depends(get_db),
     _: str = Depends(get_current_user)
 ):
     """Markiert ein KO-Match als Freilos und leitet Team in nächste Runde weiter."""
-    team_id = body.get("team_id")
-    if not team_id:
-        raise HTTPException(status_code=400, detail="team_id ist erforderlich")
+    team_id = body.team_id
 
     match = db.query(models.KOMatch).filter(models.KOMatch.id == match_id).first()
     if not match:

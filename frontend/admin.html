@@ -746,6 +746,7 @@ const API_URL = (() => {
 
 const API = API_URL;
 let teamCache = {};
+let groupsCache = null;
 let currentSeason = null;
 
 let authToken = localStorage.getItem('biw_token');
@@ -943,16 +944,10 @@ async function loadParticipants() {
     }).join('');
 
     // Auch manuell hinzugefügte aus setupState.participants (manuelle Teams)
-    renderManualAdditions();
 
   } catch(e) {
     tbody.innerHTML = `<tr><td colspan="5" style="color:var(--danger)">Fehler: ${e.message}</td></tr>`;
   }
-}
-
-function renderManualAdditions() {
-  // Manuell hinzugefügte werden nach der normalen Liste angezeigt
-  // (bereits in setupState.participants enthalten nach addManualParticipant)
 }
 
 async function searchTeamForManual() {
@@ -967,9 +962,10 @@ async function searchTeamForManual() {
 
     resultsEl.innerHTML = teams.slice(0, 8).map(t =>
       `<div style="padding:.4rem .6rem;cursor:pointer;border-radius:4px;font-size:.9rem;hover:background:var(--accent)"
+            data-team-id="${t.id}" data-team-name="${escapeHtml(t.name)}"
             onmouseover="this.style.background='var(--accent)'" onmouseout="this.style.background=''"
-            onclick="selectManualTeam(${t.id}, '${t.name.replace(/'/g,"\\'")}')">
-        ${t.name}
+            onclick="selectManualTeam(+this.dataset.teamId, this.dataset.teamName)">
+        ${escapeHtml(t.name)}
        </div>`
     ).join('');
   } catch(e) {
@@ -1368,8 +1364,10 @@ async function loadDashboard() {
     document.getElementById('stat-seasons').textContent = seasons.length;
     
     let totalTeams = 0, played = 0, pending = 0;
-    for (const s of seasons) {
-      const groups = await fetch(`${API}/api/seasons/${s.id}/groups-with-teams`).then(r => r.json());
+    const allGroups = await Promise.all(
+      seasons.map(s => fetch(`${API}/api/seasons/${s.id}/groups-with-teams`).then(r => r.json()))
+    );
+    allGroups.forEach(groups => {
       groups.forEach(g => {
         totalTeams += g.teams.length;
         g.matches.forEach(m => {
@@ -1377,7 +1375,7 @@ async function loadDashboard() {
           else pending++;
         });
       });
-    }
+    });
     document.getElementById('stat-teams').textContent = totalTeams;
     document.getElementById('stat-matches').textContent = played;
     document.getElementById('stat-pending').textContent = pending;
@@ -1402,10 +1400,11 @@ async function loadMatchesForSeason() {
   }
   currentSeason = seasonId;
   
-  // Cache teams
+  // Cache teams and groups data
   const groups = await fetch(`${API}/api/seasons/${seasonId}/groups-with-teams`).then(r => r.json());
   groups.forEach(g => g.teams.forEach(t => teamCache[t.id] = t.name));
-  
+  groupsCache = { seasonId, groups };
+
   loadMatchesForPhase();
 }
 
@@ -1423,7 +1422,9 @@ async function loadMatchesForPhase() {
 }
 
 async function loadGroupMatches(seasonId, container) {
-  const groups = await fetch(`${API}/api/seasons/${seasonId}/groups-with-teams`).then(r => r.json());
+  const groups = (groupsCache && groupsCache.seasonId === seasonId)
+    ? groupsCache.groups
+    : await fetch(`${API}/api/seasons/${seasonId}/groups-with-teams`).then(r => r.json());
   
   let html = '';
   for (const g of groups) {
@@ -1641,9 +1642,13 @@ async function saveTeamEdit() {
 async function loadSeasons() {
   const seasons = await fetch(`${API}/api/seasons`).then(r => r.json());
 
+  const allGroups = await Promise.all(
+    seasons.map(s => fetch(`${API}/api/seasons/${s.id}/groups-with-teams`).then(r => r.json()))
+  );
+
   let html = '';
-  for (const s of seasons) {
-    const groups = await fetch(`${API}/api/seasons/${s.id}/groups-with-teams`).then(r => r.json());
+  seasons.forEach((s, i) => {
+    const groups = allGroups[i];
     const teamCount = groups.reduce((sum, g) => sum + g.teams.length, 0);
 
     // Status Badge
@@ -1666,7 +1671,7 @@ async function loadSeasons() {
           <button class="btn btn-sm btn-danger" onclick="deleteSeason(${s.id})" title="Löschen">🗑️</button>
         </td>
       </tr>`;
-  }
+  });
 
   document.getElementById('seasons-list').innerHTML = html || '<tr><td colspan="5"><em>Keine Saisons</em></td></tr>';
 }
@@ -2120,32 +2125,8 @@ function insertAtCursor(textarea, text) {
   textarea.focus();
 }
 
-// Dark Mode Toggle
-function initDarkMode() {
-  const isDarkMode = localStorage.getItem('biw_dark_mode') === 'true';
-  const toggle = document.getElementById('dark-mode-toggle');
-
-  if (toggle) {
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark-mode');
-      toggle.checked = true;
-    }
-
-    toggle.addEventListener('change', () => {
-      if (toggle.checked) {
-        document.documentElement.classList.add('dark-mode');
-        localStorage.setItem('biw_dark_mode', 'true');
-      } else {
-        document.documentElement.classList.remove('dark-mode');
-        localStorage.setItem('biw_dark_mode', 'false');
-      }
-    });
-  }
-}
-
 // ========== DISCORD USER MANAGEMENT ==========
 
-let userSearchTimeout = null;
 let currentTeamModalDiscordId = null;
 
 // Legacy alias: loadDiscordUsers → loadAlleDiscordUser
@@ -2204,8 +2185,9 @@ async function searchTeamsForModal() {
 
     resultsDiv.innerHTML = teams.map(team => `
       <div style="padding:.75rem;border:1px solid var(--border);border-radius:6px;margin-bottom:.5rem;cursor:pointer;background:var(--card)"
-           onclick="assignTeamLegacy(${team.id}, '${team.name.replace(/'/g, "\\'")}')">
-        <strong>${team.name}</strong>
+           data-team-id="${team.id}" data-team-name="${escapeHtml(team.name)}"
+           onclick="assignTeamLegacy(+this.dataset.teamId, this.dataset.teamName)">
+        <strong>${escapeHtml(team.name)}</strong>
         <small style="color:var(--muted);display:block">ID: ${team.id}</small>
       </div>
     `).join('');
@@ -2253,38 +2235,6 @@ async function removeTeamAssignment() {
     loadDiscordUsers();
   } catch (e) {
     toast('Fehler: ' + e.message, 'error');
-  }
-}
-
-// Register new discord user
-async function registerDiscordUser() {
-  const discordId = document.getElementById('register-discord-id').value.trim();
-  const username = document.getElementById('register-username').value.trim();
-  const participating = document.getElementById('register-participating').checked;
-
-  if (!discordId || !username) {
-    toast('Bitte Discord ID und Username eingeben', 'error');
-    return;
-  }
-
-  try {
-    await authFetch(`${API}/api/discord/users/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        discord_id: discordId,
-        discord_username: username,
-        participating_next: participating
-      })
-    });
-
-    toast(`User "${username}" registriert`, 'success');
-    document.getElementById('register-discord-id').value = '';
-    document.getElementById('register-username').value = '';
-    document.getElementById('register-participating').checked = true;
-    loadDiscordUsers();
-  } catch (e) {
-    toast('Fehler bei Registrierung: ' + e.message, 'error');
   }
 }
 
@@ -3033,7 +2983,6 @@ function debounceAnmUserSearch() {
     const matchesTeamFilter = !noTeam || !hasTeam;
     tr.style.display = (matchesSearch && matchesTeamFilter) ? '' : 'none';
   });
-  anmUserSearchTimeout = setTimeout(() => {}, 300);
 }
 
 async function toggleParticipation(discordId, newStatus) {
@@ -3052,7 +3001,6 @@ async function toggleParticipation(discordId, newStatus) {
 
 // Init
 checkAuth();
-initDarkMode();
 </script>
 </body>
 </html>
