@@ -240,29 +240,18 @@ tr.row-inactive td:first-child   { border-left:3px solid #d1d5db; }
       <div id="teams" class="section">
         <h1>Teams verwalten</h1>
         <div class="card">
-          <h2>➕ Neues Team</h2>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Saison</label>
-              <select id="team-season">
-                <option value="">Wählen...</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Teamname</label>
-              <input type="text" id="team-name" placeholder="z.B. FC Beispiel">
-            </div>
-            <button class="btn btn-success" onclick="addTeam()">Hinzufügen</button>
+          <h2>📋 Alle Teams</h2>
+          <div style="margin-bottom:1rem">
+            <input type="text" id="teams-search" placeholder="Team suchen..." oninput="filterTeamsList()" style="max-width:300px">
           </div>
-
-          <h3>Bulk Import (ein Team pro Zeile)</h3>
-          <textarea id="team-bulk" placeholder="Team 1&#10;Team 2&#10;Team 3"></textarea>
-          <button class="btn btn-primary" style="margin-top:.5rem" onclick="bulkAddTeams()">Alle importieren</button>
-        </div>
-
-        <div class="card">
-          <h2>📋 Teams in Saison</h2>
-          <div id="teams-list"></div>
+          <div style="overflow-x:auto">
+            <table>
+              <thead><tr><th>Team</th><th>Discord User</th><th>Saisons</th><th>Aktionen</th></tr></thead>
+              <tbody id="teams-list">
+                <tr><td colspan="4" style="text-align:center;color:var(--muted)">Lade...</td></tr>
+              </tbody>
+            </table>
+          </div>
         </div>
 
         <!-- Team Edit Modal -->
@@ -293,19 +282,8 @@ tr.row-inactive td:first-child   { border-left:3px solid #d1d5db; }
       <!-- Seasons -->
       <div id="seasons" class="section">
         <h1>Saisons verwalten</h1>
-        <div class="card">
-          <h2>➕ Neue Saison</h2>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Name</label>
-              <input type="text" id="season-name" placeholder="z.B. Saison 2026">
-            </div>
-            <div class="form-group">
-              <label>Teilnehmeranzahl</label>
-              <input type="number" id="season-count" value="16" min="4" max="64">
-            </div>
-            <button class="btn btn-success" onclick="createSeason()">Erstellen</button>
-          </div>
+        <div class="card" style="background:var(--accent);border:1px dashed var(--border)">
+          <p style="margin:0;font-size:.9rem;color:var(--muted)">Neue Saison erstellen? Nutze den <a href="#" onclick="showSection('saison-setup');return false" style="color:var(--primary);font-weight:600">Saison-Setup Wizard</a> — dort kannst du Teams auswählen, auslosen und den Spielplan generieren.</p>
         </div>
         
         <div class="card">
@@ -576,36 +554,21 @@ tr.row-inactive td:first-child   { border-left:3px solid #d1d5db; }
         <!-- Tab 1: Teilnehmer -->
         <div id="tab-participants" class="setup-tab">
           <div class="card">
-            <h2>👥 Angemeldete Teilnehmer</h2>
-            <p style="color:var(--muted);font-size:.9rem;margin-top:0">Alle Discord-User mit "Teilnahme: Ja" und zugewiesenem Team. Fehlende Team-Zuweisungen müssen vorher im Bereich <em>Discord User</em> gepflegt werden.</p>
-            <div style="display:flex;gap:.75rem;margin-bottom:1rem">
-              <button class="btn btn-primary" onclick="loadParticipants()">🔄 Laden</button>
-              <span id="participant-count" style="align-self:center;color:var(--muted);font-size:.9rem"></span>
+            <h2>👥 Teilnehmer auswählen</h2>
+            <p style="color:var(--muted);font-size:.9rem;margin-top:0">Alle registrierten Teams. Wähle die Teams aus, die an der nächsten Saison teilnehmen sollen.</p>
+            <div style="display:flex;gap:.75rem;margin-bottom:1rem;align-items:center">
+              <button class="btn btn-primary" onclick="loadParticipants()">🔄 Teams laden</button>
+              <input type="text" id="participants-search" placeholder="Filter..." oninput="filterParticipantsList()" style="max-width:200px">
+              <span id="participant-count" style="color:var(--muted);font-size:.9rem"></span>
             </div>
             <div style="overflow-x:auto">
               <table>
-                <thead><tr><th>#</th><th>Discord User</th><th>Team</th><th>Onlineliga-Profil</th><th>Status</th></tr></thead>
+                <thead><tr><th style="width:40px"><input type="checkbox" id="participants-select-all" onchange="toggleAllParticipants(this.checked)"></th><th>Team</th><th>Discord User</th><th>Status</th></tr></thead>
                 <tbody id="participants-list">
-                  <tr><td colspan="5" style="text-align:center;color:var(--muted)">Noch nicht geladen</td></tr>
+                  <tr><td colspan="4" style="text-align:center;color:var(--muted)">Noch nicht geladen</td></tr>
                 </tbody>
               </table>
             </div>
-          </div>
-
-          <div class="card" style="border:2px dashed var(--border)">
-            <h2>➕ Teilnehmer manuell hinzufügen</h2>
-            <p style="color:var(--muted);font-size:.9rem;margin-top:0">Für Teilnehmer die sich per Zuruf angemeldet haben.</p>
-            <div class="form-row">
-              <div class="form-group">
-                <label>Team suchen</label>
-                <input type="text" id="manual-team-search" placeholder="Teamname eingeben..." oninput="searchTeamForManual()">
-                <div id="manual-team-results" style="margin-top:.5rem"></div>
-              </div>
-              <div class="form-group" style="flex:0;align-self:flex-end">
-                <button class="btn btn-success" id="btn-add-manual" onclick="addManualParticipant()" disabled>✅ Zur Liste</button>
-              </div>
-            </div>
-            <div id="selected-manual-team" style="display:none;padding:.5rem;background:var(--accent);border-radius:6px;font-size:.9rem;margin-top:.5rem"></div>
           </div>
         </div>
 

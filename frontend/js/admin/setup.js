@@ -33,103 +33,103 @@ async function initSaisonSetup() {
 
 // ---- Tab 1: Teilnehmer ----
 
+let allParticipantTeams = [];
+
 async function loadParticipants() {
   const tbody = document.getElementById('participants-list');
   const countEl = document.getElementById('participant-count');
-  tbody.innerHTML = '<tr><td colspan="5" style="text-align:center">Lade...</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="4" style="text-align:center">Lade...</td></tr>';
 
   try {
-    const res = await authFetch(`${API_URL}/api/discord/participation-report`);
-    const data = await res.json();
-    const participants = (data.participating || []);
-    setupState.participants = participants;
+    const res = await fetch(`${API_URL}/api/teams`);
+    allParticipantTeams = await res.json();
 
-    countEl.textContent = `${participants.length} Teilnehmer geladen`;
+    // Vorauswahl: Teams die participating_next haben oder bereits in setupState sind
+    const selectedIds = new Set(setupState.participants.map(p => p.team_id));
 
-    if (participants.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted)">Keine Teilnehmer gefunden</td></tr>';
-      return;
+    renderParticipantsList(allParticipantTeams, selectedIds);
+  } catch (e) {
+    tbody.innerHTML = `<tr><td colspan="4" style="color:var(--danger)">Fehler: ${e.message}</td></tr>`;
+  }
+}
+
+function renderParticipantsList(teams, selectedIds) {
+  const tbody = document.getElementById('participants-list');
+  const countEl = document.getElementById('participant-count');
+
+  if (!selectedIds) {
+    selectedIds = getSelectedParticipantIds();
+  }
+
+  const selected = teams.filter(t => selectedIds.has(t.id)).length;
+  countEl.textContent = `${selected} von ${teams.length} Teams ausgewählt`;
+
+  if (!teams.length) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted)">Keine Teams gefunden</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = teams.map(t => {
+    const checked = selectedIds.has(t.id) ? 'checked' : '';
+    const discord = t.discord_user
+      ? t.discord_user.discord_username || t.discord_user.discord_id
+      : '<span style="color:var(--muted)">–</span>';
+
+    let status, statusStyle;
+    if (t.discord_user && selectedIds.has(t.id)) {
+      status = 'Ready';
+      statusStyle = 'color:var(--success);font-weight:600';
+    } else if (!t.discord_user && selectedIds.has(t.id)) {
+      status = 'Kein Discord';
+      statusStyle = 'color:var(--warning);font-weight:600';
+    } else {
+      status = '–';
+      statusStyle = 'color:var(--muted)';
     }
 
-    tbody.innerHTML = participants.map((p, i) => {
-      const hasTeam = !!p.team_id;
-      const statusBadge = hasTeam
-        ? `<span style="color:var(--success);font-weight:600">✅ Team zugewiesen</span>`
-        : `<span style="color:var(--danger);font-weight:600">⚠️ Kein Team</span>`;
-      const profileLink = p.profile_url
-        ? `<a href="${p.profile_url}" target="_blank" style="color:var(--primary);font-size:.8rem">🔗 Profil</a>`
-        : `<span style="color:var(--muted);font-size:.8rem">-</span>`;
-
-      return `<tr>
-        <td>${i + 1}</td>
-        <td><strong>${p.discord_username || p.discord_id}</strong></td>
-        <td>${p.team_name || '<em style="color:var(--muted)">nicht zugewiesen</em>'}</td>
-        <td>${profileLink}</td>
-        <td>${statusBadge}</td>
-      </tr>`;
-    }).join('');
-  } catch (e) {
-    tbody.innerHTML = `<tr><td colspan="5" style="color:var(--danger)">Fehler: ${e.message}</td></tr>`;
-  }
+    return `<tr>
+      <td><input type="checkbox" class="participant-check" data-team-id="${t.id}" data-team-name="${escapeHtml(t.name)}" ${checked} onchange="updateParticipantSelection()"></td>
+      <td><strong>${escapeHtml(t.name)}</strong></td>
+      <td>${discord}</td>
+      <td><span style="${statusStyle}">${status}</span></td>
+    </tr>`;
+  }).join('');
 }
 
-async function searchTeamForManual() {
-  const q = document.getElementById('manual-team-search').value;
-  const resultsEl = document.getElementById('manual-team-results');
-  if (q.length < 2) { resultsEl.innerHTML = ''; return; }
-
-  try {
-    const res = await authFetch(`${API_URL}/api/teams?search=${encodeURIComponent(q)}&limit=10`);
-    const teams = await res.json();
-    if (!teams.length) { resultsEl.innerHTML = '<em style="color:var(--muted);font-size:.85rem">Keine Teams gefunden</em>'; return; }
-
-    resultsEl.innerHTML = teams.slice(0, 8).map(t =>
-      `<div style="padding:.4rem .6rem;cursor:pointer;border-radius:4px;font-size:.9rem"
-            data-team-id="${t.id}" data-team-name="${escapeHtml(t.name)}"
-            onmouseover="this.style.background='var(--accent)'" onmouseout="this.style.background=''"
-            onclick="selectManualTeam(+this.dataset.teamId, this.dataset.teamName)">
-        ${escapeHtml(t.name)}
-       </div>`
-    ).join('');
-  } catch (e) {
-    resultsEl.innerHTML = `<em style="color:var(--danger);font-size:.85rem">Fehler beim Suchen</em>`;
-  }
+function filterParticipantsList() {
+  const q = (document.getElementById('participants-search').value || '').toLowerCase().trim();
+  const selectedIds = getSelectedParticipantIds();
+  const filtered = q ? allParticipantTeams.filter(t => t.name.toLowerCase().includes(q)) : allParticipantTeams;
+  renderParticipantsList(filtered, selectedIds);
 }
 
-function selectManualTeam(id, name) {
-  setupState.manualTeamSelected = { id, name };
-  document.getElementById('manual-team-results').innerHTML = '';
-  document.getElementById('manual-team-search').value = name;
-  document.getElementById('btn-add-manual').disabled = false;
-  const infoEl = document.getElementById('selected-manual-team');
-  infoEl.style.display = 'block';
-  infoEl.textContent = `✅ Ausgewählt: ${name} (ID: ${id})`;
+function getSelectedParticipantIds() {
+  const ids = new Set();
+  document.querySelectorAll('.participant-check:checked').forEach(cb => {
+    ids.add(parseInt(cb.dataset.teamId));
+  });
+  return ids;
 }
 
-function addManualParticipant() {
-  const team = setupState.manualTeamSelected;
-  if (!team) return;
-
-  const exists = setupState.participants.find(p => p.team_id === team.id);
-  if (exists) { toast(`${team.name} ist bereits in der Liste`, 'error'); return; }
-
-  setupState.participants.push({
-    team_id: team.id,
-    team_name: team.name,
-    discord_username: '(manuell)',
-    discord_id: null,
-    profile_url: null,
-    manual: true,
+function updateParticipantSelection() {
+  const selectedIds = getSelectedParticipantIds();
+  setupState.participants = [];
+  document.querySelectorAll('.participant-check:checked').forEach(cb => {
+    setupState.participants.push({
+      team_id: parseInt(cb.dataset.teamId),
+      team_name: cb.dataset.teamName,
+    });
   });
 
-  toast(`${team.name} zur Teilnehmerliste hinzugefügt`);
+  const countEl = document.getElementById('participant-count');
+  countEl.textContent = `${selectedIds.size} von ${allParticipantTeams.length} Teams ausgewählt`;
+}
 
-  setupState.manualTeamSelected = null;
-  document.getElementById('manual-team-search').value = '';
-  document.getElementById('selected-manual-team').style.display = 'none';
-  document.getElementById('btn-add-manual').disabled = true;
-
-  loadParticipants();
+function toggleAllParticipants(checked) {
+  document.querySelectorAll('.participant-check').forEach(cb => {
+    cb.checked = checked;
+  });
+  updateParticipantSelection();
 }
 
 // ---- Tab 2: Auslosung ----

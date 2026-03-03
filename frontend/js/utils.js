@@ -34,7 +34,7 @@ function showSection(name) {
   document.querySelector(`[data-section="${name}"]`)?.classList.add('active');
 
   if (name === 'matches') loadMatchSeasons();
-  if (name === 'teams') loadTeamSeasons();
+  if (name === 'teams') loadAllTeams();
   if (name === 'seasons') loadSeasons();
   if (name === 'anmeldungen') loadAnmeldungen();
   if (name === 'news') {

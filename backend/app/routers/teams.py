@@ -8,6 +8,65 @@ from ..auth import get_current_user
 router = APIRouter()
 
 
+@router.get("/teams")
+def list_all_teams(
+    search: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """Alle Teams mit Saison-Teilnahmen und Discord-Verknüpfung."""
+    query = db.query(models.Team)
+    if search and len(search.strip()) >= 2:
+        query = query.filter(models.Team.name.ilike(f"%{search}%"))
+    query = query.order_by(models.Team.name)
+    teams = query.all()
+
+    team_ids = [t.id for t in teams]
+
+    # Saison-Teilnahmen laden
+    season_teams = db.query(
+        models.SeasonTeam, models.Season, models.Group
+    ).join(
+        models.Season, models.SeasonTeam.season_id == models.Season.id
+    ).outerjoin(
+        models.Group, models.SeasonTeam.group_id == models.Group.id
+    ).filter(
+        models.SeasonTeam.team_id.in_(team_ids)
+    ).all() if team_ids else []
+
+    # Discord-Verknüpfungen laden
+    profiles = db.query(models.UserProfile).filter(
+        models.UserProfile.team_id.in_(team_ids)
+    ).all() if team_ids else []
+    profile_map = {p.team_id: p for p in profiles}
+
+    # Saison-Map aufbauen
+    seasons_map = {}
+    for st, season, group in season_teams:
+        seasons_map.setdefault(st.team_id, []).append({
+            "season_id": season.id,
+            "season_name": season.name,
+            "group_name": group.name if group else None,
+            "status": season.status,
+        })
+
+    result = []
+    for t in teams:
+        profile = profile_map.get(t.id)
+        result.append({
+            "id": t.id,
+            "name": t.name,
+            "logo_url": t.logo_url,
+            "onlineliga_url": t.onlineliga_url,
+            "discord_user": {
+                "discord_id": profile.discord_id,
+                "discord_username": profile.discord_username,
+            } if profile else None,
+            "seasons": seasons_map.get(t.id, []),
+        })
+
+    return result
+
+
 # WICHTIG: /teams/search MUSS vor /teams/{team_id} registriert werden!
 @router.get("/teams/search", response_model=list[schemas.TeamRead])
 def search_teams(
