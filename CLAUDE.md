@@ -138,6 +138,7 @@ POST /api/groups/{id}/generate-schedule      # Round-Robin Spielplan generieren
 POST /api/groups/{id}/matches                # Match manuell anlegen
 PATCH /api/matches/{id}                      # Ergebnis eintragen
 GET  /api/groups/{id}/standings              # Tabelle berechnen
+POST /api/matches/import                     # Bulk-Import (n8n) mit Swap-Erkennung
 
 # KO-Phase
 POST /api/seasons/{id}/ko-bracket/generate   # KO-Bracket erstellen (einmalig)

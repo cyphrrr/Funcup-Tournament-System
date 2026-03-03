@@ -37,7 +37,7 @@ Kein CMS. Keine Plugins. Keine implizite Logik.
 
 **Beispiel:**
 ```
-POST /api/matches/import
+POST /api/matches/import          # Bulk-Import mit Swap-Erkennung + Filterung
 POST /api/matchdays/complete
 POST /api/posts
 GET  /api/exports/matchday/{id}

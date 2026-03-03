@@ -169,8 +169,19 @@ Repräsentiert einen öffentlichen Spieltags‑Post.
 
 **Ablauf:**
 1. Ergebnisse von onlineliga.de abrufen
-2. Normalisieren (Heim/Gast, Tore)
-3. Matches aktualisieren
+2. n8n sendet Array an `POST /api/matches/import`
+3. Backend verarbeitet pro Ergebnis:
+   - Saison + Spieltag auflösen
+   - Team‑Namen auf IDs mappen (case‑insensitive)
+   - Match im Spielplan suchen
+   - Falls Heim/Gast vertauscht: automatisch Swap + Tore tauschen
+   - Ergebnis eintragen, Status → `played`
+
+**Filterung (Backend):**
+- **Unbekannte Teams** werden übersprungen (Friendly‑Gegner außerhalb des Pokals)
+- **Nicht existierende Paarungen** werden übersprungen (Friendlies mit falscher Zuordnung)
+- **Bereits gespielte Matches** werden nicht überschrieben
+- **Vertauschte Heim/Gast** werden automatisch korrigiert (Ingame‑Friendlies)
 
 ---
 
