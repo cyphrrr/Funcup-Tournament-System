@@ -54,6 +54,7 @@ node_modules/
 htmlcov/
 .pytest_cache/
 .claude/
+.worktrees/
 
 # Basic Auth (sensible Passwörter)
 .htpasswd
