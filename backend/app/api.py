@@ -798,59 +798,6 @@ def get_ko_bracket(season_id: int, db: Session = Depends(get_db)):
     )
 
 
-@router.patch("/ko-matches/{match_id}", response_model=schemas.KOMatchRead)
-def update_ko_match(match_id: int, update: schemas.KOMatchUpdate, db: Session = Depends(get_db), _: str = Depends(get_current_user)):
-    """
-    Ergebnis eines KO-Matches eintragen.
-    Sieger wird automatisch ins nächste Match übertragen.
-    """
-    match = db.query(models.KOMatch).filter(models.KOMatch.id == match_id).first()
-    if not match:
-        raise HTTPException(status_code=404, detail="KO match not found")
-
-    if match.is_bye:
-        raise HTTPException(status_code=400, detail="Cannot update bye match")
-
-    if update.home_team_id is not None:
-        match.home_team_id = update.home_team_id
-    if update.away_team_id is not None:
-        match.away_team_id = update.away_team_id
-    if update.home_goals is not None:
-        match.home_goals = update.home_goals
-    if update.away_goals is not None:
-        match.away_goals = update.away_goals
-    if update.status is not None:
-        match.status = update.status
-    if update.ingame_week is not None:
-        match.ingame_week = update.ingame_week
-
-    # Auto-Status und Sieger-Weiterleitung
-    if match.home_goals is not None and match.away_goals is not None:
-        match.status = "played"
-
-        # Sieger ermitteln (bei Unentschieden: keine Auto-Weiterleitung)
-        winner_id = None
-        if match.home_goals > match.away_goals:
-            winner_id = match.home_team_id
-        elif match.away_goals > match.home_goals:
-            winner_id = match.away_team_id
-
-        # Sieger ins nächste Match eintragen
-        if winner_id and match.next_match_id:
-            next_match = db.get(models.KOMatch, match.next_match_id)
-            if next_match:
-                if match.next_match_slot == "home":
-                    next_match.home_team_id = winner_id
-                else:
-                    next_match.away_team_id = winner_id
-                # Wenn beide Teams da → scheduled
-                if next_match.home_team_id and next_match.away_team_id:
-                    next_match.status = "scheduled"
-
-    db.commit()
-    db.refresh(match)
-    return match
-
 
 # ============ NEWS ============
 

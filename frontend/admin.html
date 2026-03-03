@@ -943,16 +943,10 @@ async function loadParticipants() {
     }).join('');
 
     // Auch manuell hinzugefügte aus setupState.participants (manuelle Teams)
-    renderManualAdditions();
 
   } catch(e) {
     tbody.innerHTML = `<tr><td colspan="5" style="color:var(--danger)">Fehler: ${e.message}</td></tr>`;
   }
-}
-
-function renderManualAdditions() {
-  // Manuell hinzugefügte werden nach der normalen Liste angezeigt
-  // (bereits in setupState.participants enthalten nach addManualParticipant)
 }
 
 async function searchTeamForManual() {
@@ -2121,32 +2115,8 @@ function insertAtCursor(textarea, text) {
   textarea.focus();
 }
 
-// Dark Mode Toggle
-function initDarkMode() {
-  const isDarkMode = localStorage.getItem('biw_dark_mode') === 'true';
-  const toggle = document.getElementById('dark-mode-toggle');
-
-  if (toggle) {
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark-mode');
-      toggle.checked = true;
-    }
-
-    toggle.addEventListener('change', () => {
-      if (toggle.checked) {
-        document.documentElement.classList.add('dark-mode');
-        localStorage.setItem('biw_dark_mode', 'true');
-      } else {
-        document.documentElement.classList.remove('dark-mode');
-        localStorage.setItem('biw_dark_mode', 'false');
-      }
-    });
-  }
-}
-
 // ========== DISCORD USER MANAGEMENT ==========
 
-let userSearchTimeout = null;
 let currentTeamModalDiscordId = null;
 
 // Legacy alias: loadDiscordUsers → loadAlleDiscordUser
@@ -2255,38 +2225,6 @@ async function removeTeamAssignment() {
     loadDiscordUsers();
   } catch (e) {
     toast('Fehler: ' + e.message, 'error');
-  }
-}
-
-// Register new discord user
-async function registerDiscordUser() {
-  const discordId = document.getElementById('register-discord-id').value.trim();
-  const username = document.getElementById('register-username').value.trim();
-  const participating = document.getElementById('register-participating').checked;
-
-  if (!discordId || !username) {
-    toast('Bitte Discord ID und Username eingeben', 'error');
-    return;
-  }
-
-  try {
-    await authFetch(`${API}/api/discord/users/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        discord_id: discordId,
-        discord_username: username,
-        participating_next: participating
-      })
-    });
-
-    toast(`User "${username}" registriert`, 'success');
-    document.getElementById('register-discord-id').value = '';
-    document.getElementById('register-username').value = '';
-    document.getElementById('register-participating').checked = true;
-    loadDiscordUsers();
-  } catch (e) {
-    toast('Fehler bei Registrierung: ' + e.message, 'error');
   }
 }
 
@@ -3035,7 +2973,6 @@ function debounceAnmUserSearch() {
     const matchesTeamFilter = !noTeam || !hasTeam;
     tr.style.display = (matchesSearch && matchesTeamFilter) ? '' : 'none';
   });
-  anmUserSearchTimeout = setTimeout(() => {}, 300);
 }
 
 async function toggleParticipation(discordId, newStatus) {
@@ -3054,7 +2991,6 @@ async function toggleParticipation(discordId, newStatus) {
 
 // Init
 checkAuth();
-initDarkMode();
 </script>
 </body>
 </html>
