@@ -1,3 +1,5 @@
+import random
+from math import ceil
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -227,6 +229,175 @@ def update_team(team_id: int, update: schemas.TeamUpdate, db: Session = Depends(
     db.commit()
     db.refresh(team)
     return team
+
+
+@router.put("/seasons/{season_id}/teams/sync")
+def sync_season_teams(
+    season_id: int,
+    payload: schemas.SyncTeamsPayload,
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_user)
+):
+    """
+    Diff-basierter Team-Sync: Nimmt Team-IDs + Seeding-Info,
+    synchronisiert SeasonTeam-Einträge, berechnet Gruppen neu,
+    generiert optional Spielplan.
+    """
+    from .matches import generate_round_robin
+
+    season = db.query(models.Season).filter(models.Season.id == season_id).first()
+    if not season:
+        raise HTTPException(status_code=404, detail="Season not found")
+
+    # 1. Bestehende team_ids laden
+    existing_sts = db.query(models.SeasonTeam).filter(
+        models.SeasonTeam.season_id == season_id
+    ).all()
+    existing_ids = {st.team_id for st in existing_sts}
+    desired_ids = set(payload.team_ids)
+
+    # 2. Diff
+    to_add = desired_ids - existing_ids
+    to_remove = existing_ids - desired_ids
+
+    # 3. Entfernen: SeasonTeam + zugehörige ungespielte Matches
+    if to_remove:
+        # Ungespielte Matches löschen wo ein entferntes Team beteiligt ist
+        db.query(models.Match).filter(
+            models.Match.season_id == season_id,
+            models.Match.status == "scheduled",
+            (models.Match.home_team_id.in_(to_remove) | models.Match.away_team_id.in_(to_remove))
+        ).delete(synchronize_session="fetch")
+
+        db.query(models.SeasonTeam).filter(
+            models.SeasonTeam.season_id == season_id,
+            models.SeasonTeam.team_id.in_(to_remove)
+        ).delete(synchronize_session="fetch")
+
+    # 4. Gruppen anpassen: ceil(len / 4)
+    final_team_ids = list(desired_ids)
+    needed_groups = ceil(len(final_team_ids) / 4) if final_team_ids else 0
+    group_names = list("ABCDEFGHIJKLMNOP")
+
+    existing_groups = db.query(models.Group).filter(
+        models.Group.season_id == season_id
+    ).order_by(models.Group.sort_order).all()
+
+    # Überschüssige leere Gruppen löschen
+    while len(existing_groups) > needed_groups:
+        g = existing_groups.pop()
+        # Nur löschen wenn keine gespielten Matches drin
+        played = db.query(models.Match).filter(
+            models.Match.group_id == g.id,
+            models.Match.status != "scheduled"
+        ).count()
+        if played == 0:
+            db.query(models.Match).filter(models.Match.group_id == g.id).delete()
+            db.query(models.SeasonTeam).filter(models.SeasonTeam.group_id == g.id).update(
+                {models.SeasonTeam.group_id: None}, synchronize_session="fetch"
+            )
+            db.delete(g)
+        else:
+            existing_groups.append(g)
+            break
+
+    # Fehlende Gruppen erstellen
+    while len(existing_groups) < needed_groups:
+        idx = len(existing_groups)
+        g = models.Group(
+            season_id=season_id,
+            name=group_names[idx] if idx < len(group_names) else f"G{idx+1}",
+            sort_order=idx
+        )
+        db.add(g)
+        db.flush()
+        existing_groups.append(g)
+
+    # 5. Alle Teams auf Gruppen verteilen (Seeded zuerst, Rest zufällig)
+    # Alle bestehenden group_id Zuordnungen zurücksetzen
+    db.query(models.SeasonTeam).filter(
+        models.SeasonTeam.season_id == season_id
+    ).update({models.SeasonTeam.group_id: None}, synchronize_session="fetch")
+
+    # Neue Teams hinzufügen
+    for tid in to_add:
+        team = db.query(models.Team).filter(models.Team.id == tid).first()
+        if not team:
+            continue
+        st = models.SeasonTeam(season_id=season_id, team_id=tid, group_id=None)
+        db.add(st)
+    db.flush()
+
+    # Season participant_count aktualisieren
+    season.participant_count = len(final_team_ids)
+
+    # Gruppen-Map: name -> group
+    group_map = {g.name: g for g in existing_groups}
+
+    # Seeded Teams zuerst platzieren
+    seeded_team_ids = set()
+    group_assignments = {g.id: [] for g in existing_groups}
+
+    for group_name, team_id in payload.seeded_teams.items():
+        if team_id in desired_ids and group_name in group_map:
+            group = group_map[group_name]
+            group_assignments[group.id].append(team_id)
+            seeded_team_ids.add(team_id)
+
+    # Rest zufällig gleichmäßig verteilen
+    unseeded = [tid for tid in final_team_ids if tid not in seeded_team_ids]
+    random.shuffle(unseeded)
+
+    for tid in unseeded:
+        # Gruppe mit wenigsten Teams
+        min_group_id = min(group_assignments, key=lambda gid: len(group_assignments[gid]))
+        group_assignments[min_group_id].append(tid)
+
+    # SeasonTeam group_id setzen
+    for group_id, team_ids in group_assignments.items():
+        for tid in team_ids:
+            db.query(models.SeasonTeam).filter(
+                models.SeasonTeam.season_id == season_id,
+                models.SeasonTeam.team_id == tid
+            ).update({models.SeasonTeam.group_id: group_id}, synchronize_session="fetch")
+
+    # 6. Spielplan generieren
+    schedule_results = []
+    if payload.generate_schedule:
+        for g in existing_groups:
+            # Bestehende scheduled Matches löschen
+            db.query(models.Match).filter(
+                models.Match.group_id == g.id,
+                models.Match.status == "scheduled"
+            ).delete(synchronize_session="fetch")
+            result = generate_round_robin(db, g.id, season_id)
+            schedule_results.append(result)
+
+    db.commit()
+
+    # Response
+    groups_out = []
+    for g in existing_groups:
+        teams_in_group = db.query(models.SeasonTeam).filter(
+            models.SeasonTeam.group_id == g.id,
+            models.SeasonTeam.season_id == season_id
+        ).all()
+        team_objs = db.query(models.Team).filter(
+            models.Team.id.in_([st.team_id for st in teams_in_group])
+        ).all() if teams_in_group else []
+        groups_out.append({
+            "id": g.id,
+            "name": g.name,
+            "teams": [{"id": t.id, "name": t.name} for t in team_objs]
+        })
+
+    return {
+        "season_id": season_id,
+        "groups": groups_out,
+        "added": len(to_add),
+        "removed": len(to_remove),
+        "schedule": schedule_results
+    }
 
 
 @router.post("/seasons/{season_id}/teams", response_model=schemas.TeamRead)

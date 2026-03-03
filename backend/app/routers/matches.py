@@ -58,11 +58,11 @@ def update_match(match_id: int, update: schemas.MatchUpdate, db: Session = Depen
     return match
 
 
-@router.post("/groups/{group_id}/generate-schedule")
-def generate_group_schedule(group_id: int, db: Session = Depends(get_db), _: str = Depends(get_current_user)):
+def generate_round_robin(db: Session, group_id: int, season_id: int):
     """
-    Generiert einen vollständigen Gruppen-Spielplan (Round-Robin) mit Spieltagen.
-    Verwendet Circle-Methode für gleichmäßige Spieltag-Verteilung.
+    Hilfsfunktion: Generiert Round-Robin-Spielplan für eine Gruppe.
+    Kann von sync-Endpoint und HTTP-Endpoint genutzt werden.
+    Gibt dict mit group_id, matches_created, matchdays zurück.
     """
     team_ids = [
         st.team_id
@@ -72,14 +72,7 @@ def generate_group_schedule(group_id: int, db: Session = Depends(get_db), _: str
     ]
 
     if len(team_ids) < 2:
-        raise HTTPException(status_code=400, detail="Not enough teams for schedule")
-
-    existing = db.query(models.Match).filter(models.Match.group_id == group_id).count()
-    if existing > 0:
-        raise HTTPException(status_code=400, detail="Schedule already exists")
-
-    group = db.get(models.Group, group_id)
-    season_id = group.season_id
+        return {"group_id": group_id, "matches_created": 0, "matchdays": 0}
 
     n = len(team_ids)
     teams = team_ids.copy()
@@ -116,8 +109,33 @@ def generate_group_schedule(group_id: int, db: Session = Depends(get_db), _: str
             db.add(m)
             created.append(m)
 
-    db.commit()
     return {"group_id": group_id, "matches_created": len(created), "matchdays": len(matchdays)}
+
+
+@router.post("/groups/{group_id}/generate-schedule")
+def generate_group_schedule(group_id: int, db: Session = Depends(get_db), _: str = Depends(get_current_user)):
+    """
+    Generiert einen vollständigen Gruppen-Spielplan (Round-Robin) mit Spieltagen.
+    Verwendet Circle-Methode für gleichmäßige Spieltag-Verteilung.
+    """
+    team_ids = [
+        st.team_id
+        for st in db.query(models.SeasonTeam)
+        .filter(models.SeasonTeam.group_id == group_id)
+        .all()
+    ]
+
+    if len(team_ids) < 2:
+        raise HTTPException(status_code=400, detail="Not enough teams for schedule")
+
+    existing = db.query(models.Match).filter(models.Match.group_id == group_id).count()
+    if existing > 0:
+        raise HTTPException(status_code=400, detail="Schedule already exists")
+
+    group = db.get(models.Group, group_id)
+    result = generate_round_robin(db, group_id, group.season_id)
+    db.commit()
+    return result
 
 
 @router.get("/groups/{group_id}/standings")

@@ -558,12 +558,13 @@ tr.row-inactive td:first-child   { border-left:3px solid #d1d5db; }
             <p style="color:var(--muted);font-size:.9rem;margin-top:0">Alle registrierten Teams. Wähle die Teams aus, die an der nächsten Saison teilnehmen sollen.</p>
             <div style="display:flex;gap:.75rem;margin-bottom:1rem;align-items:center">
               <button class="btn btn-primary" onclick="loadParticipants()">🔄 Teams laden</button>
+              <button class="btn btn-success" onclick="finalizeTeams()">✅ Teams final</button>
               <input type="text" id="participants-search" placeholder="Filter..." oninput="filterParticipantsList()" style="max-width:200px">
               <span id="participant-count" style="color:var(--muted);font-size:.9rem"></span>
             </div>
             <div style="overflow-x:auto">
               <table>
-                <thead><tr><th style="width:40px"><input type="checkbox" id="participants-select-all" onchange="toggleAllParticipants(this.checked)"></th><th>Team</th><th>Discord User</th><th>Status</th></tr></thead>
+                <thead><tr><th style="width:40px"><input type="checkbox" id="participants-select-all" onchange="toggleAllParticipants(this.checked)"></th><th>Team</th><th>Setzplatz</th><th>Discord User</th><th>Status</th></tr></thead>
                 <tbody id="participants-list">
                   <tr><td colspan="4" style="text-align:center;color:var(--muted)">Noch nicht geladen</td></tr>
                 </tbody>

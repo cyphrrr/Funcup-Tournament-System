@@ -5,6 +5,7 @@ const setupState = {
   manualTeamSelected: null,
   drawGroups: null,
   createdSeasonId: null,
+  seededTeams: { A: null, B: null, C: null },
 };
 
 function showSetupTab(tabId) {
@@ -38,7 +39,7 @@ let allParticipantTeams = [];
 async function loadParticipants() {
   const tbody = document.getElementById('participants-list');
   const countEl = document.getElementById('participant-count');
-  tbody.innerHTML = '<tr><td colspan="4" style="text-align:center">Lade...</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="5" style="text-align:center">Lade...</td></tr>';
 
   try {
     const res = await fetch(`${API_URL}/api/teams`);
@@ -63,7 +64,7 @@ async function loadParticipants() {
 
     renderParticipantsList(allParticipantTeams, selectedIds);
   } catch (e) {
-    tbody.innerHTML = `<tr><td colspan="4" style="color:var(--danger)">Fehler: ${e.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="5" style="color:var(--danger)">Fehler: ${e.message}</td></tr>`;
   }
 }
 
@@ -79,9 +80,14 @@ function renderParticipantsList(teams, selectedIds) {
   countEl.textContent = `${selected} von ${teams.length} Teams ausgewählt`;
 
   if (!teams.length) {
-    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted)">Keine Teams gefunden</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted)">Keine Teams gefunden</td></tr>';
     return;
   }
+
+  // Bestimme welche Setzplätze vergeben sind
+  const seededValues = Object.entries(setupState.seededTeams)
+    .filter(([, tid]) => tid !== null)
+    .map(([key, tid]) => ({ key, tid }));
 
   tbody.innerHTML = teams.map(t => {
     const checked = selectedIds.has(t.id) ? 'checked' : '';
@@ -101,9 +107,27 @@ function renderParticipantsList(teams, selectedIds) {
       statusStyle = 'color:var(--muted)';
     }
 
+    // Setzplatz-Dropdown
+    const currentSeed = Object.entries(setupState.seededTeams).find(([, tid]) => tid === t.id);
+    const currentSeedKey = currentSeed ? currentSeed[0] : '';
+    const isChecked = selectedIds.has(t.id);
+    const seedOptions = [
+      { value: '', label: '–' },
+      { value: 'A', label: 'Gr. A (Pokalsieger)' },
+      { value: 'B', label: 'Gr. B (Lucky Loser)' },
+      { value: 'C', label: 'Gr. C (Loser Sieger)' },
+    ];
+    const seedSelect = `<select class="seed-select" data-team-id="${t.id}" onchange="updateSeedSelection(this)" ${!isChecked ? 'disabled' : ''} style="padding:.25rem .4rem;font-size:.8rem;min-width:140px">
+      ${seedOptions.map(o => {
+        const taken = o.value && setupState.seededTeams[o.value] !== null && setupState.seededTeams[o.value] !== t.id;
+        return `<option value="${o.value}" ${o.value === currentSeedKey ? 'selected' : ''} ${taken ? 'disabled' : ''}>${o.label}</option>`;
+      }).join('')}
+    </select>`;
+
     return `<tr>
       <td><input type="checkbox" class="participant-check" data-team-id="${t.id}" data-team-name="${escapeHtml(t.name)}" ${checked} onchange="updateParticipantSelection()"></td>
       <td><strong>${escapeHtml(t.name)}</strong></td>
+      <td>${seedSelect}</td>
       <td>${discord}</td>
       <td><span style="${statusStyle}">${status}</span></td>
     </tr>`;
@@ -135,8 +159,18 @@ function updateParticipantSelection() {
     });
   });
 
+  // Setzplätze für abgewählte Teams entfernen
+  for (const key of Object.keys(setupState.seededTeams)) {
+    if (setupState.seededTeams[key] !== null && !selectedIds.has(setupState.seededTeams[key])) {
+      setupState.seededTeams[key] = null;
+    }
+  }
+
   const countEl = document.getElementById('participant-count');
   countEl.textContent = `${selectedIds.size} von ${allParticipantTeams.length} Teams ausgewählt`;
+
+  // Seed-Dropdowns aktualisieren (disabled-Status)
+  renderParticipantsList(allParticipantTeams, selectedIds);
 }
 
 function toggleAllParticipants(checked) {
@@ -145,6 +179,105 @@ function toggleAllParticipants(checked) {
   });
   updateParticipantSelection();
 }
+
+function updateSeedSelection(selectEl) {
+  const teamId = parseInt(selectEl.dataset.teamId);
+  const value = selectEl.value;
+
+  // Alten Setzplatz für dieses Team entfernen
+  for (const key of Object.keys(setupState.seededTeams)) {
+    if (setupState.seededTeams[key] === teamId) {
+      setupState.seededTeams[key] = null;
+    }
+  }
+
+  // Neuen Setzplatz setzen
+  if (value && ['A', 'B', 'C'].includes(value)) {
+    setupState.seededTeams[value] = teamId;
+  }
+
+  // Dropdowns neu rendern um disabled-Status zu aktualisieren
+  const selectedIds = getSelectedParticipantIds();
+  renderParticipantsList(allParticipantTeams, selectedIds);
+}
+
+
+async function finalizeTeams() {
+  if (!setupState.participants.length) {
+    toast('Bitte zuerst Teams laden und auswählen (Tab 1)', 'error');
+    return;
+  }
+
+  try {
+    // 1. Geplante Saison suchen
+    const seasonsRes = await authFetch(`${API_URL}/api/seasons`);
+    const seasons = await seasonsRes.json();
+    let season = seasons.find(s => s.status === 'planned');
+
+    // 2. Falls keine planned-Saison: neue erstellen
+    if (!season) {
+      const name = prompt('Wie soll die neue Saison heißen?');
+      if (!name) return;
+
+      const createRes = await authFetch(`${API_URL}/api/seasons`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          participant_count: setupState.participants.length,
+          group_count: Math.ceil(setupState.participants.length / 4)
+        })
+      });
+      if (!createRes.ok) {
+        const err = await createRes.json();
+        throw new Error(err.detail || 'Saison konnte nicht erstellt werden');
+      }
+      season = await createRes.json();
+    }
+
+    // 3. Confirm
+    const teamCount = setupState.participants.length;
+    if (!confirm(`${teamCount} Teams in Saison "${season.name}" synchronisieren und Spielplan generieren?`)) return;
+
+    // 4. Sync aufrufen
+    const teamIds = setupState.participants.map(p => p.team_id);
+    const seededTeams = {};
+    for (const [key, tid] of Object.entries(setupState.seededTeams)) {
+      if (tid !== null && teamIds.includes(tid)) {
+        seededTeams[key] = tid;
+      }
+    }
+
+    const syncRes = await authFetch(`${API_URL}/api/seasons/${season.id}/teams/sync`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        team_ids: teamIds,
+        seeded_teams: seededTeams,
+        generate_schedule: true
+      })
+    });
+
+    if (!syncRes.ok) {
+      const err = await syncRes.json();
+      throw new Error(err.detail || 'Sync fehlgeschlagen');
+    }
+
+    const result = await syncRes.json();
+    toast(`Saison "${season.name}" — ${result.groups.length} Gruppen, +${result.added} / -${result.removed} Teams`);
+
+    // 5. Wechsel zu Tab 3
+    setupState.createdSeasonId = season.id;
+    await initSaisonSetup();
+    showSetupTab('tab-schedule');
+    document.getElementById('schedule-season-select').value = season.id;
+    loadScheduleForSeason();
+
+  } catch (e) {
+    toast(`Fehler: ${e.message}`, 'error');
+  }
+}
+
 
 // ---- Tab 2: Auslosung ----
 

@@ -97,6 +97,12 @@ class TeamDetail(BaseModel):
     class Config:
         from_attributes = True
 
+class SyncTeamsPayload(BaseModel):
+    team_ids: list[int]
+    seeded_teams: dict[str, int] = {}  # {"A": team_id, "B": team_id, "C": team_id}
+    generate_schedule: bool = True
+
+
 class MatchCreate(BaseModel):
     home_team_id: int
     away_team_id: int
