@@ -341,6 +341,10 @@ def add_team_to_season(season_id: int, team: schemas.TeamCreate, db: Session = D
         counts = {g.id: db.query(models.SeasonTeam).filter(models.SeasonTeam.group_id == g.id).count() for g in groups}
         target_group_id = min(counts, key=counts.get)
 
+    existing_st = db.query(models.SeasonTeam).filter_by(season_id=season_id, team_id=t.id).first()
+    if existing_st:
+        raise HTTPException(status_code=400, detail=f"Team '{t.name}' ist bereits in dieser Saison")
+
     st = models.SeasonTeam(season_id=season_id, team_id=t.id, group_id=target_group_id)
     db.add(st)
     db.commit()
@@ -368,6 +372,10 @@ def bulk_add_teams(season_id: int, payload: schemas.BulkTeamCreate, db: Session 
             db.add(t)
             db.commit()
             db.refresh(t)
+
+        existing_st = db.query(models.SeasonTeam).filter_by(season_id=season_id, team_id=t.id).first()
+        if existing_st:
+            continue  # Skip duplicates silently in bulk mode
 
         counts = {g.id: db.query(models.SeasonTeam).filter(models.SeasonTeam.group_id == g.id).count() for g in groups}
         target_group_id = min(counts, key=counts.get)
@@ -1177,7 +1185,8 @@ def get_all_time_standings(db: Session = Depends(get_db)):
 @router.post("/discord/users/ensure", response_model=schemas.UserProfileResponse)
 def ensure_user(
     user_data: schemas.UserEnsureRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_user)
 ):
     """
     Upsert-Endpoint: Erstellt User falls nicht vorhanden, aktualisiert sonst username/avatar.
@@ -1285,7 +1294,8 @@ def get_user_by_discord_id(
 def update_participation(
     discord_id: str,
     update: schemas.ParticipationUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_user)
 ):
     """
     Setzt Teilnahme-Status für nächsten Pokal.
@@ -1332,7 +1342,8 @@ def update_participation(
 def update_profile_url(
     discord_id: str,
     update: schemas.ProfileUrlUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_user)
 ):
     """
     Speichert Onlineliga Profil-URL.
@@ -1559,7 +1570,8 @@ def register_discord_user(
 def claim_team(
     discord_id: str,
     claim_data: schemas.TeamClaimRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_user)
 ):
     """
     User claimed ein Team (Self-Service).

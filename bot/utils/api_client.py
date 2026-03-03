@@ -23,6 +23,7 @@ class BackendAPIClient:
         """
         self.base_url = base_url or os.getenv('BACKEND_URL', 'http://backend:8000')
         self.base_url = self.base_url.rstrip('/')
+        self.api_key = os.getenv('API_KEY', '')
         logger.info(f'🔗 API Client initialisiert: {self.base_url}')
 
     async def _request(
@@ -47,12 +48,16 @@ class BackendAPIClient:
         url = f'{self.base_url}{endpoint}'
 
         try:
+            headers = {}
+            if self.api_key:
+                headers['X-API-Key'] = self.api_key
             async with aiohttp.ClientSession() as session:
                 async with session.request(
                     method,
                     url,
                     json=json_data,
                     params=params,
+                    headers=headers,
                     timeout=aiohttp.ClientTimeout(total=10)
                 ) as response:
                     # Status Code prüfen
@@ -203,10 +208,14 @@ class BackendAPIClient:
             - {"success": False, "error": "unknown"} bei anderen Fehlern
         """
         try:
+            headers = {}
+            if self.api_key:
+                headers['X-API-Key'] = self.api_key
             async with aiohttp.ClientSession() as session:
                 async with session.post(
                     f"{self.base_url}/api/discord/users/{discord_id}/claim-team",
                     json={"team_id": team_id},
+                    headers=headers,
                     timeout=aiohttp.ClientTimeout(total=10)
                 ) as resp:
                     if resp.status == 200:

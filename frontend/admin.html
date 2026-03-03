@@ -967,9 +967,10 @@ async function searchTeamForManual() {
 
     resultsEl.innerHTML = teams.slice(0, 8).map(t =>
       `<div style="padding:.4rem .6rem;cursor:pointer;border-radius:4px;font-size:.9rem;hover:background:var(--accent)"
+            data-team-id="${t.id}" data-team-name="${escapeHtml(t.name)}"
             onmouseover="this.style.background='var(--accent)'" onmouseout="this.style.background=''"
-            onclick="selectManualTeam(${t.id}, '${t.name.replace(/'/g,"\\'")}')">
-        ${t.name}
+            onclick="selectManualTeam(+this.dataset.teamId, this.dataset.teamName)">
+        ${escapeHtml(t.name)}
        </div>`
     ).join('');
   } catch(e) {
@@ -2204,8 +2205,9 @@ async function searchTeamsForModal() {
 
     resultsDiv.innerHTML = teams.map(team => `
       <div style="padding:.75rem;border:1px solid var(--border);border-radius:6px;margin-bottom:.5rem;cursor:pointer;background:var(--card)"
-           onclick="assignTeamLegacy(${team.id}, '${team.name.replace(/'/g, "\\'")}')">
-        <strong>${team.name}</strong>
+           data-team-id="${team.id}" data-team-name="${escapeHtml(team.name)}"
+           onclick="assignTeamLegacy(+this.dataset.teamId, this.dataset.teamName)">
+        <strong>${escapeHtml(team.name)}</strong>
         <small style="color:var(--muted);display:block">ID: ${team.id}</small>
       </div>
     `).join('');
