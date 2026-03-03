@@ -1,39 +1,46 @@
 // admin/saisons.js — Saison CRUD, editSeason Modal
 
 async function loadSeasons() {
-  const seasons = await fetch(`${API_URL}/api/seasons`).then(r => r.json());
+  try {
+    const seasons = await fetch(`${API_URL}/api/seasons`).then(r => r.json());
 
-  const allGroups = await Promise.all(
-    seasons.map(s => fetch(`${API_URL}/api/seasons/${s.id}/groups-with-teams`).then(r => r.json()))
-  );
+    const allGroups = await Promise.allSettled(
+      seasons.map(s => fetch(`${API_URL}/api/seasons/${s.id}/groups-with-teams`).then(r => r.json()))
+    );
 
-  let html = '';
-  seasons.forEach((s, i) => {
-    const groups = allGroups[i];
-    const teamCount = groups.reduce((sum, g) => sum + g.teams.length, 0);
+    let html = '';
+    seasons.forEach((s, i) => {
+      const result = allGroups[i];
+      const groups = result.status === 'fulfilled' ? result.value : [];
+      const teamCount = groups.reduce((sum, g) => sum + (g.teams ? g.teams.length : 0), 0);
+      const teamDisplay = result.status === 'fulfilled' ? `${teamCount} / ${s.participant_count}` : `? / ${s.participant_count}`;
 
-    const statusColors = {
-      'planned': 'color:#1e40af;background:#dbeafe',
-      'active': 'color:#166534;background:#dcfce7',
-      'archived': 'color:#aaaabc;background:#2a2a3d'
-    };
-    const statusStyle = statusColors[s.status] || '';
+      const statusColors = {
+        'planned': 'color:#1e40af;background:#dbeafe',
+        'active': 'color:#166534;background:#dcfce7',
+        'archived': 'color:#aaaabc;background:#2a2a3d'
+      };
+      const statusStyle = statusColors[s.status] || '';
 
-    html += `
-      <tr>
-        <td>${s.id}</td>
-        <td><strong>${s.name}</strong></td>
-        <td>${teamCount} / ${s.participant_count}</td>
-        <td><span style="padding:.2rem .5rem;border-radius:4px;font-size:.8rem;${statusStyle}">${s.status}</span></td>
-        <td>
-          <button class="btn btn-sm btn-secondary" onclick="generateSchedule(${s.id})" title="Spielplan generieren">📅</button>
-          <button class="btn btn-sm btn-primary" onclick="editSeason(${s.id})" title="Bearbeiten">✏️</button>
-          <button class="btn btn-sm btn-danger" onclick="deleteSeason(${s.id})" title="Löschen">🗑️</button>
-        </td>
-      </tr>`;
-  });
+      html += `
+        <tr>
+          <td>${s.id}</td>
+          <td><strong>${s.name}</strong></td>
+          <td>${teamDisplay}</td>
+          <td><span style="padding:.2rem .5rem;border-radius:4px;font-size:.8rem;${statusStyle}">${s.status}</span></td>
+          <td>
+            <button class="btn btn-sm btn-secondary" onclick="generateSchedule(${s.id})" title="Spielplan generieren">📅</button>
+            <button class="btn btn-sm btn-primary" onclick="editSeason(${s.id})" title="Bearbeiten">✏️</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteSeason(${s.id})" title="Löschen">🗑️</button>
+          </td>
+        </tr>`;
+    });
 
-  document.getElementById('seasons-list').innerHTML = html || '<tr><td colspan="5"><em>Keine Saisons</em></td></tr>';
+    document.getElementById('seasons-list').innerHTML = html || '<tr><td colspan="5"><em>Keine Saisons</em></td></tr>';
+  } catch (e) {
+    console.error('loadSeasons error:', e);
+    document.getElementById('seasons-list').innerHTML = '<tr><td colspan="5"><em>Fehler beim Laden der Saisons</em></td></tr>';
+  }
 }
 
 async function editSeason(seasonId) {
