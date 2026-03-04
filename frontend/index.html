@@ -199,7 +199,7 @@ async function renderMatchesBlock(matchIds, isKO = false) {
       const homeTeam = teamName(m.home_team_id);
       const awayTeam = teamName(m.away_team_id);
       const score = m.status === 'played'
-        ? `<strong>${m.home_goals}:${m.away_goals}</strong>`
+        ? `<span class="match-score">${m.home_goals}:${m.away_goals}</span>`
         : '<span style="color:var(--muted)">-:-</span>';
 
       html += `
