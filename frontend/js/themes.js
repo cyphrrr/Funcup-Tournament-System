@@ -13,8 +13,8 @@ const THEMES = {
       "--success": "#3fb950",
       "--danger": "#f85149",
       "--warning": "#e5a00d",
-      "--bg-pattern-opacity": "0.06",
-      "--bg-pattern-filter": "brightness(0.3) sepia(1) hue-rotate(15deg) saturate(3)"
+      "--bg-pattern-opacity": "0.18",
+      "--bg-pattern-filter": "brightness(1.1) sepia(1) hue-rotate(15deg) saturate(3)"
     },
     dark: {
       "--bg": "#0c1117",
@@ -46,8 +46,8 @@ const THEMES = {
       "--success": "#40916c",
       "--danger": "#c44536",
       "--warning": "#d97706",
-      "--bg-pattern-opacity": "0.07",
-      "--bg-pattern-filter": "brightness(0.3) sepia(1) hue-rotate(70deg) saturate(2)"
+      "--bg-pattern-opacity": "0.18",
+      "--bg-pattern-filter": "brightness(1.1) sepia(1) hue-rotate(70deg) saturate(2)"
     },
     dark: {
       "--bg": "#1a1c17",
@@ -79,8 +79,8 @@ const THEMES = {
       "--success": "#0d9488",
       "--danger": "#e55b2b",
       "--warning": "#e55b2b",
-      "--bg-pattern-opacity": "0.05",
-      "--bg-pattern-filter": "brightness(0.3) sepia(1) hue-rotate(200deg) saturate(3)"
+      "--bg-pattern-opacity": "0.16",
+      "--bg-pattern-filter": "brightness(1.1) sepia(1) hue-rotate(200deg) saturate(3)"
     },
     dark: {
       "--bg": "#0d0f18",
@@ -112,8 +112,8 @@ const THEMES = {
       "--success": "#16a34a",
       "--danger": "#dc2626",
       "--warning": "#d97706",
-      "--bg-pattern-opacity": "0.06",
-      "--bg-pattern-filter": "brightness(0.3) sepia(1) hue-rotate(100deg) saturate(3)"
+      "--bg-pattern-opacity": "0.17",
+      "--bg-pattern-filter": "brightness(1.1) sepia(1) hue-rotate(100deg) saturate(3)"
     },
     dark: {
       "--bg": "#0c1410",
@@ -145,8 +145,8 @@ const THEMES = {
       "--success": "#0d9488",
       "--danger": "#ea580c",
       "--warning": "#ea580c",
-      "--bg-pattern-opacity": "0.05",
-      "--bg-pattern-filter": "brightness(0.3) sepia(1) hue-rotate(140deg) saturate(3)"
+      "--bg-pattern-opacity": "0.16",
+      "--bg-pattern-filter": "brightness(1.1) sepia(1) hue-rotate(140deg) saturate(3)"
     },
     dark: {
       "--bg": "#0a1214",
@@ -178,8 +178,8 @@ const THEMES = {
       "--success": "#16a34a",
       "--danger": "#dc2626",
       "--warning": "#d97706",
-      "--bg-pattern-opacity": "0.05",
-      "--bg-pattern-filter": "brightness(0.3) sepia(1) hue-rotate(190deg) saturate(2)"
+      "--bg-pattern-opacity": "0.16",
+      "--bg-pattern-filter": "brightness(1.1) sepia(1) hue-rotate(190deg) saturate(2)"
     },
     dark: {
       "--bg": "#090c14",
