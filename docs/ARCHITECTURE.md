@@ -107,11 +107,18 @@ n8n sammelt Rohdaten und sendet sie als Array. Das **Backend** übernimmt:
 - Vollständig statisch auslieferbar
 
 ### Technik
-- React / Vue / Svelte **oder** Vanilla JS
+- Vanilla HTML/JS (statisch)
 - Hosting:
   - Apache2
   - GitHub Pages
   - Netlify
+
+### Theme-System
+- 6 Farbpaletten, je Light- und Dark-Variante (`js/themes.js`)
+- Default: "Stadion bei Flutlicht" (Dark)
+- Theme-Wahl per Dropdown im Footer, Light/Dark-Toggle im Header
+- Persistenz via `localStorage` (`biw_theme`, `biw_dark_mode`)
+- Synchrones Laden (kein `defer`/`async`) verhindert Flash of Wrong Theme
 
 ---
 
