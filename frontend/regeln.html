@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="robots" content="noindex, nofollow" />
   <script src="js/themes.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
   <style>
     :root{
       --bg:#0c1117;--card:#161b22;--card-alt:#1c2128;--border:#30363d;
@@ -14,9 +15,10 @@
     }
     *{box-sizing:border-box}
     html{scroll-behavior:smooth}
-    body{margin:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--text);background:var(--bg)}
+    body{margin:0;font-family:'DM Sans',system-ui,-apple-system,sans-serif;color:var(--text);background:var(--bg)}
     body::before{content:'';position:fixed;top:0;left:0;width:100%;height:100%;background:url('img/logo-bg.png') repeat;z-index:-1}
-    header{background:var(--card);border-bottom:1px solid var(--border);padding:1.5rem 2rem;z-index:50}
+    h1,h2,h3,.card-title,.season-name{font-family:'Outfit',sans-serif;letter-spacing:-0.02em}
+    header{background:var(--card);border-bottom:1px solid var(--border);padding:1rem 2rem;z-index:50;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
     @media(min-width:769px){header{position:sticky;top:0}}
     header h1{margin:0;font-size:1.5rem}
     header p{margin:.25rem 0 0;color:var(--muted)}
@@ -42,20 +44,12 @@
     main{max-width:900px;margin:0 auto;padding:2.5rem 2rem}
     h2{margin:2rem 0 1rem;font-size:1.5rem}
     h3{margin:1.5rem 0 .75rem;font-size:1.2rem;color:var(--primary)}
-    .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:2rem;margin-bottom:2rem;box-shadow:0 8px 24px rgba(0,0,0,.06);line-height:1.7}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 16px rgba(0,0,0,.04);line-height:1.7}
     .card h3{margin-top:0}
     .card ul{margin:.5rem 0;padding-left:1.5rem}
     .card li{margin:.5rem 0}
     .card strong{color:var(--text);font-weight:600}
     .intro{font-size:1.1rem;color:var(--muted);margin-bottom:2rem;line-height:1.6}
-
-    /* Dark mode toggle */
-    .dark-mode-toggle{appearance:none;cursor:pointer;width:50px;height:28px;background:var(--border);border:none;border-radius:14px;position:relative;transition:background .3s}
-    .dark-mode-toggle::before{content:"☀️";position:absolute;left:4px;top:50%;transform:translateY(-50%);font-size:14px;transition:left .3s}
-    .dark-mode-toggle::after{content:"🌙";position:absolute;right:4px;top:50%;transform:translateY(-50%);font-size:14px;opacity:0;transition:opacity .3s}
-    .dark-mode-toggle:checked{background:var(--primary)}
-    .dark-mode-toggle:checked::before{opacity:0}
-    .dark-mode-toggle:checked::after{opacity:1}
 
     /* Footer */
     footer{background:var(--card);border-top:1px solid var(--border);padding:1.5rem 2rem;margin-top:3rem;display:grid;grid-template-columns:1fr 1fr 1fr;gap:2rem;align-items:center;font-size:.85rem;color:var(--muted)}
@@ -66,8 +60,10 @@
     footer a:hover{text-decoration:underline}
     .backend-status{display:inline-flex;align-items:center;gap:.5rem;font-weight:500}
     .status-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
-    .status-dot.online{background:#10b981}
+    .status-dot.online{background:#3fb950}
     .status-dot.offline{background:#dc2626}
+    #theme-select{padding:.35rem .6rem;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text);font-family:'DM Sans',sans-serif;font-size:.8rem;cursor:pointer}
+    #theme-select:focus{outline:none;border-color:var(--primary)}
     @media(max-width:768px){footer{grid-template-columns:1fr;gap:1rem;text-align:center}.footer-left,.footer-right{text-align:center}}
   </style>
 </head>
@@ -77,11 +73,13 @@
       <div style="display:flex;align-items:center;gap:1rem">
         <a href="index.html" style="text-decoration:none"><img src="img/logo_comic.png" alt="BIW Pokal Logo" style="height:60px;width:auto"></a>
         <div>
-          <h1 style="font-size:1.1rem"><a href="index.html" style="color:var(--text);text-decoration:none">Die Besten im Westen</a> <span style="color:var(--muted);font-weight:400">– Regeln</span></h1>
+          <h1 style="font-family:'Outfit',sans-serif;font-size:1.2rem;font-weight:700;letter-spacing:-0.02em">
+            <a href="index.html" style="color:var(--text);text-decoration:none">Die Besten im Westen</a>
+            <span style="opacity:0.5;font-weight:400">– Regeln</span>
+          </h1>
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:1rem">
-        <input type="checkbox" class="dark-mode-toggle" id="dark-mode-toggle" aria-label="Dark Mode">
         <button class="burger-btn" id="burger-btn" aria-label="Menü öffnen">
           <span></span>
           <span></span>
@@ -151,7 +149,7 @@
 
       <div class="card">
         <h3>Platzierungskriterien</h3>
-        <span style="color:var(--muted);font-weight:400">– Die Platzierung in der Gruppenphase wird nach folgenden Kriterien ermittelt:</span></h1>
+        <span style="color:var(--muted);font-weight:400">– Die Platzierung in der Gruppenphase wird nach folgenden Kriterien ermittelt:</span>
         <ol>
           <li>Gewonnene Punkte</li>
           <li>Tordifferenz</li>
@@ -211,7 +209,6 @@ navMenu.querySelectorAll('a').forEach(link => {
     }
   });
 });
-
 </script>
 
 <footer>
@@ -226,7 +223,7 @@ navMenu.querySelectorAll('a').forEach(link => {
   </div>
   <div class="footer-right" style="display:flex;align-items:center;gap:0.75rem;justify-content:flex-end">
     <label for="theme-select" style="font-size:.8rem;color:var(--muted)">Theme:</label>
-    <select id="theme-select" style="padding:.3rem .5rem;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:.8rem;cursor:pointer"></select>
+    <select id="theme-select"></select>
   </div>
 </footer>
 <script type="module">

@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="robots" content="noindex, nofollow" />
   <script src="js/themes.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
   <style>
     :root{
       --bg:#0c1117;--card:#161b22;--card-alt:#1c2128;--border:#30363d;
@@ -14,9 +15,10 @@
     }
     *{box-sizing:border-box}
     html{scroll-behavior:smooth}
-    body{margin:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--text);background:var(--bg)}
+    body{margin:0;font-family:'DM Sans',system-ui,-apple-system,sans-serif;color:var(--text);background:var(--bg)}
+    h1,h2,h3,.card-title,.season-name{font-family:'Outfit',sans-serif;letter-spacing:-0.02em}
     body::before{content:'';position:fixed;top:0;left:0;width:100%;height:100%;background:url('img/logo-bg.png') repeat;z-index:-1}
-    header{background:var(--card);border-bottom:1px solid var(--border);padding:0.75rem 2rem;z-index:50}
+    header{background:var(--card);border-bottom:1px solid var(--border);padding:1rem 2rem;z-index:50;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
     @media(min-width:769px){header{position:sticky;top:0}}
     header h1{margin:0;font-size:1.5rem}
     header p{margin:.25rem 0 0;color:var(--muted)}
@@ -40,17 +42,17 @@
     nav a:hover{background:var(--accent)}
     nav a.active{background:var(--accent);color:var(--primary);font-weight:700}
     a{color:var(--primary);text-decoration:underline;cursor:pointer}
-    a:visited{color:#6ee7b7}
+    a:visited{color:var(--primary)}
     a:hover{text-decoration:none;opacity:.8}
     main{max-width:1200px;margin:0 auto;padding:2.5rem 2rem}
     h2{margin-bottom:1rem}
-    .card{background:var(--card);border:5px solid var(--border);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:2rem;box-shadow:0 8px 24px rgba(0,0,0,.06)}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 16px rgba(0,0,0,.04)}
     .card-header{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:.75rem}
     .card-title{font-weight:700;font-size:1.1rem}
     .card-sub{color:var(--muted);font-size:.9rem}
-    table{width:100%;border-collapse:collapse;margin-top:.75rem;font-size:.9rem}
-    th,td{padding:.55rem .65rem;border-bottom:1px solid var(--border);text-align:center}
-    th{color:var(--muted);font-weight:600}
+    table{width:100%;border-collapse:collapse;margin-top:.75rem;font-size:.85rem}
+    th{color:var(--muted);font-weight:600;font-size:.75rem;text-transform:uppercase;letter-spacing:0.04em;padding:.5rem .6rem;border-bottom:2px solid var(--border)}
+    td{padding:.5rem .6rem;border-bottom:1px solid var(--border);text-align:center}
     tr.leader{font-weight:700;color:var(--primary)}
 
     /* Two-column layout for start page */
@@ -58,20 +60,15 @@
     @media(max-width:768px){.start-grid{grid-template-columns:1fr}}
 
     /* Compact standings */
-    .compact-standings{background:var(--card);border:5px solid var(--border);border-radius:10px;padding:1rem;margin-bottom:1rem;font-size:.85rem}
+    .compact-standings{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1rem;margin-bottom:1rem;font-size:.85rem}
     .compact-standings h3{margin:0 0 .75rem;font-size:.95rem;font-weight:600}
     .compact-standings table{margin:0;font-size:.85rem}
     .compact-standings th{font-size:.75rem;padding:.4rem .5rem}
     .compact-standings td{padding:.4rem .5rem}
     .compact-standings .pos{font-weight:700;color:var(--primary);width:30px}
 
-    /* Dark mode toggle */
-    .dark-mode-toggle{appearance:none;cursor:pointer;width:50px;height:28px;background:var(--border);border:none;border-radius:14px;position:relative;transition:background .3s}
-    .dark-mode-toggle::before{content:"☀️";position:absolute;left:4px;top:50%;transform:translateY(-50%);font-size:14px;transition:left .3s}
-    .dark-mode-toggle::after{content:"🌙";position:absolute;right:4px;top:50%;transform:translateY(-50%);font-size:14px;opacity:0;transition:opacity .3s}
-    .dark-mode-toggle:checked{background:var(--primary)}
-    .dark-mode-toggle:checked::before{opacity:0}
-    .dark-mode-toggle:checked::after{opacity:1}
+    /* Match Score */
+    .match-score{font-family:'Outfit',sans-serif;font-weight:700;font-size:.95rem;letter-spacing:0.05em;padding:.2rem .6rem;border-radius:6px;background:var(--card-alt);color:var(--primary)}
 
     /* Footer */
     footer{background:var(--card);border-top:1px solid var(--border);padding:1.5rem 2rem;margin-top:3rem;display:grid;grid-template-columns:1fr 1fr 1fr;gap:2rem;align-items:center;font-size:.85rem;color:var(--muted)}
@@ -82,8 +79,10 @@
     footer a:hover{text-decoration:underline}
     .backend-status{display:inline-flex;align-items:center;gap:.5rem;font-weight:500}
     .status-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
-    .status-dot.online{background:#10b981}
+    .status-dot.online{background:#3fb950}
     .status-dot.offline{background:#dc2626}
+    #theme-select{padding:.35rem .6rem;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text);font-family:'DM Sans',sans-serif;font-size:.8rem;cursor:pointer}
+    #theme-select:focus{outline:none;border-color:var(--primary)}
     @media(max-width:768px){footer{grid-template-columns:1fr;gap:1rem;text-align:center}.footer-left,.footer-right{text-align:center}}
   </style>
 </head>
@@ -92,7 +91,6 @@
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1rem">
       <div style="flex:1"></div>
       <div style="display:flex;align-items:center;gap:.75rem">
-        <input type="checkbox" class="dark-mode-toggle" id="dark-mode-toggle" aria-label="Dark Mode">
         <button class="burger-btn" id="burger-btn" aria-label="Menü öffnen">
           <span></span>
           <span></span>
@@ -102,7 +100,9 @@
     </div>
     <div style="display:flex;flex-direction:column;align-items:center;gap:.5rem;text-align:center">
       <a href="index.html" style="text-decoration:none;display:flex;align-items:center"><img src="img/logo_comic.png" alt="BIW Pokal Logo" style="height:120px;width:auto"></a>
-      <h1 style="margin:0;font-size:1.3rem"><a href="index.html" style="color:var(--text);text-decoration:none">Die Besten im Westen</a></h1>
+      <h1 style="font-family:'Outfit',sans-serif;font-size:1.2rem;font-weight:700;letter-spacing:-0.02em;margin:0">
+        <a href="index.html" style="color:var(--text);text-decoration:none">Die Besten im Westen</a>
+      </h1>
       <p style="margin:0;font-size:.95rem;color:var(--muted)">Dein freundlicher Pokal aus der Nachbarschaft</p>
     </div>
   </header>
@@ -153,8 +153,8 @@ let teamCache = {}; // team_id → name
 
 // Health Check
 fetch(`${API}/health`).then(r => r.json())
-  .then(() => headerStatus.innerHTML = '<span style="color:var(--success)">✓ Verbunden</span>')
-  .catch(() => headerStatus.innerHTML = '<span style="color:var(--danger)">✗ Offline</span>');
+  .then(() => headerStatus && (headerStatus.innerHTML = '<span style="color:var(--success)">✓ Verbunden</span>'))
+  .catch(() => headerStatus && (headerStatus.innerHTML = '<span style="color:var(--danger)">✗ Offline</span>'));
 
 // Team-Namen laden
 async function loadTeams(seasonId) {
@@ -395,7 +395,7 @@ setInterval(updateBackendStatus, 30000);
   </div>
   <div class="footer-right" style="display:flex;align-items:center;gap:0.75rem;justify-content:flex-end">
     <label for="theme-select" style="font-size:.8rem;color:var(--muted)">Theme:</label>
-    <select id="theme-select" style="padding:.3rem .5rem;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:.8rem;cursor:pointer"></select>
+    <select id="theme-select"></select>
   </div>
 </footer>
 

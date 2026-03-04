@@ -30,6 +30,19 @@ Alle öffentlichen Seiten nutzen `js/themes.js` für das Theming:
 
 `admin.html` ist nicht betroffen (eigenes Dark-Theme).
 
+## Typografie
+
+Alle öffentlichen Seiten verwenden **Google Fonts**:
+
+- **Outfit** (400–800): Headings, Logo, Zahlen, Scores
+- **DM Sans** (400–700): Fließtext, UI-Elemente
+
+Zuweisung via CSS:
+```css
+body { font-family: 'DM Sans', system-ui, sans-serif; }
+h1,h2,h3,.card-title,.season-name { font-family: 'Outfit', sans-serif; letter-spacing: -0.02em; }
+```
+
 ---
 
 > Das Frontend ist austauschbar. Die Daten nicht.

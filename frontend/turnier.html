@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="robots" content="noindex, nofollow" />
   <script src="js/themes.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
   <style>
     :root{
       --bg:#0c1117;--card:#161b22;--card-alt:#1c2128;--border:#30363d;
@@ -14,9 +15,10 @@
     }
     *{box-sizing:border-box}
     html{scroll-behavior:smooth}
-    body{margin:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--text);background:var(--bg)}
+    body{margin:0;font-family:'DM Sans',system-ui,-apple-system,sans-serif;color:var(--text);background:var(--bg)}
     body::before{content:'';position:fixed;top:0;left:0;width:100%;height:100%;background:url('img/logo-bg.png') repeat;z-index:-1}
-    header{background:var(--card);border-bottom:1px solid var(--border);padding:1.5rem 2rem;z-index:50}
+    h1,h2,h3,.card-title,.season-name{font-family:'Outfit',sans-serif;letter-spacing:-0.02em}
+    header{background:var(--card);border-bottom:1px solid var(--border);padding:1rem 2rem;z-index:50;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
     @media(min-width:769px){header{position:sticky;top:0}}
     header h1{margin:0;font-size:1.5rem}
     header p{margin:.25rem 0 0;color:var(--muted)}
@@ -41,12 +43,13 @@
     nav a.active{background:var(--accent);color:var(--primary);font-weight:700}
     main{max-width:1200px;margin:0 auto;padding:2.5rem 2rem}
     h2{margin-bottom:1.5rem}
-    .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:2rem;box-shadow:0 8px 24px rgba(0,0,0,.06)}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 16px rgba(0,0,0,.04)}
     .card-header{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:.75rem}
     .card-title{font-weight:700;font-size:1.1rem}
     .card-sub{color:var(--muted);font-size:.9rem}
-    table{width:100%;border-collapse:collapse;margin-top:.75rem;font-size:.9rem}
-    th,td{padding:.55rem .65rem;border-bottom:1px solid var(--border);text-align:center}
+    table{width:100%;border-collapse:collapse;margin-top:.75rem;font-size:.85rem}
+    th{color:var(--muted);font-weight:600;font-size:.75rem;text-transform:uppercase;letter-spacing:0.04em;padding:.5rem .6rem;border-bottom:2px solid var(--border)}
+    td{padding:.5rem .6rem;border-bottom:1px solid var(--border)}
     td:first-child,th:first-child{text-align:center;width:40px;font-weight:600}
     td:nth-child(2),th:nth-child(2){text-align:left}
     th{color:var(--muted);font-weight:600}
@@ -66,9 +69,9 @@
     .match-header-away{text-align:left}
     .match-item{display:grid;grid-template-columns:1fr auto 1fr auto;gap:.75rem;align-items:center;padding:.5rem .75rem;margin-bottom:.25rem;background:var(--accent);border-radius:6px;font-size:.9rem}
     .match-home{text-align:right}
-    .match-score{min-width:50px;text-align:center;font-weight:700;font-size:1rem}
+    .match-score{font-family:'Outfit',sans-serif;font-weight:700;font-size:.95rem;letter-spacing:0.05em;padding:.2rem .6rem;border-radius:6px;background:var(--card-alt);color:var(--primary)}
     .match-score.scheduled{color:var(--muted)}
-    .match-score.played{color:var(--text)}
+    .match-score.played{color:var(--primary)}
     .match-away{text-align:left}
     .match-info{text-align:right;font-size:.8rem;color:var(--muted);white-space:nowrap}
 
@@ -87,10 +90,13 @@
     .footer-right{text-align:right}
     footer a{color:var(--primary);text-decoration:none}
     footer a:hover{text-decoration:underline}
+    footer a:visited{color:var(--primary)}
     .backend-status{display:inline-flex;align-items:center;gap:.5rem;font-weight:500}
     .status-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
-    .status-dot.online{background:#10b981}
+    .status-dot.online{background:#3fb950}
     .status-dot.offline{background:#dc2626}
+    #theme-select{padding:.35rem .6rem;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text);font-family:'DM Sans',sans-serif;font-size:.8rem;cursor:pointer}
+    #theme-select:focus{outline:none;border-color:var(--primary)}
     @media(max-width:768px){footer{grid-template-columns:1fr;gap:1rem;text-align:center}.footer-left,.footer-right{text-align:center}}
   </style>
 </head>
@@ -100,7 +106,10 @@
       <div style="display:flex;align-items:center;gap:1rem">
         <a href="index.html" style="text-decoration:none"><img src="img/logo_comic.png" alt="BIW Pokal Logo" style="height:60px;width:auto"></a>
         <div>
-          <h1 style="font-size:1.1rem"><a href="index.html" style="color:var(--text);text-decoration:none">Die Besten im Westen</a> <span style="color:var(--muted);font-weight:400">– Gruppenphase</span></h1>
+          <h1 style="font-family:'Outfit',sans-serif;font-size:1.2rem;font-weight:700;letter-spacing:-0.02em">
+            <a href="index.html" style="color:var(--text);text-decoration:none">Die Besten im Westen</a>
+            <span style="opacity:0.5;font-weight:400">– Turnier</span>
+          </h1>
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:1rem">
@@ -377,7 +386,7 @@ navMenu.querySelectorAll('a').forEach(link => {
   </div>
   <div class="footer-right" style="display:flex;align-items:center;gap:0.75rem;justify-content:flex-end">
     <label for="theme-select" style="font-size:.8rem;color:var(--muted)">Theme:</label>
-    <select id="theme-select" style="padding:.3rem .5rem;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:.8rem;cursor:pointer"></select>
+    <select id="theme-select"></select>
   </div>
 </footer>
 <script type="module">
