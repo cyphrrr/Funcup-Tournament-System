@@ -6,6 +6,7 @@ const setupState = {
   drawGroups: null,
   createdSeasonId: null,
   seededTeams: { A: null, B: null, C: null },
+  seasonName: '',
 };
 
 function showSetupTab(tabId) {
@@ -27,6 +28,11 @@ async function initSaisonSetup() {
         sel.innerHTML += `<option value="${s.id}">${s.name} (${s.status})</option>`;
       });
     });
+    // Saison-Name in Auslosung-Tab synchronisieren
+    if (setupState.seasonName) {
+      const drawNameEl = document.getElementById('draw-season-name');
+      if (drawNameEl) drawNameEl.value = setupState.seasonName;
+    }
   } catch (e) {
     console.error('Fehler beim Laden der Saisons:', e);
   }
@@ -202,6 +208,38 @@ function updateSeedSelection(selectEl) {
 }
 
 
+function showSeasonNameModal() {
+  if (!setupState.participants.length) {
+    toast('Bitte zuerst Teams laden und auswählen', 'error');
+    return;
+  }
+
+  const count = setupState.participants.length;
+  document.getElementById('season-name-modal-info').textContent =
+    `${count} Teams ausgewählt. Gib der neuen Saison einen Namen.`;
+  document.getElementById('season-name-input').value = '';
+  document.getElementById('season-name-modal').style.display = 'flex';
+
+  setTimeout(() => document.getElementById('season-name-input').focus(), 100);
+}
+
+function closeSeasonNameModal() {
+  document.getElementById('season-name-modal').style.display = 'none';
+}
+
+async function confirmSeasonCreation() {
+  const name = document.getElementById('season-name-input').value.trim();
+  if (!name) {
+    toast('Bitte einen Saison-Namen eingeben', 'error');
+    document.getElementById('season-name-input').focus();
+    return;
+  }
+
+  closeSeasonNameModal();
+  setupState.seasonName = name;
+  await finalizeTeams();
+}
+
 async function finalizeTeams() {
   if (!setupState.participants.length) {
     toast('Bitte zuerst Teams laden und auswählen (Tab 1)', 'error');
@@ -216,8 +254,12 @@ async function finalizeTeams() {
 
     // 2. Falls keine planned-Saison: neue erstellen
     if (!season) {
-      const name = prompt('Wie soll die neue Saison heißen?');
-      if (!name) return;
+      const name = setupState.seasonName;
+      if (!name) {
+        // Sollte nicht passieren wenn über Modal aufgerufen, aber Fallback
+        showSeasonNameModal();
+        return;
+      }
 
       const createRes = await authFetch(`${API_URL}/api/seasons`, {
         method: 'POST',
@@ -333,7 +375,7 @@ function renderDrawResult() {
 }
 
 async function executeDraw() {
-  const name = document.getElementById('draw-season-name').value.trim();
+  const name = document.getElementById('draw-season-name').value.trim() || setupState.seasonName;
   if (!name) { toast('Bitte Saison-Name eingeben', 'error'); return; }
 
   if (!setupState.drawGroups) {
@@ -602,3 +644,14 @@ async function executeImport() {
     toast(`Fehler: ${e.message}`, 'error');
   }
 }
+
+// Enter-Taste im Saison-Name-Modal
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') {
+    const modal = document.getElementById('season-name-modal');
+    if (modal && modal.style.display === 'flex') {
+      e.preventDefault();
+      confirmSeasonCreation();
+    }
+  }
+});
