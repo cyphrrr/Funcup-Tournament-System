@@ -192,7 +192,7 @@ async function renderMatchesBlock(matchIds, isKO = false) {
 
     if (matches.length === 0) return '<em style="color:var(--muted)">Keine Matches gefunden</em>';
 
-    let html = '<div style="background:var(--accent);border-radius:8px;padding:1rem;margin:1rem 0">';
+    let html = '<div style="background:var(--card-alt);border:1px solid var(--border);border-radius:8px;padding:1rem;margin:1rem 0">';
     html += '<table style="width:100%;font-size:.9rem">';
 
     matches.forEach(m => {
