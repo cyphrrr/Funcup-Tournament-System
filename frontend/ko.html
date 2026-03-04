@@ -8,12 +8,6 @@
   <script src="js/themes.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
   <style>
-    :root{
-      --bg:#0c1117;--card:#161b22;--card-alt:#1c2128;--border:#30363d;
-      --text:#e6edf3;--muted:#7d8590;--primary:#e5a00d;--accent:#e5a00d;
-      --success:#3fb950;--danger:#f85149;--warning:#e5a00d;
-      --bg-pattern-opacity:0.12;--bg-pattern-filter:brightness(2) sepia(1) hue-rotate(15deg) saturate(2);
-    }
     *{box-sizing:border-box}
     html{scroll-behavior:smooth}
     body{margin:0;font-family:'DM Sans',system-ui,-apple-system,sans-serif;color:var(--text);background:var(--bg)}
@@ -40,14 +34,14 @@
     nav.open{right:0}
     nav ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.5rem}
     nav a{text-decoration:none;color:var(--text);padding:.75rem 1rem;border-radius:8px;font-weight:500;display:block;transition:background .2s}
-    nav a:hover{background:var(--accent)}
-    nav a.active{background:var(--accent);color:var(--primary);font-weight:700}
+    nav a:hover{background:color-mix(in srgb,var(--primary) 10%,var(--card))}
+    nav a.active{background:color-mix(in srgb,var(--primary) 15%,var(--card));color:var(--primary);font-weight:700}
     main{max-width:1400px;margin:0 auto;padding:2.5rem 2rem}
     h2{margin-bottom:1.5rem}
     .card{background:linear-gradient(145deg,var(--card) 0%,var(--card-alt) 100%);border:1px solid var(--border);border-radius:12px;border-top:2px solid var(--primary);border-top-left-radius:10px;border-top-right-radius:10px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 16px rgba(0,0,0,.06),inset 0 1px 0 color-mix(in srgb,var(--primary) 15%,transparent)}
     .season-item{padding:.5rem;margin:.25rem 0;cursor:pointer;border-radius:6px;transition:background .2s;display:inline-block}
-    .season-item:hover{background:var(--accent)}
-    .season-item.active{background:var(--accent);color:var(--primary);font-weight:600}
+    .season-item:hover{background:color-mix(in srgb,var(--primary) 10%,var(--card))}
+    .season-item.active{background:color-mix(in srgb,var(--primary) 15%,var(--card));color:var(--primary);font-weight:600}
 
     /* Bracket Container */
     #ko-container{background:var(--card);border-radius:12px;border:1px solid var(--border);padding:1.5rem;box-shadow:0 4px 16px rgba(0,0,0,.04);margin-bottom:2rem}
@@ -55,16 +49,16 @@
 
     /* Tabs */
     .bracket-tabs{display:flex;gap:.5rem;margin-bottom:1.5rem;padding:0;flex-wrap:wrap}
-    .bracket-tab{padding:.5rem 1rem;cursor:pointer;border:none;background:var(--accent);color:var(--text);font-size:.95rem;font-weight:500;border-radius:8px;transition:all .2s}
+    .bracket-tab{padding:.5rem 1rem;cursor:pointer;border:none;background:var(--card-alt);color:var(--text);font-size:.95rem;font-weight:500;border-radius:8px;transition:all .2s}
     .bracket-tab:hover{background:var(--muted);color:#fff}
     .bracket-tab.active{background:var(--primary);color:#fff;font-weight:700}
 
     /* KO Bracket */
     .ko-bracket{display:flex;gap:2rem;overflow-x:auto;padding:1rem 0;align-items:flex-start}
     .ko-round{min-width:180px;max-width:220px;display:flex;flex-direction:column;justify-content:space-around}
-    .ko-round-header{text-align:center;margin:0 0 1rem;font-size:.95rem;font-weight:600;background:var(--accent);border-radius:8px;padding:.4rem .75rem;display:inline-block;color:var(--text)}
+    .ko-round-header{text-align:center;margin:0 0 1rem;font-size:.95rem;font-weight:600;background:var(--card-alt);border-radius:8px;padding:.4rem .75rem;display:inline-block;color:var(--text)}
     .ko-match{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:.65rem .85rem;margin-bottom:.75rem;font-size:.85rem;position:relative;min-height:60px;display:flex;flex-direction:column;justify-content:center}
-    .ko-match.bye{background:var(--accent);border-style:dashed}
+    .ko-match.bye{background:color-mix(in srgb,var(--primary) 10%,var(--card));border-style:dashed}
     .ko-match.played{border-left:3px solid var(--success)}
     .ko-match.pending{border-left:3px solid var(--primary)}
     .ko-match-team{display:flex;justify-content:space-between;align-items:center;padding:2px 0}
@@ -74,7 +68,7 @@
     .ko-match-team .score{min-width:20px;text-align:right;font-weight:600}
     .ko-match-vs{font-size:.7rem;color:var(--muted);text-align:center;margin:2px 0}
     .ko-match-tbd{color:var(--muted);font-style:italic;text-align:center}
-    .ko-match-bye-badge{font-size:.7rem;color:var(--muted);text-align:center;background:var(--accent);border-radius:4px;padding:1px 6px;margin-top:2px;display:inline-block}
+    .ko-match-bye-badge{font-size:.7rem;color:var(--muted);text-align:center;background:var(--card-alt);border-radius:4px;padding:1px 6px;margin-top:2px;display:inline-block}
     .match-score{font-family:'Outfit',sans-serif;font-weight:700;font-size:.95rem;letter-spacing:0.05em;padding:.2rem .6rem;border-radius:6px;background:var(--primary);color:var(--bg);box-shadow:0 2px 8px color-mix(in srgb,var(--primary) 30%,transparent)}
     /* connector lines */
     .ko-match::after{content:"";position:absolute;right:-1rem;top:50%;width:1rem;height:1px;background:var(--border)}
