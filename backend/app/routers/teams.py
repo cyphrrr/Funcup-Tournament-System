@@ -70,7 +70,20 @@ def list_all_teams(
     return result
 
 
-# WICHTIG: /teams/search MUSS vor /teams/{team_id} registriert werden!
+# WICHTIG: /teams/search und /teams/crests MÜSSEN vor /teams/{team_id} registriert werden!
+@router.get("/teams/crests")
+def get_team_crests(db: Session = Depends(get_db)):
+    """Gibt team_id → crest_url Mapping für alle Teams mit Wappen."""
+    results = db.query(
+        models.UserProfile.team_id,
+        models.UserProfile.crest_url
+    ).filter(
+        models.UserProfile.team_id.isnot(None),
+        models.UserProfile.crest_url.isnot(None)
+    ).all()
+    return {str(r.team_id): r.crest_url for r in results}
+
+
 @router.get("/teams/search", response_model=list[schemas.TeamRead])
 def search_teams(
     name: Optional[str] = None,

@@ -161,6 +161,21 @@ const groupsDiv = document.getElementById('groups');
 const activeSeasonSpan = document.getElementById('active-season');
 let openedSeasonId = null;
 let teamCache = {};
+let crestCache = {};
+
+async function loadCrests() {
+  try {
+    crestCache = await fetch(`${API}/api/teams/crests`).then(r => r.json());
+  } catch (e) {
+    console.warn('Crests konnten nicht geladen werden:', e);
+  }
+}
+
+function crestImg(teamId) {
+  const url = crestCache[String(teamId)];
+  if (!url) return '';
+  return `<img src="${API}${url}" alt="" style="width:24px;height:24px;object-fit:contain;vertical-align:middle;margin-right:6px;border-radius:4px;flex-shrink:0">`;
+}
 
 // Team-Namen laden
 async function loadTeams(seasonId) {
@@ -195,8 +210,8 @@ async function loadSeason(season, clickedElement) {
     if (el) el.classList.add('active');
   }
 
-  // Teams cachen
-  await loadTeams(season.id);
+  // Teams und Crests cachen
+  await Promise.all([loadTeams(season.id), loadCrests()]);
 
   // Gruppen laden
   const groups = await fetch(`${API}/api/seasons/${season.id}/groups-with-teams`).then(r => r.json());
@@ -227,10 +242,12 @@ async function loadSeason(season, clickedElement) {
         const teamCell = tr.insertCell();
         const teamLink = document.createElement('a');
         teamLink.href = `team.html?id=${row.team_id}`;
-        teamLink.textContent = teamName(row.team_id);
         teamLink.style.color = 'inherit';
         teamLink.style.textDecoration = 'none';
         teamLink.style.fontWeight = row.points === maxPts ? '700' : '500';
+        teamLink.style.display = 'inline-flex';
+        teamLink.style.alignItems = 'center';
+        teamLink.innerHTML = `${crestImg(row.team_id)}${teamName(row.team_id)}`;
         teamCell.appendChild(teamLink);
 
         tr.insertCell().textContent = row.played;
@@ -289,7 +306,10 @@ async function loadSeason(season, clickedElement) {
           // Team A (rechtsbündig)
           const homeDiv = document.createElement('div');
           homeDiv.className = 'match-home';
-          homeDiv.textContent = teamName(m.home_team_id);
+          homeDiv.style.display = 'flex';
+          homeDiv.style.alignItems = 'center';
+          homeDiv.style.justifyContent = 'flex-end';
+          homeDiv.innerHTML = `${teamName(m.home_team_id)}${crestImg(m.home_team_id)}`;
 
           // Ergebnis (zentriert)
           const scoreDiv = document.createElement('div');
@@ -303,7 +323,9 @@ async function loadSeason(season, clickedElement) {
           // Team B (linksbündig)
           const awayDiv = document.createElement('div');
           awayDiv.className = 'match-away';
-          awayDiv.textContent = teamName(m.away_team_id);
+          awayDiv.style.display = 'flex';
+          awayDiv.style.alignItems = 'center';
+          awayDiv.innerHTML = `${crestImg(m.away_team_id)}${teamName(m.away_team_id)}`;
 
           // Spieltag-Info (rechtsbündig)
           const infoDiv = document.createElement('div');

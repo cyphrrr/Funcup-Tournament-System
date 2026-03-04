@@ -155,11 +155,26 @@ import { API_URL } from './js/config.js';
 const API = API_URL;
 const headerStatus = document.getElementById('header-status');
 let teamCache = {}; // team_id → name
+let crestCache = {}; // team_id → crest_url
 
 // Health Check
 fetch(`${API}/health`).then(r => r.json())
   .then(() => headerStatus && (headerStatus.innerHTML = '<span style="color:var(--success)">✓ Verbunden</span>'))
   .catch(() => headerStatus && (headerStatus.innerHTML = '<span style="color:var(--danger)">✗ Offline</span>'));
+
+async function loadCrests() {
+  try {
+    crestCache = await fetch(`${API}/api/teams/crests`).then(r => r.json());
+  } catch (e) {
+    console.warn('Crests konnten nicht geladen werden:', e);
+  }
+}
+
+function crestImg(teamId) {
+  const url = crestCache[String(teamId)];
+  if (!url) return '';
+  return `<img src="${API}${url}" alt="" style="width:24px;height:24px;object-fit:contain;vertical-align:middle;margin-right:6px;border-radius:4px;flex-shrink:0">`;
+}
 
 // Team-Namen laden
 async function loadTeams(seasonId) {
@@ -191,9 +206,9 @@ async function renderMatchesBlock(matchIds, isKO = false) {
 
       html += `
         <tr>
-          <td style="text-align:right;padding:.4rem">${homeTeam}</td>
+          <td style="text-align:right;padding:.4rem"><span style="display:inline-flex;align-items:center;justify-content:flex-end">${homeTeam}${crestImg(m.home_team_id)}</span></td>
           <td style="text-align:center;padding:.4rem;width:60px">${score}</td>
-          <td style="text-align:left;padding:.4rem">${awayTeam}</td>
+          <td style="text-align:left;padding:.4rem"><span style="display:inline-flex;align-items:center">${crestImg(m.away_team_id)}${awayTeam}</span></td>
         </tr>`;
     });
 
@@ -316,7 +331,7 @@ async function loadStartStandings() {
             ${standings.map((row, idx) => `
               <tr ${idx === 0 ? 'class="leader"' : ''}>
                 <td class="pos">${idx + 1}</td>
-                <td style="text-align:left"><a href="team.html?id=${row.team_id}" style="color:inherit;text-decoration:none;font-weight:${idx === 0 ? '700' : '500'}">${teamName(row.team_id)}</a></td>
+                <td style="text-align:left"><a href="team.html?id=${row.team_id}" style="color:inherit;text-decoration:none;font-weight:${idx === 0 ? '700' : '500'};display:inline-flex;align-items:center">${crestImg(row.team_id)}${teamName(row.team_id)}</a></td>
                 <td style="font-weight:600">${row.points}</td>
               </tr>
             `).join('')}
@@ -336,7 +351,7 @@ async function loadStartStandings() {
   const seasons = await fetch(`${API}/api/seasons`).then(r => r.json());
   const activeSeason = seasons.find(s => s.status === 'active') || seasons[0];
   if (activeSeason) {
-    await loadTeams(activeSeason.id);
+    await Promise.all([loadTeams(activeSeason.id), loadCrests()]);
   }
   loadNews();
   loadStartStandings();
