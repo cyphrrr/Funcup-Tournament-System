@@ -167,6 +167,19 @@ const seasonsDiv = document.getElementById('seasons');
 const koContainer = document.getElementById('ko-container');
 let bracketsCache = null;
 let activeTab = 'meister';
+let crestCache = {};
+
+async function loadCrests() {
+  try { crestCache = await fetch(`${API}/api/teams/crests`).then(r => r.json()); } catch(e) {}
+}
+
+function crestImg(teamId) {
+  if (!teamId) return '';
+  const url = crestCache[String(teamId)];
+  if (!url) return '';
+  const src = url.startsWith('http') ? url : `${API}${url}`;
+  return `<img src="${src}" alt="" loading="lazy" style="width:20px;height:20px;object-fit:contain;vertical-align:middle;margin-right:4px;border-radius:3px;flex-shrink:0" onerror="this.style.display='none'">`;
+}
 
 const ROUND_ORDER = ['runde_1', 'runde_2', 'runde_3', 'runde_4', 'viertelfinale', 'halbfinale', 'finale'];
 
@@ -206,9 +219,11 @@ function renderMatch(m) {
 
   if (m.is_bye) {
     div.className = 'ko-match bye';
-    const teamName = m.home_team ? m.home_team.name : (m.away_team ? m.away_team.name : '?');
+    const byeTeam = m.home_team || m.away_team;
+    const teamName = byeTeam ? byeTeam.name : '?';
+    const teamId = byeTeam ? byeTeam.id : null;
     div.innerHTML = `
-      <div class="ko-match-team winner"><span class="name">${teamName}</span><span class="score">✓</span></div>
+      <div class="ko-match-team winner"><span class="name">${crestImg(teamId)}${teamName}</span><span class="score">✓</span></div>
       <div style="text-align:center"><span class="ko-match-bye-badge">Freilos</span></div>`;
   } else if (!m.home_team && !m.away_team) {
     div.className = 'ko-match pending';
@@ -217,17 +232,19 @@ function renderMatch(m) {
     div.className = `ko-match ${isPlayed ? 'played' : 'pending'}`;
     const homeName = m.home_team ? m.home_team.name : '?';
     const awayName = m.away_team ? m.away_team.name : '?';
+    const homeId = m.home_team ? m.home_team.id : null;
+    const awayId = m.away_team ? m.away_team.id : null;
     const homeIsWinner = m.winner_id && m.home_team && m.winner_id === m.home_team.id;
     const awayIsWinner = m.winner_id && m.away_team && m.winner_id === m.away_team.id;
 
     div.innerHTML = `
       <div class="ko-match-team ${homeIsWinner ? 'winner' : ''} ${awayIsWinner ? 'loser' : ''}">
-        <span class="name">${homeName}</span>
+        <span class="name">${crestImg(homeId)}${homeName}</span>
         <span class="score">${hasResult ? m.home_goals : ''}</span>
       </div>
       <div class="ko-match-vs">vs</div>
       <div class="ko-match-team ${awayIsWinner ? 'winner' : ''} ${homeIsWinner ? 'loser' : ''}">
-        <span class="name">${awayName}</span>
+        <span class="name">${crestImg(awayId)}${awayName}</span>
         <span class="score">${hasResult ? m.away_goals : ''}</span>
       </div>`;
   }
@@ -302,6 +319,7 @@ async function loadKOBrackets(seasonId) {
   koContainer.innerHTML = '<em>Lade...</em>';
   bracketsCache = null;
   activeTab = 'meister';
+  await loadCrests();
 
   try {
     // Check status first

@@ -136,11 +136,26 @@
 import { API_URL } from './js/config.js';
 const API = API_URL;
 
+let crestCache = {};
+
+async function loadCrests() {
+  try { crestCache = await fetch(`${API}/api/teams/crests`).then(r => r.json()); } catch(e) {}
+}
+
+function crestImg(teamId) {
+  if (!teamId) return '';
+  const url = crestCache[String(teamId)];
+  if (!url) return '';
+  const src = url.startsWith('http') ? url : `${API}${url}`;
+  return `<img src="${src}" alt="" loading="lazy" style="width:20px;height:20px;object-fit:contain;vertical-align:middle;margin-right:4px;border-radius:3px;flex-shrink:0" onerror="this.style.display='none'">`;
+}
+
 // Ewige Tabelle laden
 async function loadAllTimeStandings() {
   const container = document.getElementById('standings-container');
 
   try {
+    await loadCrests();
     const standings = await fetch(`${API}/api/all-time-standings`).then(r => r.json());
 
     if (standings.length === 0) {
@@ -178,8 +193,8 @@ async function loadAllTimeStandings() {
       html += `
         <tr class="${rowClass}">
           <td class="rank">${rank}</td>
-          <td style="text-align:left">
-            <a href="team.html?id=${row.team_id}" style="color:inherit;text-decoration:none;font-weight:${rank === 1 ? '700' : '500'}">${row.team_name}</a>
+          <td style="text-align:left;display:flex;align-items:center;gap:4px">
+            ${crestImg(row.team_id)}<a href="team.html?id=${row.team_id}" style="color:inherit;text-decoration:none;font-weight:${rank === 1 ? '700' : '500'}">${row.team_name}</a>
           </td>
           <td>${row.played}</td>
           <td>${row.won}</td>
