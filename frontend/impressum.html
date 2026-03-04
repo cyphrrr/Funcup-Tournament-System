@@ -19,7 +19,7 @@
     body{margin:0;font-family:'DM Sans',system-ui,-apple-system,sans-serif;color:var(--text);background:var(--bg)}
     body::before{content:'';position:fixed;top:0;left:0;width:100%;height:100%;background:url('img/logo-bg.png') repeat;z-index:-1;opacity:var(--bg-pattern-opacity,0.1);filter:var(--bg-pattern-filter,none);transition:opacity 0.4s,filter 0.4s}
     h1,h2,h3,.card-title,.season-name{font-family:'Outfit',sans-serif;letter-spacing:-0.02em}
-    header{background:var(--card);border-bottom:1px solid var(--border);padding:1rem 2rem;z-index:50;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+    header{background:linear-gradient(135deg,var(--card) 0%,var(--card-alt) 100%);border-bottom:2px solid var(--primary);box-shadow:0 2px 20px color-mix(in srgb,var(--primary) 8%,transparent);padding:1rem 2rem;z-index:50;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
     @media(min-width:769px){header{position:sticky;top:0}}
     header h1{margin:0;font-size:1.5rem}
     header p{margin:.25rem 0 0;color:var(--muted)}
@@ -51,8 +51,8 @@
     main{max-width:900px;margin:0 auto;padding:2.5rem 2rem}
     h2{margin:2rem 0 1rem;font-size:1.5rem}
     h3{margin:1.5rem 0 .75rem;font-size:1.2rem;color:var(--primary)}
-    .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 16px rgba(0,0,0,.04);line-height:1.7}
-    .card h2{margin-top:0}
+    .card{background:linear-gradient(145deg,var(--card) 0%,var(--card-alt) 100%);border:1px solid var(--border);border-radius:12px;border-top:2px solid var(--primary);border-top-left-radius:10px;border-top-right-radius:10px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 16px rgba(0,0,0,.06),inset 0 1px 0 color-mix(in srgb,var(--primary) 15%,transparent);line-height:1.7}
+    .card h2{margin-top:0;padding-bottom:.5rem;border-bottom:2px solid color-mix(in srgb,var(--primary) 40%,transparent);margin-bottom:1rem}
     .card h3{margin-top:0}
     .card p{margin:.5rem 0}
     a{color:var(--primary);text-decoration:none}
@@ -72,6 +72,9 @@
     #theme-select{padding:.35rem .6rem;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text);font-family:'DM Sans',sans-serif;font-size:.8rem;cursor:pointer}
     #theme-select:focus{outline:none;border-color:var(--primary)}
     @media(max-width:768px){footer{grid-template-columns:1fr;gap:1rem;text-align:center}.footer-left,.footer-right{text-align:center}}
+    tr:hover td{background:color-mix(in srgb,var(--primary) 8%,transparent)}
+    tr.leader td{background:color-mix(in srgb,var(--primary) 6%,transparent)}
+    .card h2{padding-bottom:.5rem;border-bottom:2px solid color-mix(in srgb,var(--primary) 40%,transparent);margin-bottom:1rem}
   </style>
 </head>
 <body>
