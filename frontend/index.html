@@ -326,8 +326,16 @@ async function loadStartStandings() {
   }
 }
 
-loadNews();
-loadStartStandings();
+// Teams zuerst laden, dann News + Standings parallel
+(async () => {
+  const seasons = await fetch(`${API}/api/seasons`).then(r => r.json());
+  const activeSeason = seasons.find(s => s.status === 'active') || seasons[0];
+  if (activeSeason) {
+    await loadTeams(activeSeason.id);
+  }
+  loadNews();
+  loadStartStandings();
+})();
 
 // Check if user is logged in (show admin link)
 if (localStorage.getItem('biw_token')) {
