@@ -8,12 +8,6 @@
   <script src="js/themes.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
   <style>
-    :root{
-      --bg:#0c1117;--card:#161b22;--card-alt:#1c2128;--border:#30363d;
-      --text:#e6edf3;--muted:#7d8590;--primary:#e5a00d;--accent:#e5a00d;
-      --success:#3fb950;--danger:#f85149;--warning:#e5a00d;
-      --bg-pattern-opacity:0.12;--bg-pattern-filter:brightness(2) sepia(1) hue-rotate(15deg) saturate(2);
-    }
     *{box-sizing:border-box}
     html{scroll-behavior:smooth}
     body{margin:0;font-family:'DM Sans',system-ui,-apple-system,sans-serif;color:var(--text);background:var(--bg)}
@@ -38,8 +32,8 @@
     nav.open{right:0}
     nav ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.5rem}
     nav a{text-decoration:none;color:var(--text);padding:.75rem 1rem;border-radius:8px;font-weight:500;display:block;transition:background .2s}
-    nav a:hover{background:var(--accent)}
-    nav a.active{background:var(--accent);color:var(--primary);font-weight:700}
+    nav a:hover{background:color-mix(in srgb,var(--primary) 10%,var(--card))}
+    nav a.active{background:color-mix(in srgb,var(--primary) 15%,var(--card));color:var(--primary);font-weight:700}
 
     main{max-width:900px;margin:0 auto;padding:2.5rem 2rem}
     .back-link{display:inline-flex;align-items:center;gap:.5rem;color:var(--muted);text-decoration:none;font-size:.9rem;margin-bottom:1.5rem}
@@ -47,7 +41,7 @@
 
     /* Team Header */
     .team-header{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:2rem;margin-bottom:2rem;display:flex;flex-direction:column;align-items:center;gap:1rem;text-align:center}
-    .team-logo{width:160px;height:160px;border-radius:12px;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:4rem;font-weight:700;color:var(--primary);flex-shrink:0;border:1px solid var(--border)}
+    .team-logo{width:160px;height:160px;border-radius:12px;background:color-mix(in srgb,var(--primary) 10%,var(--card));display:flex;align-items:center;justify-content:center;font-size:4rem;font-weight:700;color:var(--primary);flex-shrink:0;border:1px solid var(--border)}
     .team-logo img{width:100%;height:100%;object-fit:cover;border-radius:10px}
     .team-name{font-size:2rem;font-weight:700;margin:0}
     .team-buttons{display:flex;gap:.5rem;justify-content:center}
@@ -66,7 +60,7 @@
     .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 4px 16px rgba(0,0,0,.04)}
     .card h2{margin:0 0 1rem;font-size:1.2rem}
     .match-list{display:flex;flex-direction:column;gap:.75rem}
-    .match-item{background:var(--accent);border:1px solid var(--border);border-radius:10px;padding:1rem;display:flex;justify-content:space-between;align-items:center}
+    .match-item{background:var(--card-alt);border:1px solid var(--border);border-radius:10px;padding:1rem;display:flex;justify-content:space-between;align-items:center}
     .match-item.win{border-left:4px solid var(--success)}
     .match-item.loss{border-left:4px solid var(--danger)}
     .match-item.draw{border-left:4px solid var(--warning)}
