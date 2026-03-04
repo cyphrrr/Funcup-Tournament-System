@@ -74,14 +74,27 @@ def list_all_teams(
 @router.get("/teams/crests")
 def get_team_crests(db: Session = Depends(get_db)):
     """Gibt team_id → crest_url Mapping für alle Teams mit Wappen."""
-    results = db.query(
+    # 1. Team.logo_url als Basis
+    crests = {}
+    teams_with_logo = db.query(
+        models.Team.id,
+        models.Team.logo_url
+    ).filter(models.Team.logo_url.isnot(None)).all()
+    for t in teams_with_logo:
+        crests[str(t.id)] = t.logo_url
+
+    # 2. UserProfile.crest_url überschreibt (höhere Priorität)
+    profiles = db.query(
         models.UserProfile.team_id,
         models.UserProfile.crest_url
     ).filter(
         models.UserProfile.team_id.isnot(None),
         models.UserProfile.crest_url.isnot(None)
     ).all()
-    return {str(r.team_id): r.crest_url for r in results}
+    for p in profiles:
+        crests[str(p.team_id)] = p.crest_url
+
+    return crests
 
 
 @router.get("/teams/search", response_model=list[schemas.TeamRead])
