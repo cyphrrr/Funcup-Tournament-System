@@ -342,10 +342,16 @@ async function loadKOBrackets(seasonId) {
 // Load seasons
 fetch(`${API}/api/seasons`).then(r => r.json()).then(seasons => {
   seasonsDiv.innerHTML = '';
-  seasons.forEach(s => {
+
+  // Sortiere nach ID absteigend (neueste zuerst), nur die 3 neuesten
+  seasons.sort((a, b) => b.id - a.id);
+  const recentSeasons = seasons.slice(0, 3);
+
+  recentSeasons.forEach(s => {
     const div = document.createElement('div');
     div.textContent = s.name;
     div.className = 'season-item';
+    div.dataset.seasonId = s.id;
     div.onclick = (e) => {
       seasonsDiv.querySelectorAll('.season-item').forEach(el => el.classList.remove('active'));
       e.target.classList.add('active');
@@ -353,6 +359,25 @@ fetch(`${API}/api/seasons`).then(r => r.json()).then(seasons => {
     };
     seasonsDiv.appendChild(div);
   });
+
+  // Hinweis auf Archiv
+  const hint = document.createElement('p');
+  hint.innerHTML = 'Alle vergangenen Turniere sind im <a href="archiv.html" style="color:var(--primary)">Archiv</a> einsehbar.';
+  hint.style.cssText = 'font-size:.85rem;color:var(--muted);margin-top:.5rem;width:100%';
+  seasonsDiv.appendChild(hint);
+
+  // Default-Saison automatisch laden (planned > active > erste)
+  const defaultSeason =
+    recentSeasons.find(s => s.status === 'planned') ||
+    recentSeasons.find(s => s.status === 'active') ||
+    recentSeasons[0];
+
+  if (defaultSeason) {
+    // Active-Styling auf den richtigen Button setzen
+    const defaultEl = seasonsDiv.querySelector(`[data-season-id="${defaultSeason.id}"]`);
+    if (defaultEl) defaultEl.classList.add('active');
+    loadKOBrackets(defaultSeason.id);
+  }
 });
 
 // Admin link

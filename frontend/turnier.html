@@ -173,7 +173,7 @@ function teamName(id) {
   return teamCache[id] || `Team ${id}`;
 }
 
-async function loadSeason(season) {
+async function loadSeason(season, clickedElement) {
   if (openedSeasonId === season.id) {
     openedSeasonId = null;
     groupsDiv.innerHTML = '<em>Wähle eine Saison</em>';
@@ -188,7 +188,13 @@ async function loadSeason(season) {
 
   // Active state
   seasonsContainer.querySelectorAll('.season-item').forEach(li => li.classList.remove('active'));
-  event.target.classList.add('active');
+  if (clickedElement) {
+    clickedElement.classList.add('active');
+  } else {
+    // Fallback: Element über data-Attribut finden
+    const el = seasonsContainer.querySelector(`[data-season-id="${season.id}"]`);
+    if (el) el.classList.add('active');
+  }
 
   // Teams cachen
   await loadTeams(season.id);
@@ -332,16 +338,34 @@ async function loadSeason(season) {
 fetch(`${API}/api/seasons`).then(r => r.json()).then(seasons => {
   seasonsContainer.innerHTML = '';
 
-  // Sortiere nach ID absteigend (neueste zuerst)
+  // Sortiere nach ID absteigend (neueste zuerst), nur die 3 neuesten anzeigen
   seasons.sort((a, b) => b.id - a.id);
+  const recentSeasons = seasons.slice(0, 3);
 
-  seasons.forEach(s => {
+  recentSeasons.forEach(s => {
     const div = document.createElement('div');
     div.textContent = s.name;
     div.className = 'season-item';
-    div.onclick = () => loadSeason(s);
+    div.dataset.seasonId = s.id;
+    div.onclick = (e) => loadSeason(s, e.target);
     seasonsContainer.appendChild(div);
   });
+
+  // Hinweis auf Archiv
+  const hint = document.createElement('p');
+  hint.innerHTML = 'Alle vergangenen Turniere sind im <a href="archiv.html" style="color:var(--primary)">Archiv</a> einsehbar.';
+  hint.style.cssText = 'font-size:.85rem;color:var(--muted);margin-top:.5rem;width:100%';
+  seasonsContainer.appendChild(hint);
+
+  // Default-Saison automatisch laden (planned > active > erste)
+  const defaultSeason =
+    recentSeasons.find(s => s.status === 'planned') ||
+    recentSeasons.find(s => s.status === 'active') ||
+    recentSeasons[0];
+
+  if (defaultSeason) {
+    loadSeason(defaultSeason);
+  }
 });
 
 // Check if user is logged in (show admin link)
