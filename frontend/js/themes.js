@@ -12,7 +12,9 @@ const THEMES = {
       "--accent": "#e5a00d",
       "--success": "#3fb950",
       "--danger": "#f85149",
-      "--warning": "#e5a00d"
+      "--warning": "#e5a00d",
+      "--bg-pattern-opacity": "0.06",
+      "--bg-pattern-filter": "brightness(0.3) sepia(1) hue-rotate(15deg) saturate(3)"
     },
     dark: {
       "--bg": "#0c1117",
@@ -25,7 +27,9 @@ const THEMES = {
       "--accent": "#e5a00d",
       "--success": "#3fb950",
       "--danger": "#f85149",
-      "--warning": "#e5a00d"
+      "--warning": "#e5a00d",
+      "--bg-pattern-opacity": "0.12",
+      "--bg-pattern-filter": "brightness(2) sepia(1) hue-rotate(15deg) saturate(2)"
     }
   },
   "vereinsheim": {
@@ -41,7 +45,9 @@ const THEMES = {
       "--accent": "#eae3d2",
       "--success": "#40916c",
       "--danger": "#c44536",
-      "--warning": "#d97706"
+      "--warning": "#d97706",
+      "--bg-pattern-opacity": "0.07",
+      "--bg-pattern-filter": "brightness(0.3) sepia(1) hue-rotate(70deg) saturate(2)"
     },
     dark: {
       "--bg": "#1a1c17",
@@ -54,7 +60,9 @@ const THEMES = {
       "--accent": "#2d3028",
       "--success": "#40916c",
       "--danger": "#e07a5f",
-      "--warning": "#d97706"
+      "--warning": "#d97706",
+      "--bg-pattern-opacity": "0.10",
+      "--bg-pattern-filter": "brightness(1.5) sepia(1) hue-rotate(70deg) saturate(1.5)"
     }
   },
   "retro": {
@@ -70,7 +78,9 @@ const THEMES = {
       "--accent": "#eef1f6",
       "--success": "#0d9488",
       "--danger": "#e55b2b",
-      "--warning": "#e55b2b"
+      "--warning": "#e55b2b",
+      "--bg-pattern-opacity": "0.05",
+      "--bg-pattern-filter": "brightness(0.3) sepia(1) hue-rotate(200deg) saturate(3)"
     },
     dark: {
       "--bg": "#0d0f18",
@@ -83,7 +93,9 @@ const THEMES = {
       "--accent": "#1c2038",
       "--success": "#2dd4bf",
       "--danger": "#f0784a",
-      "--warning": "#f0784a"
+      "--warning": "#f0784a",
+      "--bg-pattern-opacity": "0.12",
+      "--bg-pattern-filter": "brightness(2) sepia(1) hue-rotate(200deg) saturate(2)"
     }
   },
   "pitch-green": {
@@ -99,7 +111,9 @@ const THEMES = {
       "--accent": "#eef2ff",
       "--success": "#16a34a",
       "--danger": "#dc2626",
-      "--warning": "#d97706"
+      "--warning": "#d97706",
+      "--bg-pattern-opacity": "0.06",
+      "--bg-pattern-filter": "brightness(0.3) sepia(1) hue-rotate(100deg) saturate(3)"
     },
     dark: {
       "--bg": "#0c1410",
@@ -112,7 +126,9 @@ const THEMES = {
       "--accent": "#1a2b22",
       "--success": "#34d399",
       "--danger": "#f87171",
-      "--warning": "#fbbf24"
+      "--warning": "#fbbf24",
+      "--bg-pattern-opacity": "0.12",
+      "--bg-pattern-filter": "brightness(2) sepia(1) hue-rotate(100deg) saturate(2)"
     }
   },
   "stadium-electric": {
@@ -128,7 +144,9 @@ const THEMES = {
       "--accent": "#eef6f8",
       "--success": "#0d9488",
       "--danger": "#ea580c",
-      "--warning": "#ea580c"
+      "--warning": "#ea580c",
+      "--bg-pattern-opacity": "0.05",
+      "--bg-pattern-filter": "brightness(0.3) sepia(1) hue-rotate(140deg) saturate(3)"
     },
     dark: {
       "--bg": "#0a1214",
@@ -141,7 +159,9 @@ const THEMES = {
       "--accent": "#162529",
       "--success": "#2dd4bf",
       "--danger": "#fb923c",
-      "--warning": "#fb923c"
+      "--warning": "#fb923c",
+      "--bg-pattern-opacity": "0.13",
+      "--bg-pattern-filter": "brightness(2) sepia(1) hue-rotate(140deg) saturate(2.5)"
     }
   },
   "derby-night": {
@@ -157,7 +177,9 @@ const THEMES = {
       "--accent": "#edf0f7",
       "--success": "#16a34a",
       "--danger": "#dc2626",
-      "--warning": "#d97706"
+      "--warning": "#d97706",
+      "--bg-pattern-opacity": "0.05",
+      "--bg-pattern-filter": "brightness(0.3) sepia(1) hue-rotate(190deg) saturate(2)"
     },
     dark: {
       "--bg": "#090c14",
@@ -170,7 +192,9 @@ const THEMES = {
       "--accent": "#162036",
       "--success": "#4ade80",
       "--danger": "#f87171",
-      "--warning": "#fbbf24"
+      "--warning": "#fbbf24",
+      "--bg-pattern-opacity": "0.14",
+      "--bg-pattern-filter": "brightness(2.5) sepia(1) hue-rotate(190deg) saturate(2)"
     }
   }
 };
