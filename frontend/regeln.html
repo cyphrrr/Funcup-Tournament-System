@@ -8,12 +8,6 @@
   <script src="js/themes.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
   <style>
-    :root{
-      --bg:#0c1117;--card:#161b22;--card-alt:#1c2128;--border:#30363d;
-      --text:#e6edf3;--muted:#7d8590;--primary:#e5a00d;--accent:#e5a00d;
-      --success:#3fb950;--danger:#f85149;--warning:#e5a00d;
-      --bg-pattern-opacity:0.12;--bg-pattern-filter:brightness(2) sepia(1) hue-rotate(15deg) saturate(2);
-    }
     *{box-sizing:border-box}
     html{scroll-behavior:smooth}
     body{margin:0;font-family:'DM Sans',system-ui,-apple-system,sans-serif;color:var(--text);background:var(--bg)}
@@ -46,8 +40,8 @@
     nav.open{right:0}
     nav ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.5rem}
     nav a{text-decoration:none;color:var(--text);padding:.75rem 1rem;border-radius:8px;font-weight:500;display:block;transition:background .2s}
-    nav a:hover{background:var(--accent)}
-    nav a.active{background:var(--accent);color:var(--primary);font-weight:700}
+    nav a:hover{background:color-mix(in srgb,var(--primary) 10%,var(--card))}
+    nav a.active{background:color-mix(in srgb,var(--primary) 15%,var(--card));color:var(--primary);font-weight:700}
     main{max-width:900px;margin:0 auto;padding:2.5rem 2rem}
     h2{margin:2rem 0 1rem;font-size:1.5rem}
     h3{margin:1.5rem 0 .75rem;font-size:1.2rem;color:var(--primary)}
