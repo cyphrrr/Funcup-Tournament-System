@@ -1,7 +1,10 @@
 import time
 import secrets
+import json
+import base64
 from datetime import datetime, timezone
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from .. import models, schemas
 from ..db import get_db
@@ -26,19 +29,31 @@ def _cleanup_oauth_states():
         del oauth_states[k]
 
 
+def _is_safe_redirect(url: str) -> bool:
+    return url.startswith("/") or "biw-pokal.de" in url
+
+
 @router.get("/auth/discord/login")
-def discord_login():
+def discord_login(request: Request):
     """Startet Discord OAuth2 Flow."""
-    state = secrets.token_urlsafe(32)
+    csrf = secrets.token_urlsafe(32)
+    redirect_url = request.query_params.get("redirect", "/dashboard.html")
+    if not _is_safe_redirect(redirect_url):
+        redirect_url = "/dashboard.html"
+
+    compound = base64.urlsafe_b64encode(
+        json.dumps({"csrf": csrf, "redirect": redirect_url}).encode()
+    ).decode()
+
     _cleanup_oauth_states()
-    oauth_states[state] = time.time()
+    oauth_states[compound] = time.time()
 
-    auth_url = discord_oauth.get_authorization_url(state)
+    auth_url = discord_oauth.get_authorization_url(compound)
 
-    return {"authorization_url": auth_url}
+    return RedirectResponse(url=auth_url, status_code=302)
 
 
-@router.get("/auth/discord/callback", response_model=schemas.OAuth2CallbackResponse)
+@router.get("/auth/discord/callback")
 async def discord_callback(
     code: str,
     state: str,
@@ -50,6 +65,14 @@ async def discord_callback(
         raise HTTPException(status_code=400, detail="Ungültiger State (CSRF)")
 
     del oauth_states[state]
+
+    try:
+        state_data = json.loads(base64.urlsafe_b64decode(state.encode()).decode())
+        redirect_url = state_data.get("redirect", "/dashboard.html")
+        if not _is_safe_redirect(redirect_url):
+            redirect_url = "/dashboard.html"
+    except Exception:
+        redirect_url = "/dashboard.html"
 
     token = await discord_oauth.fetch_token(code)
     if not token:
@@ -105,7 +128,5 @@ async def discord_callback(
         updated_at=user.updated_at
     )
 
-    return schemas.OAuth2CallbackResponse(
-        access_token=jwt_token,
-        user=user_response
-    )
+    final_url = f"{redirect_url}?token={jwt_token}"
+    return RedirectResponse(url=final_url, status_code=302)
