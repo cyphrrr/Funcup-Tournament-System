@@ -23,7 +23,7 @@ from . import models
 from .ranking_service import get_team_ranking
 
 
-def get_qualified_teams_v2(season_id: int, db: Session) -> Dict:
+def get_qualified_teams_v2(season_id: int, db: Session, require_completed: bool = True) -> Dict:
     """
     Ermittelt Team-Pools für alle drei Brackets nach v2-Logik.
 
@@ -33,6 +33,8 @@ def get_qualified_teams_v2(season_id: int, db: Session) -> Dict:
     Args:
         season_id: ID der Saison
         db: SQLAlchemy Session
+        require_completed: wenn True, alle Matches müssen status='played' haben (strikt für Generate).
+                          wenn False, Tabelle wird mit aktuellen Ergebnissen berechnet (für Preview).
 
     Returns:
         {
@@ -47,8 +49,8 @@ def get_qualified_teams_v2(season_id: int, db: Session) -> Dict:
         }
 
     Raises:
-        ValueError: wenn Season archived, Gruppen nicht abgeschlossen,
-                    oder nicht genug Teams für Meisterrunde
+        ValueError: wenn Season archived oder nicht genug Teams für Meisterrunde.
+                    wenn require_completed=True: auch wenn Gruppen nicht abgeschlossen.
     """
     # 1. Season-Status prüfen
     season = db.get(models.Season, season_id)
@@ -57,7 +59,7 @@ def get_qualified_teams_v2(season_id: int, db: Session) -> Dict:
     if season.status == "archived":
         raise ValueError("KO-Brackets können nicht für archivierte Saisons generiert werden")
 
-    # 2. Gruppen laden (sortiert nach name → A, B, C...) + Abschluss prüfen
+    # 2. Gruppen laden (sortiert nach name → A, B, C...)
     groups = db.query(models.Group).filter(
         models.Group.season_id == season_id
     ).order_by(models.Group.name).all()
@@ -65,20 +67,22 @@ def get_qualified_teams_v2(season_id: int, db: Session) -> Dict:
     if not groups:
         raise ValueError(f"Keine Gruppen für Season {season_id} gefunden")
 
-    for group in groups:
-        matches = db.query(models.Match).filter(
-            models.Match.group_id == group.id
-        ).all()
+    # Nur wenn require_completed=True: Abschluss prüfen
+    if require_completed:
+        for group in groups:
+            matches = db.query(models.Match).filter(
+                models.Match.group_id == group.id
+            ).all()
 
-        if not matches:
-            raise ValueError(f"Gruppe {group.name} hat keine Matches")
+            if not matches:
+                raise ValueError(f"Gruppe {group.name} hat keine Matches")
 
-        unplayed = [m for m in matches if m.status != "played"]
-        if unplayed:
-            raise ValueError(
-                f"Gruppe {group.name} nicht abgeschlossen: "
-                f"{len(unplayed)} Matches noch nicht gespielt"
-            )
+            unplayed = [m for m in matches if m.status != "played"]
+            if unplayed:
+                raise ValueError(
+                    f"Gruppe {group.name} nicht abgeschlossen: "
+                    f"{len(unplayed)} Matches noch nicht gespielt"
+                )
 
     # 3. Plätze 1–4 extrahieren (sortiert nach Gruppenname A, B, C...)
     erste_ids = []   # team_ids in Gruppenname-Reihenfolge
@@ -469,6 +473,7 @@ def preview_ko_brackets(season_id: int, db: Session) -> Dict:
     Berechnet was generate_ko_brackets_v2 tun würde, OHNE DB-Writes.
 
     Nützlich für Admin-UI zur Vorschau vor Generierung.
+    Funktioniert auch bei laufender Gruppenphase (mit Warning).
 
     Args:
         season_id: ID der Saison
@@ -485,13 +490,37 @@ def preview_ko_brackets(season_id: int, db: Session) -> Dict:
             },
             "lucky_loser": {...} | None,
             "loser": {...} | None,
-            "team_names": {team_id: name, ...}
+            "team_names": {team_id: name, ...},
+            "warning": "..." | None
         }
 
     Raises:
-        ValueError: wenn Season archived oder Gruppen nicht abgeschlossen
+        ValueError: wenn Season archived oder nicht genug Teams für Meisterrunde
     """
-    qualified = get_qualified_teams_v2(season_id, db)  # nur DB reads
+    # require_completed=False: Tabelle wird mit aktuellen Ergebnissen berechnet
+    qualified = get_qualified_teams_v2(season_id, db, require_completed=False)
+
+    # Prüfe ob alle Gruppen abgeschlossen sind (für Warning)
+    season = db.get(models.Season, season_id)
+    groups = db.query(models.Group).filter(
+        models.Group.season_id == season_id
+    ).order_by(models.Group.name).all()
+
+    warning = None
+    if groups:
+        all_completed = True
+        for group in groups:
+            matches = db.query(models.Match).filter(
+                models.Match.group_id == group.id
+            ).all()
+            if matches:  # nur prüfen wenn Matches existieren
+                unplayed = [m for m in matches if m.status != "played"]
+                if unplayed:
+                    all_completed = False
+                    break
+
+        if not all_completed:
+            warning = "Gruppenphase noch nicht abgeschlossen — Vorschau basiert auf aktuellem Stand"
 
     # Team-Namen für alle beteiligten IDs sammeln
     all_ids = set()
@@ -523,4 +552,6 @@ def preview_ko_brackets(season_id: int, db: Session) -> Dict:
         }
 
     result["team_names"] = team_names
+    if warning:
+        result["warning"] = warning
     return result

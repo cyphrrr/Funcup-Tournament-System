@@ -183,6 +183,13 @@ function renderKOPreview(preview, container) {
   html += '<button class="btn btn-secondary btn-sm" onclick="loadKOStatus()">✕ Schließen</button>';
   html += '</div>';
 
+  // Warning Banner wenn Gruppenphase nicht abgeschlossen
+  if (preview.warning) {
+    html += `<div style="background:color-mix(in srgb, var(--warning) 15%, var(--bg-section));border:1px solid var(--warning);border-radius:8px;padding:.75rem;margin-bottom:1rem;font-size:.85rem;color:var(--warning)">
+      ⚠️ ${preview.warning}
+    </div>`;
+  }
+
   const teamNames = preview.team_names || {};
 
   for (const type of ['meister', 'lucky_loser', 'loser']) {
