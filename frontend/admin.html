@@ -132,6 +132,16 @@ tr.row-inactive td:first-child   { border-left:3px solid #d1d5db; }
 .toggle-participation-btn.is-dabei { background:#1a4a1a; color:#6fcf6f; }
 
 .participation-checkbox { width:18px; height:18px; cursor:pointer; accent-color:#4caf50; }
+
+    /* Number-Input Spinner ausblenden */
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    input[type="number"] {
+      -moz-appearance: textfield;
+    }
   </style>
 </head>
 <body>
@@ -580,10 +590,10 @@ tr.row-inactive td:first-child   { border-left:3px solid #d1d5db; }
         <!-- Tab Navigation -->
         <div class="tabs" style="margin-bottom:1.5rem">
           <button class="tab active" data-tab="tab-participants" onclick="showSetupTab('tab-participants')">👥 Teilnehmer</button>
-          <button class="tab" data-tab="tab-register" onclick="showSetupTab('tab-register')">➕ Registrieren</button>
-          <button class="tab" data-tab="tab-draw" onclick="showSetupTab('tab-draw')">🎲 Auslosung</button>
+          <button class="tab" data-tab="tab-draw" onclick="showSetupTab('tab-draw')">🚧 Auslosung</button>
           <button class="tab" data-tab="tab-schedule" onclick="showSetupTab('tab-schedule')">📋 Spielplan</button>
           <button class="tab" data-tab="tab-import" onclick="showSetupTab('tab-import')">📥 Ergebnis-Import</button>
+          <button class="tab" data-tab="tab-register" onclick="showSetupTab('tab-register')">➕ Registrieren</button>
         </div>
 
         <!-- Tab 1: Teilnehmer -->
@@ -672,13 +682,13 @@ tr.row-inactive td:first-child   { border-left:3px solid #d1d5db; }
             </div>
             <div style="display:flex;gap:.75rem">
               <button class="btn btn-primary" onclick="previewDraw()">👁️ Auslosung vorab anzeigen</button>
-              <button class="btn btn-success" onclick="executeDraw()">🎲 Auslosung & Saison erstellen</button>
+              <button class="btn btn-success" onclick="executeDraw()">🚧 Auslosung & Saison erstellen</button>
             </div>
           </div>
 
           <div id="draw-result" style="display:none">
             <div class="card">
-              <h2>🎲 Auslosungsergebnis</h2>
+              <h2>🚧 Auslosungsergebnis</h2>
               <div id="draw-result-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1rem"></div>
             </div>
           </div>
