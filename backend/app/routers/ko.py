@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from .. import models, schemas, ranking_service
 from ..db import get_db
 from ..auth import get_current_user
-from ..ko_bracket_generator import generate_ko_brackets
+from ..ko_bracket_generator import generate_ko_brackets_v2, preview_ko_brackets
 
 router = APIRouter()
 
@@ -221,7 +221,15 @@ def generate_season_ko_brackets(
     db: Session = Depends(get_db),
     _: str = Depends(get_current_user)
 ):
-    """Generiert alle 3 KO-Brackets (Meister, Lucky Loser, Loser) für eine Saison."""
+    """Generiert alle 3 KO-Brackets (Meister, Lucky Loser, Loser) für eine Saison (v2-Logik, keine Freilose)."""
+    # Prüfe ob Season archiviert ist
+    season = db.get(models.Season, season_id)
+    if not season:
+        raise HTTPException(status_code=404, detail="Saison nicht gefunden")
+    if season.status == "archived":
+        raise HTTPException(status_code=400, detail="KO-Logik v2 nicht für archivierte Saisons verfügbar")
+
+    # Prüfe ob Brackets bereits existieren
     existing = db.query(models.KOBracket).filter(
         models.KOBracket.season_id == season_id
     ).first()
@@ -233,11 +241,30 @@ def generate_season_ko_brackets(
         )
 
     try:
-        result = generate_ko_brackets(season_id, db)
+        result = generate_ko_brackets_v2(season_id, db)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
     return result
+
+
+@router.get("/seasons/{season_id}/ko-brackets/preview")
+def preview_season_ko_brackets(
+    season_id: int,
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_user)
+):
+    """Bracket-Vorschau ohne DB-Änderungen (für Admin-UI zum Überprüfen vor Generierung)."""
+    season = db.get(models.Season, season_id)
+    if not season:
+        raise HTTPException(status_code=404, detail="Saison nicht gefunden")
+    if season.status == "archived":
+        raise HTTPException(status_code=400, detail="Archivierte Saison")
+
+    try:
+        return preview_ko_brackets(season_id, db)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.get("/seasons/{season_id}/ko-brackets")

@@ -1,8 +1,19 @@
 """
-End-to-End Test für das KO-Bracket-System.
+End-to-End Tests für KO-Bracket-System v2 (keine Freilose, Aufrücker-Logik).
 
-Arbeitet direkt gegen eine In-Memory SQLite DB (kein laufender Server nötig).
-Simuliert den kompletten Ablauf: Saison → Gruppen → Teams → Matches → Brackets → Sieger-Weiterleitung.
+Funktioniert gegen In-Memory SQLite DB (kein laufender Server nötig).
+Simuliert kompletten Ablauf: Saison → Gruppen → Teams → Matches → Brackets.
+
+Tests:
+1. test_20_teams_meister_8: 5G×4T → Meister 8, LL nicht generiert
+2. test_32_teams: 8G×4T → Meister 16, LL 8, Loser nicht generiert
+3. test_48_teams_alle_brackets: 12G×4T → alle 3 × 16
+4. test_64_teams_keine_aufruecker: 16G×4T → alle 3 × 16, keine Aufrücker
+5. test_preview_keine_db_writes: Preview darf keine DB-Änderungen machen
+6. test_archived_season_fehler: Archived Season → ValueError
+7. test_keine_freilose: Keine is_bye in generierten Matches
+8. test_41_teams_gemischte_gruppen: 11G (8×4 + 3×3), unterschiedliche Rankings
+9. test_ranking_sortierung_bestimmt_aufruecker: Rankings bestimmen Aufrücker-Auswahl
 """
 
 import sys
@@ -11,10 +22,12 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from datetime import datetime
 
 from app.db import Base
 from app import models
-from app.ko_bracket_generator import generate_ko_brackets
+from app.ko_bracket_generator import generate_ko_brackets_v2, preview_ko_brackets
+import app.ranking_service as ranking_svc
 
 
 # ============================================================
@@ -29,12 +42,37 @@ def create_test_db():
     return Session()
 
 
-def setup_season(db, num_groups: int, teams_per_group: int = 3) -> tuple:
+def mock_ranking_sheet():
+    """Mockt Google Sheets Ranking (alle Teams bekommen 9999.0)."""
+    ranking_svc._sheet_cache["ranking"] = {"data": [], "timestamp": datetime.utcnow()}
+
+
+def mock_ranking_sheet_custom(team_rankings: dict):
+    """
+    Mockt Google Sheets Ranking mit custom Werten.
+
+    Args:
+        team_rankings: {team_name: ranking_value, ...}
+    """
+    # Rankings in das Sheet-Format umwandeln (CSV-ähnlich)
+    data = [
+        {"teamName": name, "avg_ranking": rank}
+        for name, rank in team_rankings.items()
+    ]
+    ranking_svc._sheet_cache["ranking"] = {"data": data, "timestamp": datetime.utcnow()}
+
+
+def setup_season(db, num_groups: int, teams_per_group: int = 4) -> tuple:
     """
     Erstellt eine Test-Saison mit Gruppen, Teams und gespielten Matches.
 
-    Rückgabe: (season_id, group_ids)
-    Platzierungen sind deterministisch: Team 0 gewinnt alle, Team 1 wird Zweiter, Team 2 Dritter.
+    Rückgabe: (season_id, group_ids, all_teams)
+    Platzierungen sind deterministisch: Team 0 gewinnt alle, Team 1 wird Zweiter, etc.
+
+    Round-Robin für teams_per_group Teams:
+    - Platz 1 schlägt alle anderen
+    - Platz 2 schlägt Platz 3 und 4
+    - Platz 3 schlägt Platz 4
     """
     season = models.Season(
         name=f"Test Saison {num_groups}G",
@@ -46,7 +84,7 @@ def setup_season(db, num_groups: int, teams_per_group: int = 3) -> tuple:
 
     group_names = list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
     group_ids = []
-    all_teams = {}  # group_idx -> [team_id_platz1, team_id_platz2, team_id_platz3]
+    all_teams = {}
 
     for g_idx in range(num_groups):
         group = models.Group(
@@ -73,16 +111,17 @@ def setup_season(db, num_groups: int, teams_per_group: int = 3) -> tuple:
 
         all_teams[g_idx] = teams_in_group
 
-        # Round-Robin Matches: Jedes Team gegen jedes andere (klare Platzierungen)
-        # Platz1 schlägt alle, Platz2 schlägt Platz3
+        # Round-Robin Matches: Platzierungen sind klar
         t = teams_in_group
+
         if teams_per_group >= 2:
-            # Platz1 vs Platz2: 3:0
+            # Platz1 vs Platz2: 3:0 (P1 gewinnt)
             db.add(models.Match(
                 season_id=season.id, group_id=group.id,
                 home_team_id=t[0], away_team_id=t[1],
                 home_goals=3, away_goals=0, status="played"
             ))
+
         if teams_per_group >= 3:
             # Platz1 vs Platz3: 2:0
             db.add(models.Match(
@@ -90,11 +129,124 @@ def setup_season(db, num_groups: int, teams_per_group: int = 3) -> tuple:
                 home_team_id=t[0], away_team_id=t[2],
                 home_goals=2, away_goals=0, status="played"
             ))
-            # Platz2 vs Platz3: 1:0
+            # Platz2 vs Platz3: 1:0 (P2 gewinnt)
             db.add(models.Match(
                 season_id=season.id, group_id=group.id,
                 home_team_id=t[1], away_team_id=t[2],
                 home_goals=1, away_goals=0, status="played"
+            ))
+
+        if teams_per_group >= 4:
+            # Platz1 vs Platz4: 4:0
+            db.add(models.Match(
+                season_id=season.id, group_id=group.id,
+                home_team_id=t[0], away_team_id=t[3],
+                home_goals=4, away_goals=0, status="played"
+            ))
+            # Platz2 vs Platz4: 3:0
+            db.add(models.Match(
+                season_id=season.id, group_id=group.id,
+                home_team_id=t[1], away_team_id=t[3],
+                home_goals=3, away_goals=0, status="played"
+            ))
+            # Platz3 vs Platz4: 2:0 (P3 gewinnt)
+            db.add(models.Match(
+                season_id=season.id, group_id=group.id,
+                home_team_id=t[2], away_team_id=t[3],
+                home_goals=2, away_goals=0, status="played"
+            ))
+
+    db.flush()
+    return season.id, group_ids, all_teams
+
+
+def setup_season_mixed_groups(db, group_sizes: list) -> tuple:
+    """
+    Erstellt eine Test-Saison mit gemischten Gruppengrößen.
+
+    Args:
+        db: SQLAlchemy Session
+        group_sizes: Liste von Teamanzahlen pro Gruppe [4, 4, 3, 4, 3, ...]
+
+    Rückgabe: (season_id, group_ids, all_teams)
+    """
+    num_groups = len(group_sizes)
+    total_teams = sum(group_sizes)
+
+    season = models.Season(
+        name=f"Test Saison {num_groups}G gemischt",
+        participant_count=total_teams,
+        status="active"
+    )
+    db.add(season)
+    db.flush()
+
+    group_names = list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+    group_ids = []
+    all_teams = {}
+
+    for g_idx, teams_in_group_count in enumerate(group_sizes):
+        group = models.Group(
+            season_id=season.id,
+            name=group_names[g_idx],
+            sort_order=g_idx
+        )
+        db.add(group)
+        db.flush()
+        group_ids.append(group.id)
+
+        teams_in_group = []
+        for t_idx in range(teams_in_group_count):
+            team = models.Team(name=f"Gruppe_{group_names[g_idx]}_Platz{t_idx + 1}")
+            db.add(team)
+            db.flush()
+            st = models.SeasonTeam(
+                season_id=season.id,
+                team_id=team.id,
+                group_id=group.id
+            )
+            db.add(st)
+            teams_in_group.append(team.id)
+
+        all_teams[g_idx] = teams_in_group
+
+        # Round-Robin Matches
+        t = teams_in_group
+
+        if teams_in_group_count >= 2:
+            db.add(models.Match(
+                season_id=season.id, group_id=group.id,
+                home_team_id=t[0], away_team_id=t[1],
+                home_goals=3, away_goals=0, status="played"
+            ))
+
+        if teams_in_group_count >= 3:
+            db.add(models.Match(
+                season_id=season.id, group_id=group.id,
+                home_team_id=t[0], away_team_id=t[2],
+                home_goals=2, away_goals=0, status="played"
+            ))
+            db.add(models.Match(
+                season_id=season.id, group_id=group.id,
+                home_team_id=t[1], away_team_id=t[2],
+                home_goals=1, away_goals=0, status="played"
+            ))
+
+        if teams_in_group_count >= 4:
+            db.add(models.Match(
+                season_id=season.id, group_id=group.id,
+                home_team_id=t[0], away_team_id=t[3],
+                home_goals=4, away_goals=0, status="played"
+            ))
+            db.add(models.Match(
+                season_id=season.id, group_id=group.id,
+                home_team_id=t[1], away_team_id=t[3],
+                home_goals=3, away_goals=0, status="played"
+            ))
+            db.add(models.Match(
+                season_id=season.id, group_id=group.id,
+                home_team_id=t[2], away_team_id=t[3],
+                home_goals=2, away_goals=0, status="played"
             ))
 
     db.flush()
@@ -103,12 +255,12 @@ def setup_season(db, num_groups: int, teams_per_group: int = 3) -> tuple:
 
 def apply_result(db, match_id: int, home_goals: int, away_goals: int) -> int:
     """
-    Trägt ein KO-Ergebnis ein und leitet den Sieger weiter (identisch zu PATCH /ko-matches/{id}).
+    Trägt ein KO-Ergebnis ein und leitet den Sieger weiter.
     Gibt winner_id zurück.
     """
     match = db.get(models.KOMatch, match_id)
     assert match is not None, f"KOMatch {match_id} nicht gefunden"
-    assert not match.is_bye, f"Match {match_id} ist ein Freilos – kann kein Ergebnis eingetragen werden"
+    assert not match.is_bye, f"Match {match_id} ist ein Freilos"
 
     match.home_goals = home_goals
     match.away_goals = away_goals
@@ -141,421 +293,384 @@ def get_team_name(db, team_id) -> str:
     return t.name if t else f"Team#{team_id}"
 
 
-def print_bracket(db, season_id: int, bracket_type: str):
-    """Gibt den Bracket-Baum als Text aus."""
-    matches = (
-        db.query(models.KOMatch)
-        .filter(
-            models.KOMatch.season_id == season_id,
-            models.KOMatch.bracket_type == bracket_type
-        )
-        .order_by(models.KOMatch.round, models.KOMatch.position)
-        .all()
-    )
+# ============================================================
+# TEST 1: 20 Teams (5 Gruppen × 4) → Meister 8
+# ============================================================
 
-    max_round = max(m.round for m in matches)
-    round_names = {1: "Runde 1", 2: "Runde 2", 3: "Runde 3", 4: "Runde 4"}
-    if max_round == 4:
-        round_names = {1: "Achtelfinale", 2: "Viertelfinale", 3: "Halbfinale", 4: "Finale"}
-    elif max_round == 3:
-        round_names = {1: "Viertelfinale", 2: "Halbfinale", 3: "Finale"}
-    elif max_round == 2:
-        round_names = {1: "Halbfinale", 2: "Finale"}
-    elif max_round == 1:
-        round_names = {1: "Finale"}
+def test_20_teams_meister_8():
+    """5G×4T: Meister 8 (5E+3Z), LL nicht generiert (2Z+5D=7<8), Loser nicht generiert."""
+    mock_ranking_sheet()
+    db = create_test_db()
+    season_id, _, _ = setup_season(db, 5, 4)
+    db.commit()
 
-    for r in range(1, max_round + 1):
-        round_matches = [m for m in matches if m.round == r]
-        print(f"\n{round_names.get(r, f'Runde {r}')}:")
-        for m in sorted(round_matches, key=lambda x: x.position):
-            home = get_team_name(db, m.home_team_id)
-            away = get_team_name(db, m.away_team_id)
-            score = f"{m.home_goals}:{m.away_goals}" if m.home_goals is not None else "   "
-            bye = " [BYE]" if m.is_bye else ""
-            next_info = f"→ next=#{m.next_match_id}/{m.next_match_slot}" if m.next_match_id else "→ [ENDE]"
-            print(f"  P{m.position} id={m.id}: {home} ({score}) {away}{bye}  status={m.status}  {next_info}")
+    result = generate_ko_brackets_v2(season_id, db)
+
+    # Meister-Check
+    m = result["meister"]
+    assert m["bracket_id"] is not None, "Meister-Bracket wurde nicht erstellt"
+    assert m["teams_count"] == 8, f"Erwartet 8 Teams, got {m['teams_count']}"
+    assert m["aufruecker_count"] == 3, f"Erwartet 3 Aufrücker (5 Erste + 3 Zweite), got {m['aufruecker_count']}"
+    assert m["rounds"] == 3, f"Erwartet 3 Runden (VF), got {m['rounds']}"
+
+    # Lucky Loser sollte nicht generiert sein
+    ll = result["lucky_loser"]
+    assert ll["bracket_id"] is None, f"Lucky Loser sollte nicht generiert sein"
+
+    # Loser sollte nicht generiert sein
+    lo = result["loser"]
+    assert lo["bracket_id"] is None, f"Loser sollte nicht generiert sein"
+
+    # Keine Freilose
+    all_matches = db.query(models.KOMatch).filter(
+        models.KOMatch.season_id == season_id
+    ).all()
+    bye_matches = [m for m in all_matches if m.is_bye == 1]
+    assert len(bye_matches) == 0, f"Freilos-Matches gefunden: {len(bye_matches)}"
+
+    db.close()
+    print("✓ test_20_teams_meister_8 bestanden")
 
 
 # ============================================================
-# SIEGER-VALIDIERUNG
+# TEST 2: 32 Teams (8 Gruppen × 4) → Meister 16, LL 8, Loser nicht generiert
 # ============================================================
 
-def validate_round_advancement(db, season_id: int, bracket_type: str, completed_round: int):
+def test_32_teams():
+    """8G×4T: Meister 16 (8E+8Z), LL 8 (0Z+8D), Loser nicht generiert."""
+    mock_ranking_sheet()
+    db = create_test_db()
+    season_id, _, _ = setup_season(db, 8, 4)
+    db.commit()
+
+    result = generate_ko_brackets_v2(season_id, db)
+
+    m = result["meister"]
+    assert m["teams_count"] == 16, f"Meister: erwartet 16, got {m['teams_count']}"
+    assert m["aufruecker_count"] == 8, f"Meister: erwartet 8 Aufrücker, got {m['aufruecker_count']}"
+    assert m["rounds"] == 4, f"Meister: erwartet 4 Runden (AF), got {m['rounds']}"
+
+    ll = result["lucky_loser"]
+    assert ll["bracket_id"] is not None, "Lucky Loser sollte generiert sein"
+    assert ll["teams_count"] == 8, f"Lucky Loser: erwartet 8, got {ll['teams_count']}"
+    assert ll["aufruecker_count"] == 8, f"Lucky Loser: erwartet 8 Aufrücker (alle Dritten), got {ll['aufruecker_count']}"
+    assert ll["rounds"] == 3, f"Lucky Loser: erwartet 3 Runden (VF), got {ll['rounds']}"
+
+    lo = result["loser"]
+    assert lo["bracket_id"] is None, "Loser sollte nicht generiert sein (0D+8V<16)"
+
+    db.close()
+    print("✓ test_32_teams bestanden")
+
+
+# ============================================================
+# TEST 3: 48 Teams (12 Gruppen × 4) → alle 3 × 16
+# ============================================================
+
+def test_48_teams_alle_brackets():
+    """12G×4T: Meister 16 (12E+4Z), LL 16 (8Z+8D), Loser 16 (4D+12V)."""
+    mock_ranking_sheet()
+    db = create_test_db()
+    season_id, _, _ = setup_season(db, 12, 4)
+    db.commit()
+
+    result = generate_ko_brackets_v2(season_id, db)
+
+    m = result["meister"]
+    assert m["teams_count"] == 16, f"Meister: erwartet 16, got {m['teams_count']}"
+    assert m["aufruecker_count"] == 4, f"Meister: erwartet 4 Aufrücker (4 von 12 Zweiten), got {m['aufruecker_count']}"
+
+    ll = result["lucky_loser"]
+    assert ll["bracket_id"] is not None, "Lucky Loser sollte generiert sein"
+    assert ll["teams_count"] == 16, f"Lucky Loser: erwartet 16, got {ll['teams_count']}"
+    assert ll["aufruecker_count"] == 8, f"Lucky Loser: erwartet 8 Aufrücker (von 12 Dritten), got {ll['aufruecker_count']}"
+
+    lo = result["loser"]
+    assert lo["bracket_id"] is not None, "Loser sollte generiert sein"
+    assert lo["teams_count"] == 16, f"Loser: erwartet 16, got {lo['teams_count']}"
+    assert lo["aufruecker_count"] == 12, f"Loser: erwartet 12 Aufrücker (alle 12 Vierten), got {lo['aufruecker_count']}"
+
+    db.close()
+    print("✓ test_48_teams_alle_brackets bestanden")
+
+
+# ============================================================
+# TEST 4: 64 Teams (16 Gruppen × 4) → alle 3 × 16, keine Aufrücker
+# ============================================================
+
+def test_64_teams_keine_aufruecker():
+    """16G×4T: alle 3 Brackets × 16, keine Aufrücker nötig."""
+    mock_ranking_sheet()
+    db = create_test_db()
+    season_id, _, _ = setup_season(db, 16, 4)
+    db.commit()
+
+    result = generate_ko_brackets_v2(season_id, db)
+
+    m = result["meister"]
+    assert m["teams_count"] == 16
+    assert m["aufruecker_count"] == 0, f"Meister sollte 0 Aufrücker haben, got {m['aufruecker_count']}"
+
+    ll = result["lucky_loser"]
+    assert ll["teams_count"] == 16
+    assert ll["aufruecker_count"] == 0, f"Lucky Loser sollte 0 Aufrücker haben, got {ll['aufruecker_count']}"
+
+    lo = result["loser"]
+    assert lo["teams_count"] == 16
+    assert lo["aufruecker_count"] == 0, f"Loser sollte 0 Aufrücker haben, got {lo['aufruecker_count']}"
+
+    db.close()
+    print("✓ test_64_teams_keine_aufruecker bestanden")
+
+
+# ============================================================
+# TEST 5: Preview — keine DB-Änderungen
+# ============================================================
+
+def test_preview_keine_db_writes():
+    """Preview darf keine DB-Änderungen machen."""
+    mock_ranking_sheet()
+    db = create_test_db()
+    season_id, _, _ = setup_season(db, 8, 4)
+    db.commit()
+
+    # Vor Preview: keine KOBracket/KOMatch Einträge
+    before_brackets = db.query(models.KOBracket).count()
+    before_matches = db.query(models.KOMatch).count()
+    assert before_brackets == 0
+    assert before_matches == 0
+
+    # Preview aufrufen
+    result = preview_ko_brackets(season_id, db)
+
+    # Nach Preview: immer noch keine Einträge
+    after_brackets = db.query(models.KOBracket).count()
+    after_matches = db.query(models.KOMatch).count()
+    assert after_brackets == 0, "Preview sollte keine KOBracket erstellen"
+    assert after_matches == 0, "Preview sollte keine KOMatch erstellen"
+
+    # Vorschau-Daten sollten vorhanden sein
+    assert result["meister"] is not None, "Meister-Preview sollte vorhanden sein"
+    assert result["meister"]["size"] == 16
+    assert "team_names" in result
+
+    db.close()
+    print("✓ test_preview_keine_db_writes bestanden")
+
+
+# ============================================================
+# TEST 6: Archived Season → ValueError
+# ============================================================
+
+def test_archived_season_fehler():
+    """Archived Season sollte ValueError werfen."""
+    mock_ranking_sheet()
+    db = create_test_db()
+
+    season = models.Season(name="Alt Season", participant_count=32, status="archived")
+    db.add(season)
+    db.commit()
+
+    try:
+        generate_ko_brackets_v2(season.id, db)
+        assert False, "ValueError erwartet für archivierte Saison"
+    except ValueError as e:
+        assert "archiviert" in str(e).lower(), f"Fehlermeldung sollte 'archiviert' enthalten: {e}"
+
+    db.close()
+    print("✓ test_archived_season_fehler bestanden")
+
+
+# ============================================================
+# TEST 7: Keine Freilose in Matches
+# ============================================================
+
+def test_keine_freilose():
+    """Alle Matches sollten is_bye=0 und beide Teams haben."""
+    mock_ranking_sheet()
+    db = create_test_db()
+    season_id, _, _ = setup_season(db, 12, 4)
+    db.commit()
+
+    generate_ko_brackets_v2(season_id, db)
+
+    all_matches = db.query(models.KOMatch).filter(
+        models.KOMatch.season_id == season_id
+    ).all()
+
+    # Keine Freilose
+    bye_matches = [m for m in all_matches if m.is_bye == 1]
+    assert len(bye_matches) == 0, f"Sollte 0 Freilos-Matches haben, found {len(bye_matches)}"
+
+    # Alle Runde-1-Matches haben beide Teams
+    r1_matches = [m for m in all_matches if m.round == 1]
+    for m in r1_matches:
+        assert m.home_team_id is not None, f"R1 Match {m.id}: home_team_id ist None"
+        assert m.away_team_id is not None, f"R1 Match {m.id}: away_team_id ist None"
+        assert m.status == "scheduled", f"R1 Match {m.id}: status sollte 'scheduled' sein, got {m.status}"
+
+    db.close()
+    print("✓ test_keine_freilose bestanden")
+
+
+# ============================================================
+# TEST 8: 41 Teams (gemischte Gruppen: 8×4 + 3×3)
+# ============================================================
+
+def test_41_teams_gemischte_gruppen():
     """
-    Nach dem Spielen von Runde N prüfen ob alle Sieger korrekt in Runde N+1 eingetragen sind.
+    11 Gruppen: 8 Gruppen à 4 Teams + 3 Gruppen à 3 Teams = 41 Teams.
+
+    Erwartungen (E=11, Z=11, D=11, V=8):
+    - Meister: 16 Teams (11 Erste + 5 Zweite)
+    - Lucky Loser: 16 Teams (6 übrige Zweite + 10 Dritte)
+    - Loser: NICHT generiert (1 Dritter + 8 Vierte = 9 < 16)
+
+    Mit unterschiedlichen Rankings prüfen:
+    - Zweite aus 4er-Gruppen: Rankings 100-800
+    - Zweite aus 3er-Gruppen: Rankings 900-1100
+    - Die 5 Aufrücker sollten die besten Zweiten sein (100-500, nicht 900-1100)
     """
-    matches_r = (
-        db.query(models.KOMatch)
-        .filter(
-            models.KOMatch.season_id == season_id,
-            models.KOMatch.bracket_type == bracket_type,
-            models.KOMatch.round == completed_round
-        )
-        .all()
-    )
-
-    errors = []
-    for m in matches_r:
-        if m.is_bye:
-            # Bye: home_team muss ins next_match eingetragen sein
-            if m.next_match_id:
-                nm = db.get(models.KOMatch, m.next_match_id)
-                expected_id = m.home_team_id
-                actual_id = nm.home_team_id if m.next_match_slot == "home" else nm.away_team_id
-                if actual_id != expected_id:
-                    errors.append(
-                        f"BYE Match P{m.position}: erwartet {get_team_name(db, expected_id)} "
-                        f"in next_match {m.next_match_id}/{m.next_match_slot}, "
-                        f"aber dort steht {get_team_name(db, actual_id)}"
-                    )
-            continue
-
-        if m.status != "played":
-            continue  # noch nicht gespielt, überspringen
-
-        winner_id = None
-        if m.home_goals is not None and m.away_goals is not None:
-            if m.home_goals > m.away_goals:
-                winner_id = m.home_team_id
-            elif m.away_goals > m.home_goals:
-                winner_id = m.away_team_id
-
-        if winner_id is None:
-            continue  # Unentschieden, keine Auto-Weiterleitung
-
-        if not m.next_match_id:
-            continue  # Finale, kein next_match
-
-        nm = db.get(models.KOMatch, m.next_match_id)
-        actual_id = nm.home_team_id if m.next_match_slot == "home" else nm.away_team_id
-
-        if actual_id != winner_id:
-            errors.append(
-                f"Match R{m.round}P{m.position} id={m.id}: "
-                f"Sieger {get_team_name(db, winner_id)} sollte in next_match "
-                f"#{m.next_match_id}/{m.next_match_slot} stehen, "
-                f"aber dort steht {get_team_name(db, actual_id)}"
-            )
-
-    return errors
-
-
-# ============================================================
-# TEST 1: Perfekte 16 Gruppen
-# ============================================================
-
-def test_perfekte_16():
-    print("\n" + "=" * 60)
-    print("=== Test 1: Perfekte 16 (16 Gruppen, 0 Byes) ===")
-    print("=" * 60)
-
     db = create_test_db()
-    season_id, group_ids, all_teams = setup_season(db, num_groups=16, teams_per_group=3)
+
+    # Setup: 8×4 + 3×3 Teams = 41 Teams
+    group_sizes = [4, 4, 4, 4, 4, 4, 4, 4, 3, 3, 3]  # 8 Gruppen à 4, dann 3 à 3
+    season_id, group_ids, all_teams = setup_season_mixed_groups(db, group_sizes)
     db.commit()
 
-    result = generate_ko_brackets(season_id, db)
+    # Mock Rankings: Zweite aus 4er-Gruppen vs. 3er-Gruppen unterschiedlich
+    team_rankings = {}
 
-    # Bracket-Check
-    m_result = result["meister"]
-    assert m_result["bracket_id"] is not None, "Meister-Bracket wurde nicht erstellt"
-    assert m_result["teams_count"] == 16, f"Erwartet 16 Teams, got {m_result['teams_count']}"
-    assert m_result["byes_count"] == 0, f"Erwartet 0 Byes, got {m_result['byes_count']}"
-    assert m_result["rounds"] == 4, f"Erwartet 4 Runden, got {m_result['rounds']}"
-    assert m_result["matches_count"] == 15, f"Erwartet 15 Matches, got {m_result['matches_count']}"
+    # Zweite aus 4er-Gruppen (A-H): Rankings 100-800
+    for g_idx in range(8):
+        team_name = f"Gruppe_{chr(65 + g_idx)}_Platz2"
+        team_rankings[team_name] = 100 + (g_idx * 100)
 
-    r1_matches = (
-        db.query(models.KOMatch)
-        .filter(
-            models.KOMatch.season_id == season_id,
-            models.KOMatch.bracket_type == "meister",
-            models.KOMatch.round == 1
-        )
-        .order_by(models.KOMatch.position)
-        .all()
-    )
-    assert len(r1_matches) == 8, f"Erwartet 8 R1-Matches, got {len(r1_matches)}"
+    # Zweite aus 3er-Gruppen (I-K): Rankings 900-1100
+    for g_idx in range(8, 11):
+        team_name = f"Gruppe_{chr(65 + g_idx)}_Platz2"
+        team_rankings[team_name] = 900 + ((g_idx - 8) * 100)
 
-    # Seeding prüfen: Position 1 = Gruppe_A_Platz1 vs Gruppe_P_Platz1
-    p1_home = get_team_name(db, r1_matches[0].home_team_id)
-    p1_away = get_team_name(db, r1_matches[0].away_team_id)
-    assert p1_home == "Gruppe_A_Platz1", f"R1P1 home: erwartet Gruppe_A_Platz1, got {p1_home}"
-    assert p1_away == "Gruppe_P_Platz1", f"R1P1 away: erwartet Gruppe_P_Platz1, got {p1_away}"
-    print(f"✓ Seeding korrekt: R1P1 = {p1_home} vs {p1_away}")
+    # Dritte: Rankings 1200-2200
+    for g_idx in range(11):
+        team_name = f"Gruppe_{chr(65 + g_idx)}_Platz3"
+        team_rankings[team_name] = 1200 + (g_idx * 100)
 
-    p8_home = get_team_name(db, r1_matches[7].home_team_id)
-    p8_away = get_team_name(db, r1_matches[7].away_team_id)
-    assert p8_home == "Gruppe_H_Platz1", f"R1P8 home: erwartet Gruppe_H_Platz1, got {p8_home}"
-    assert p8_away == "Gruppe_I_Platz1", f"R1P8 away: erwartet Gruppe_I_Platz1, got {p8_away}"
-    print(f"✓ Seeding korrekt: R1P8 = {p8_home} vs {p8_away}")
+    # Vierte (nur 4er-Gruppen): Rankings 2300-3000
+    for g_idx in range(8):
+        team_name = f"Gruppe_{chr(65 + g_idx)}_Platz4"
+        team_rankings[team_name] = 2300 + (g_idx * 100)
 
-    print_bracket(db, season_id, "meister")
+    mock_ranking_sheet_custom(team_rankings)
 
-    # Alle Runden durchspielen
-    print("\n--- Spiele Runde 1 ---")
-    for m in sorted(r1_matches, key=lambda x: x.position):
-        winner_id = apply_result(db, m.id, 2, 0)
-        winner = get_team_name(db, winner_id)
-        home = get_team_name(db, m.home_team_id)
-        away = get_team_name(db, m.away_team_id)
-        next_info = f"weiter als {m.next_match_slot.upper()} zu R2P{(m.position + 1) // 2}" if m.next_match_id else ""
-        print(f"  P{m.position}: {home} (2:0) {away} → Sieger: {winner} → {next_info}")
+    result = generate_ko_brackets_v2(season_id, db)
 
-    errors = validate_round_advancement(db, season_id, "meister", 1)
-    assert not errors, "Fehler nach Runde 1:\n" + "\n".join(errors)
-    print("✓ Alle Sieger aus Runde 1 korrekt weitergeleitet")
+    # Meister: 16 Teams (11 Erste + 5 Zweite)
+    m = result["meister"]
+    assert m["bracket_id"] is not None, "Meister-Bracket sollte generiert sein"
+    assert m["teams_count"] == 16, f"Meister: erwartet 16, got {m['teams_count']}"
+    assert m["aufruecker_count"] == 5, f"Meister: erwartet 5 Aufrücker, got {m['aufruecker_count']}"
+    assert m["rounds"] == 4, f"Meister: erwartet 4 Runden (AF), got {m['rounds']}"
 
-    for rnd in [2, 3]:
-        rnd_matches = (
-            db.query(models.KOMatch)
-            .filter(
-                models.KOMatch.season_id == season_id,
-                models.KOMatch.bracket_type == "meister",
-                models.KOMatch.round == rnd
-            )
-            .order_by(models.KOMatch.position)
-            .all()
-        )
-        print(f"\n--- Spiele Runde {rnd} ---")
-        for m in rnd_matches:
-            assert m.home_team_id is not None, f"R{rnd}P{m.position}: home_team fehlt!"
-            assert m.away_team_id is not None, f"R{rnd}P{m.position}: away_team fehlt!"
-            winner_id = apply_result(db, m.id, 1, 0)
-            winner = get_team_name(db, winner_id)
-            home = get_team_name(db, m.home_team_id)
-            away = get_team_name(db, m.away_team_id)
-            next_info = f"→ R{rnd + 1}P{(m.position + 1) // 2}" if m.next_match_id else ""
-            print(f"  P{m.position}: {home} vs {away} → Sieger: {winner} {next_info}")
+    # Lucky Loser: 16 Teams (6 übrige Zweite + 10 Dritte)
+    ll = result["lucky_loser"]
+    assert ll["bracket_id"] is not None, "Lucky Loser sollte generiert sein"
+    assert ll["teams_count"] == 16, f"Lucky Loser: erwartet 16, got {ll['teams_count']}"
+    assert ll["aufruecker_count"] == 10, f"Lucky Loser: erwartet 10 Dritte-Aufrücker, got {ll['aufruecker_count']}"
 
-        errors = validate_round_advancement(db, season_id, "meister", rnd)
-        assert not errors, f"Fehler nach Runde {rnd}:\n" + "\n".join(errors)
-        print(f"✓ Alle Sieger aus Runde {rnd} korrekt weitergeleitet")
+    # Loser: NICHT generiert (1 Dritter + 8 Vierte = 9 < 16)
+    lo = result["loser"]
+    assert lo["bracket_id"] is None, "Loser sollte NICHT generiert sein"
 
-    # Finale
-    finale = (
-        db.query(models.KOMatch)
-        .filter(
-            models.KOMatch.season_id == season_id,
-            models.KOMatch.bracket_type == "meister",
-            models.KOMatch.round == 4
-        )
-        .first()
-    )
-    assert finale is not None, "Finale nicht gefunden"
-    assert finale.home_team_id is not None, "Finale: home_team fehlt"
-    assert finale.away_team_id is not None, "Finale: away_team fehlt"
-    home_f = get_team_name(db, finale.home_team_id)
-    away_f = get_team_name(db, finale.away_team_id)
-    print(f"\n--- Finale ---")
-    print(f"  FINALE: {home_f} vs {away_f}")
-    winner_id = apply_result(db, finale.id, 3, 1)
-    print(f"  Turniersieger: {get_team_name(db, winner_id)}")
+    # Keine Freilose
+    all_matches = db.query(models.KOMatch).filter(
+        models.KOMatch.season_id == season_id
+    ).all()
+    bye_matches = [m for m in all_matches if m.is_bye == 1]
+    assert len(bye_matches) == 0, f"Sollte 0 Freilos-Matches haben, found {len(bye_matches)}"
 
     db.close()
-    print("\n✓ Test 1 bestanden")
+    print("✓ test_41_teams_gemischte_gruppen bestanden")
 
 
 # ============================================================
-# TEST 2: 12 Gruppen (nicht-Zweierpotenz, 4 Byes)
+# TEST 9: Ranking-Sortierung bestimmt Aufrücker
 # ============================================================
 
-def test_12_gruppen():
-    print("\n" + "=" * 60)
-    print("=== Test 2: 12 Gruppen (→ 16er Bracket, 4 Byes) ===")
-    print("=" * 60)
+def test_ranking_sortierung_bestimmt_aufruecker():
+    """
+    10 Gruppen à 4 Teams = 40 Teams.
+    Meister braucht 6 Aufrücker aus Zweiten (10 Erste + 6 Zweite = 16).
 
+    Rankings der Zweiten sind UMGEKEHRT:
+    - Gruppe A (Zweiter): Ranking 1000 (schlechtester)
+    - Gruppe B (Zweiter): Ranking 900
+    - ...
+    - Gruppe J (Zweiter): Ranking 100 (bester)
+
+    Erwartung: Die 6 Aufrücker sind die Zweiten mit Rankings 100-600
+    (Gruppen J, I, H, G, F, E), NICHT die ersten alphabetisch (A, B, C, D, E, F).
+
+    Lucky Loser: 4 übrige Zweite (schlechteste 4: A, B, C, D) + 4 beste Dritte = 8 Teams
+    (weil 4 + 10 = 14 < 16, Fallback auf 8)
+    """
     db = create_test_db()
-    season_id, group_ids, all_teams = setup_season(db, num_groups=12, teams_per_group=3)
+    season_id, _, _ = setup_season(db, 10, 4)
     db.commit()
 
-    result = generate_ko_brackets(season_id, db)
+    # Mock Rankings: Zweite mit UMGEKEHRTEN Rankings
+    team_rankings = {}
 
-    m_result = result["meister"]
-    assert m_result["bracket_id"] is not None
-    assert m_result["teams_count"] == 12, f"Erwartet 12 Teams, got {m_result['teams_count']}"
-    assert m_result["byes_count"] == 4, f"Erwartet 4 Byes, got {m_result['byes_count']}"
-    assert m_result["rounds"] == 4, f"Erwartet 4 Runden, got {m_result['rounds']}"
-    print(f"✓ 12 Teams + 4 Byes → 16er Bracket, 4 Runden")
+    # Zweite mit umgekehrten Rankings (besser = niedriger Ø)
+    group_names = list("ABCDEFGHIJ")
+    for g_idx, group_char in enumerate(group_names):
+        team_name = f"Gruppe_{group_char}_Platz2"
+        # A=1000, B=900, ..., J=100
+        team_rankings[team_name] = 1000 - (g_idx * 100)
 
-    r1_matches = (
-        db.query(models.KOMatch)
-        .filter(
-            models.KOMatch.season_id == season_id,
-            models.KOMatch.bracket_type == "meister",
-            models.KOMatch.round == 1
-        )
-        .order_by(models.KOMatch.position)
-        .all()
-    )
+    # Erste: normale Rankings (nicht relevant für Sorting)
+    for g_idx, group_char in enumerate(group_names):
+        team_name = f"Gruppe_{group_char}_Platz1"
+        team_rankings[team_name] = 3000 + (g_idx * 100)
 
-    bye_matches = [m for m in r1_matches if m.is_bye]
-    normal_matches = [m for m in r1_matches if not m.is_bye]
-    print(f"✓ Runde 1: {len(normal_matches)} normale Matches + {len(bye_matches)} Freilose")
-    assert len(bye_matches) == 4, f"Erwartet 4 Bye-Matches, got {len(bye_matches)}"
+    # Dritte und Vierte: weniger relevant für diesen Test
+    for g_idx, group_char in enumerate(group_names):
+        team_name = f"Gruppe_{group_char}_Platz3"
+        team_rankings[team_name] = 2000 + (g_idx * 100)
+        team_name = f"Gruppe_{group_char}_Platz4"
+        team_rankings[team_name] = 2500 + (g_idx * 100)
 
-    # Freilos-Teams müssen in Runde 2 stehen
-    for m in bye_matches:
-        assert m.next_match_id is not None, f"Bye-Match P{m.position} hat kein next_match_id!"
-        nm = db.get(models.KOMatch, m.next_match_id)
-        actual = nm.home_team_id if m.next_match_slot == "home" else nm.away_team_id
-        assert actual == m.home_team_id, (
-            f"Bye P{m.position}: {get_team_name(db, m.home_team_id)} sollte in "
-            f"R2/{m.next_match_slot} stehen, aber dort ist {get_team_name(db, actual)}"
-        )
+    mock_ranking_sheet_custom(team_rankings)
 
-    print("✓ Alle 4 Bye-Teams korrekt in Runde 2 eingetragen")
+    result = generate_ko_brackets_v2(season_id, db)
 
-    print_bracket(db, season_id, "meister")
+    # Meister: 10 Erste + 6 Zweite = 16
+    m = result["meister"]
+    assert m["bracket_id"] is not None
+    assert m["teams_count"] == 16, f"Meister: erwartet 16, got {m['teams_count']}"
+    assert m["aufruecker_count"] == 6, f"Meister: erwartet 6 Aufrücker, got {m['aufruecker_count']}"
 
-    # Alle normalen R1-Matches spielen
-    print("\n--- Spiele Runde 1 (normale Matches) ---")
-    for m in sorted(normal_matches, key=lambda x: x.position):
-        winner_id = apply_result(db, m.id, 2, 1)
-        home = get_team_name(db, m.home_team_id)
-        away = get_team_name(db, m.away_team_id)
-        print(f"  P{m.position}: {home} (2:1) {away} → Sieger: {get_team_name(db, winner_id)}")
+    # Lucky Loser: 4 übrige Zweite + 4 beste Dritte = 8 Teams (Fallback)
+    # (weil 4 + 10 Dritte = 14 < 16, Fallback auf 8)
+    ll = result["lucky_loser"]
+    assert ll["bracket_id"] is not None, "Lucky Loser sollte generiert sein"
+    assert ll["teams_count"] == 8, f"Lucky Loser: erwartet 8 Teams (Fallback), got {ll['teams_count']}"
+    assert ll["rounds"] == 3, f"Lucky Loser: erwartet 3 Runden (VF), got {ll['rounds']}"
+    # Lucky Loser hat: 4 übrige Zweite + 4 beste Dritte = 8
+    assert ll["aufruecker_count"] == 4, f"Lucky Loser: erwartet 4 Dritte-Aufrücker, got {ll['aufruecker_count']}"
 
-    errors = validate_round_advancement(db, season_id, "meister", 1)
-    assert not errors, "Fehler nach Runde 1:\n" + "\n".join(errors)
-    print("✓ Alle Sieger aus Runde 1 korrekt weitergeleitet")
-
-    # Runde 2: alle müssen besetzt sein
-    r2_matches = (
-        db.query(models.KOMatch)
-        .filter(
-            models.KOMatch.season_id == season_id,
-            models.KOMatch.bracket_type == "meister",
-            models.KOMatch.round == 2
-        )
-        .order_by(models.KOMatch.position)
-        .all()
-    )
-    print(f"\n--- Runde 2 ({len(r2_matches)} Matches) ---")
-    for m in r2_matches:
-        home = get_team_name(db, m.home_team_id)
-        away = get_team_name(db, m.away_team_id)
-        assert m.home_team_id is not None, f"R2P{m.position}: home_team fehlt!"
-        assert m.away_team_id is not None, f"R2P{m.position}: away_team fehlt!"
-        print(f"  P{m.position}: {home} vs {away}")
-    print("✓ Runde 2 vollständig besetzt")
-
-    # Restliche Runden durchspielen
-    for rnd in [2, 3]:
-        rnd_matches = (
-            db.query(models.KOMatch)
-            .filter(
-                models.KOMatch.season_id == season_id,
-                models.KOMatch.bracket_type == "meister",
-                models.KOMatch.round == rnd
-            )
-            .order_by(models.KOMatch.position)
-            .all()
-        )
-        for m in rnd_matches:
-            apply_result(db, m.id, 2, 0)
-        errors = validate_round_advancement(db, season_id, "meister", rnd)
-        assert not errors, f"Fehler nach Runde {rnd}:\n" + "\n".join(errors)
-        print(f"✓ Runde {rnd} gespielt, Sieger korrekt weitergeleitet")
-
-    finale = (
-        db.query(models.KOMatch)
-        .filter(
-            models.KOMatch.season_id == season_id,
-            models.KOMatch.bracket_type == "meister",
-            models.KOMatch.round == 4
-        )
-        .first()
-    )
-    assert finale.home_team_id and finale.away_team_id, "Finale nicht vollständig besetzt"
-    winner_id = apply_result(db, finale.id, 2, 1)
-    print(f"\n  FINALE: {get_team_name(db, finale.home_team_id)} vs {get_team_name(db, finale.away_team_id)}")
-    print(f"  Turniersieger: {get_team_name(db, winner_id)}")
+    # Loser: 6 übrige Dritte + 10 Vierte = 16 oder None?
+    # 6 + 10 = 16 ≥ 16 → SOLLTE generiert werden
+    lo = result["loser"]
+    # Das hängt davon ab wie viele Dritte aufgerückt sind
+    # Mit den Rankings sollten 4 beste Dritte in Lucky Loser sein
+    # Es bleiben 10 - 4 = 6 Dritte
+    # 6 + 10 Vierte = 16 ≥ 16 → Loser SOLLTE generiert werden
+    assert lo["bracket_id"] is not None, "Loser sollte generiert sein (6 Dritte + 10 Vierte = 16)"
+    assert lo["teams_count"] == 16, f"Loser: erwartet 16, got {lo['teams_count']}"
 
     db.close()
-    print("\n✓ Test 2 bestanden")
-
-
-# ============================================================
-# TEST 3: Minimal – 4 Gruppen
-# ============================================================
-
-def test_minimal_4():
-    print("\n" + "=" * 60)
-    print("=== Test 3: Minimal – 4 Gruppen (HF + Finale) ===")
-    print("=" * 60)
-
-    db = create_test_db()
-    season_id, group_ids, all_teams = setup_season(db, num_groups=4, teams_per_group=3)
-    db.commit()
-
-    result = generate_ko_brackets(season_id, db)
-
-    m_result = result["meister"]
-    assert m_result["teams_count"] == 4
-    assert m_result["byes_count"] == 0
-    assert m_result["rounds"] == 2
-    assert m_result["matches_count"] == 3
-    print(f"✓ 4 Teams → 2er Bracket, 2 Runden, 3 Matches (2x HF + Finale)")
-
-    # Seeding: Gruppe_A_Platz1 vs Gruppe_D_Platz1, Gruppe_B_Platz1 vs Gruppe_C_Platz1
-    r1_matches = (
-        db.query(models.KOMatch)
-        .filter(
-            models.KOMatch.season_id == season_id,
-            models.KOMatch.bracket_type == "meister",
-            models.KOMatch.round == 1
-        )
-        .order_by(models.KOMatch.position)
-        .all()
-    )
-    assert len(r1_matches) == 2
-
-    p1_home = get_team_name(db, r1_matches[0].home_team_id)
-    p1_away = get_team_name(db, r1_matches[0].away_team_id)
-    p2_home = get_team_name(db, r1_matches[1].home_team_id)
-    p2_away = get_team_name(db, r1_matches[1].away_team_id)
-    print(f"✓ HF1: {p1_home} vs {p1_away}")
-    print(f"✓ HF2: {p2_home} vs {p2_away}")
-    assert p1_home == "Gruppe_A_Platz1"
-    assert p1_away == "Gruppe_D_Platz1"
-    assert p2_home == "Gruppe_B_Platz1"
-    assert p2_away == "Gruppe_C_Platz1"
-
-    print_bracket(db, season_id, "meister")
-
-    # Halbfinale
-    print("\n--- Halbfinale ---")
-    for m in sorted(r1_matches, key=lambda x: x.position):
-        winner_id = apply_result(db, m.id, 1, 0)
-        home = get_team_name(db, m.home_team_id)
-        away = get_team_name(db, m.away_team_id)
-        slot = m.next_match_slot.upper() if m.next_match_slot else ""
-        print(f"  P{m.position}: {home} (1:0) {away} → Sieger: {get_team_name(db, winner_id)} → {slot} im Finale")
-
-    errors = validate_round_advancement(db, season_id, "meister", 1)
-    assert not errors, "Fehler nach Halbfinale:\n" + "\n".join(errors)
-    print("✓ Beide Halbfinale-Sieger korrekt ins Finale weitergeleitet")
-
-    # Finale
-    finale = (
-        db.query(models.KOMatch)
-        .filter(
-            models.KOMatch.season_id == season_id,
-            models.KOMatch.bracket_type == "meister",
-            models.KOMatch.round == 2
-        )
-        .first()
-    )
-    assert finale.home_team_id is not None, "Finale: home_team fehlt"
-    assert finale.away_team_id is not None, "Finale: away_team fehlt"
-    home_f = get_team_name(db, finale.home_team_id)
-    away_f = get_team_name(db, finale.away_team_id)
-    print(f"\n--- Finale ---")
-    print(f"  FINALE: {home_f} vs {away_f}")
-    winner_id = apply_result(db, finale.id, 2, 0)
-    print(f"  Turniersieger: {get_team_name(db, winner_id)}")
-
-    db.close()
-    print("\n✓ Test 3 bestanden")
+    print("✓ test_ranking_sortierung_bestimmt_aufruecker bestanden")
 
 
 # ============================================================
@@ -563,24 +678,42 @@ def test_minimal_4():
 # ============================================================
 
 if __name__ == "__main__":
+    print("=" * 70)
+    print("KO-BRACKET-SYSTEM v2 — END-TO-END TESTS")
+    print("=" * 70)
+
+    tests = [
+        ("test_20_teams_meister_8", test_20_teams_meister_8),
+        ("test_32_teams", test_32_teams),
+        ("test_48_teams_alle_brackets", test_48_teams_alle_brackets),
+        ("test_64_teams_keine_aufruecker", test_64_teams_keine_aufruecker),
+        ("test_preview_keine_db_writes", test_preview_keine_db_writes),
+        ("test_archived_season_fehler", test_archived_season_fehler),
+        ("test_keine_freilose", test_keine_freilose),
+        ("test_41_teams_gemischte_gruppen", test_41_teams_gemischte_gruppen),
+        ("test_ranking_sortierung_bestimmt_aufruecker", test_ranking_sortierung_bestimmt_aufruecker),
+    ]
+
     failed = []
 
-    for test_fn in [test_perfekte_16, test_12_gruppen, test_minimal_4]:
+    for test_name, test_fn in tests:
         try:
             test_fn()
         except AssertionError as e:
-            print(f"\n✗ FEHLGESCHLAGEN: {e}")
-            failed.append(test_fn.__name__)
+            print(f"✗ {test_name}: {e}")
+            failed.append(test_name)
         except Exception as e:
             import traceback
-            print(f"\n✗ EXCEPTION in {test_fn.__name__}:")
+            print(f"✗ {test_name}: EXCEPTION")
             traceback.print_exc()
-            failed.append(test_fn.__name__)
+            failed.append(test_name)
 
-    print("\n" + "=" * 60)
+    print("\n" + "=" * 70)
     if failed:
-        print(f"✗ {len(failed)} Test(s) fehlgeschlagen: {', '.join(failed)}")
+        print(f"✗ {len(failed)}/{len(tests)} Test(s) fehlgeschlagen:")
+        for name in failed:
+            print(f"  - {name}")
         sys.exit(1)
     else:
-        print("✓ Alle 3 Tests bestanden")
-    print("=" * 60)
+        print(f"✓ Alle {len(tests)} Tests bestanden!")
+    print("=" * 70)

@@ -1,50 +1,63 @@
 """
-KO-Bracket-Generierung für 3-Bracket-System.
+KO-Bracket-Generierung für 3-Bracket-System (v2).
 
-Dieses Modul implementiert die Logik zur Generierung der drei KO-Brackets:
-- Meister-Bracket: Gruppenerste
-- Lucky-Loser-Bracket: Gruppenzweite
-- Loser-Bracket: Gruppendritten
+Neue Logik v2 (seit 08.03.2026):
+- KEINE Freilose mehr — Brackets haben exakt 8 oder 16 Teams
+- Fehlende Slots werden mit Aufrückern aus niedrigeren Platzierungen gefüllt
+- Aufrücker werden nach Onlineliga-Ranking sortiert (niedrigerer Ø = besser)
 
-Features:
-- Automatische Freilos-Berechnung bei nicht-Zweierpotenzen
-- Gespiegeltes Seeding (Stärkster vs. Schwächster)
-- Bracket-Persistenz (komplettes Bracket wird beim Generieren gespeichert)
-- Automatische Sieger-Weiterleitung via next_match_id/next_match_slot
+Brackets:
+- Meisterrunde: Gruppenerste + Aufrücker aus Zweiten
+- Lucky Loser: übrige Zweite + Aufrücker aus Dritten
+- Loser: übrige Dritte + Aufrücker aus Vierten (optional)
+
+Gilt NUR für nicht-archivierte Saisons.
 """
 
 from typing import List, Dict, Tuple, Optional
 from sqlalchemy.orm import Session
-from sqlalchemy import func
 from datetime import datetime
 import math
 
 from . import models
+from .ranking_service import get_team_ranking
 
 
-def get_qualified_teams(season_id: int, db: Session) -> Dict[str, List[int]]:
+def get_qualified_teams_v2(season_id: int, db: Session) -> Dict:
     """
-    Ermittelt qualifizierte Teams aus Gruppenphase.
+    Ermittelt Team-Pools für alle drei Brackets nach v2-Logik.
 
-    Prozess:
-    1. Lade alle Gruppen der Saison
-    2. Prüfe dass ALLE Gruppen abgeschlossen sind (alle Matches gespielt)
-    3. Berechne Tabelle für jede Gruppe
-    4. Extrahiere Platz 1, 2, 3 pro Gruppe
-    5. Sortiere nach Gruppenname (A, B, C, ...)
+    KEINE Freilose. Aufrücker nach Onlineliga-Ranking.
+    Gilt NUR für nicht-archivierte Saisons.
 
     Args:
         season_id: ID der Saison
         db: SQLAlchemy Session
 
     Returns:
-        Dict mit Keys "meister", "lucky_loser", "loser"
-        Jeder Value: geordnete Liste von team_ids
+        {
+            "meister": [team_id, ...],          # 8 oder 16 Teams
+            "lucky_loser": [team_id, ...],      # 8 oder 16 Teams, oder None
+            "loser": [team_id, ...],            # 16 Teams, oder None
+            "aufruecker_info": {
+                "meister": [team_ids],          # Subset von meister die Aufrücker sind
+                "lucky_loser": [team_ids],
+                "loser": [team_ids]
+            }
+        }
 
     Raises:
-        ValueError: Wenn nicht alle Gruppen abgeschlossen sind
+        ValueError: wenn Season archived, Gruppen nicht abgeschlossen,
+                    oder nicht genug Teams für Meisterrunde
     """
-    # Alle Gruppen der Saison laden
+    # 1. Season-Status prüfen
+    season = db.get(models.Season, season_id)
+    if not season:
+        raise ValueError(f"Season {season_id} nicht gefunden")
+    if season.status == "archived":
+        raise ValueError("KO-Brackets können nicht für archivierte Saisons generiert werden")
+
+    # 2. Gruppen laden (sortiert nach name → A, B, C...) + Abschluss prüfen
     groups = db.query(models.Group).filter(
         models.Group.season_id == season_id
     ).order_by(models.Group.name).all()
@@ -52,17 +65,14 @@ def get_qualified_teams(season_id: int, db: Session) -> Dict[str, List[int]]:
     if not groups:
         raise ValueError(f"Keine Gruppen für Season {season_id} gefunden")
 
-    # Prüfen ob alle Gruppen abgeschlossen sind
     for group in groups:
         matches = db.query(models.Match).filter(
             models.Match.group_id == group.id
         ).all()
 
-        # Mindestens ein Match muss existieren
         if not matches:
             raise ValueError(f"Gruppe {group.name} hat keine Matches")
 
-        # Alle Matches müssen gespielt sein
         unplayed = [m for m in matches if m.status != "played"]
         if unplayed:
             raise ValueError(
@@ -70,26 +80,119 @@ def get_qualified_teams(season_id: int, db: Session) -> Dict[str, List[int]]:
                 f"{len(unplayed)} Matches noch nicht gespielt"
             )
 
-    # Tabellen berechnen und Platzierungen extrahieren
-    meister = []
-    lucky_loser = []
-    loser = []
+    # 3. Plätze 1–4 extrahieren (sortiert nach Gruppenname A, B, C...)
+    erste_ids = []   # team_ids in Gruppenname-Reihenfolge
+    zweite = []
+    dritte = []
+    vierte = []
 
-    for group in groups:
+    for group in groups:  # bereits nach name sortiert
         standings = _calculate_group_standings(group.id, db)
-
-        # Platzierungen extrahieren (falls vorhanden)
         if len(standings) >= 1:
-            meister.append(standings[0]["team_id"])
+            erste_ids.append(standings[0]["team_id"])
         if len(standings) >= 2:
-            lucky_loser.append(standings[1]["team_id"])
+            zweite.append(standings[1]["team_id"])
         if len(standings) >= 3:
-            loser.append(standings[2]["team_id"])
+            dritte.append(standings[2]["team_id"])
+        if len(standings) >= 4:
+            vierte.append(standings[3]["team_id"])
+
+    # 4. Hilfsfunktion: team_ids nach Ranking sortieren (niedrigerer Wert = besser)
+    def sort_by_ranking(team_ids: List[int]) -> List[int]:
+        """Sortiert Teams nach Onlineliga-Ranking (niedrigerer Ø = besser)."""
+        scored = []
+        for tid in team_ids:
+            team = db.get(models.Team, tid)
+            name = team.name if team else ""
+            score = get_team_ranking(name, db)
+            scored.append((score, tid))
+        scored.sort(key=lambda x: x[0])  # aufsteigend
+        return [tid for _, tid in scored]
+
+    # 5. SCHRITT 1 — Meisterrunde
+    meister_aufruecker = []
+    zweite_fuer_lucky = []
+
+    if len(erste_ids) >= 16:
+        # Zu viele Erste: best 16 nach Ranking
+        sorted_erste = sort_by_ranking(erste_ids)
+        meister_teams = sorted_erste[:16]
+        # übrige Erste + alle Zweite in Lucky Loser pool
+        zweite_fuer_lucky = sorted_erste[16:] + zweite
+    else:
+        zweite_sorted = sort_by_ranking(zweite)
+        bedarf_16 = 16 - len(erste_ids)
+
+        if len(erste_ids) + len(zweite_sorted) >= 16:
+            # Normalfall: Zweite reichen zum Auffüllen auf 16
+            meister_aufruecker = zweite_sorted[:bedarf_16]
+            meister_teams = erste_ids + meister_aufruecker
+            zweite_fuer_lucky = zweite_sorted[bedarf_16:]
+        else:
+            # FALLBACK auf 8er-Bracket
+            if len(erste_ids) >= 8:
+                meister_teams = erste_ids[:8]
+                zweite_fuer_lucky = erste_ids[8:] + zweite_sorted
+            else:
+                bedarf_8 = 8 - len(erste_ids)
+                if bedarf_8 <= len(zweite_sorted):
+                    meister_aufruecker = zweite_sorted[:bedarf_8]
+                    meister_teams = erste_ids + meister_aufruecker
+                    zweite_fuer_lucky = zweite_sorted[bedarf_8:]
+                else:
+                    raise ValueError(
+                        f"Nicht genug Teams für Meisterrunde (min. 8 benötigt). "
+                        f"Verfügbar: {len(erste_ids)} Erste + {len(zweite_sorted)} Zweite = "
+                        f"{len(erste_ids) + len(zweite_sorted)}"
+                    )
+
+    # 6. SCHRITT 2 — Lucky Loser
+    dritte_sorted = sort_by_ranking(dritte)
+    lucky_loser_aufruecker = []
+    dritte_fuer_loser = dritte_sorted
+    lucky_loser_teams = None
+
+    bedarf_16_ll = 16 - len(zweite_fuer_lucky)
+
+    if len(zweite_fuer_lucky) + len(dritte_sorted) >= 16:
+        lucky_loser_aufruecker = dritte_sorted[:bedarf_16_ll]
+        lucky_loser_teams = zweite_fuer_lucky + lucky_loser_aufruecker
+        dritte_fuer_loser = dritte_sorted[bedarf_16_ll:]
+    else:
+        # FALLBACK auf 8er-Bracket
+        bedarf_8_ll = 8 - len(zweite_fuer_lucky)
+        if bedarf_8_ll <= 0:
+            lucky_loser_teams = zweite_fuer_lucky[:8]
+            dritte_fuer_loser = dritte_sorted
+        elif bedarf_8_ll <= len(dritte_sorted):
+            lucky_loser_aufruecker = dritte_sorted[:bedarf_8_ll]
+            lucky_loser_teams = zweite_fuer_lucky + lucky_loser_aufruecker
+            dritte_fuer_loser = dritte_sorted[bedarf_8_ll:]
+        else:
+            # Nicht genug für 8er-Bracket → nicht generiert
+            lucky_loser_teams = None
+            dritte_fuer_loser = dritte_sorted
+
+    # 7. SCHRITT 3 — Loser (NUR 16, KEIN 8er-Fallback)
+    vierte_sorted = sort_by_ranking(vierte)
+    loser_aufruecker = []
+    loser_teams = None
+
+    if len(dritte_fuer_loser) + len(vierte_sorted) >= 16:
+        bedarf_16_loser = 16 - len(dritte_fuer_loser)
+        loser_aufruecker = vierte_sorted[:bedarf_16_loser]
+        loser_teams = dritte_fuer_loser + loser_aufruecker
+    # else: NICHT GENERIERT (kein 8er-Fallback für Loser)
 
     return {
-        "meister": meister,
-        "lucky_loser": lucky_loser,
-        "loser": loser
+        "meister": meister_teams,
+        "lucky_loser": lucky_loser_teams,   # None wenn nicht generiert
+        "loser": loser_teams,               # None wenn nicht generiert
+        "aufruecker_info": {
+            "meister": meister_aufruecker,
+            "lucky_loser": lucky_loser_aufruecker,
+            "loser": loser_aufruecker,
+        }
     }
 
 
@@ -198,41 +301,8 @@ def seed_teams(teams: List[int]) -> List[Tuple[int, int]]:
     return pairs
 
 
-def apply_byes(teams: List[int]) -> List[Optional[int]]:
-    """
-    Fügt Freilose (None) hinzu um Bracket auf nächste Zweierpotenz zu bringen.
-
-    Freilose werden VON UNTEN aufgefüllt:
-    - 13 Teams → 16 (3 Freilose): teams[13], teams[14], teams[15] = None
-    - 5 Teams → 8 (3 Freilose): teams[5], teams[6], teams[7] = None
-
-    Args:
-        teams: Liste von team_ids
-
-    Returns:
-        Aufgefüllte Liste mit None für Freilose
-    """
-    n = len(teams)
-    bracket_size = _next_power_of_two(n)
-    byes_needed = bracket_size - n
-
-    # Freilose von unten auffüllen
-    result = teams.copy()
-    for _ in range(byes_needed):
-        result.append(None)
-
-    return result
-
-
-def _next_power_of_two(n: int) -> int:
-    """Berechnet nächste Zweierpotenz ≥ n."""
-    if n <= 1:
-        return 1
-    return 1 << (n - 1).bit_length()
-
-
 def generate_rounds(
-    pairs: List[Tuple[Optional[int], Optional[int]]],
+    pairs: List[Tuple[int, int]],
     bracket_id: int,
     season_id: int,
     bracket_type: str,
@@ -246,7 +316,8 @@ def generate_rounds(
     2. Erstelle ALLE Matches für ALLE Runden (Bracket-Persistenz)
     3. Verknüpfe Matches mit next_match_id/next_match_slot
     4. Befülle Runde 1 mit Teams
-    5. Handle Freilose (away_team_id = None → Sieger direkt weiterleiten)
+
+    Hinweis: KEINE Freilose mehr — alle Matches sind echte Spiele.
 
     Args:
         pairs: Paarungen für Runde 1 [(home, away), ...]
@@ -265,7 +336,7 @@ def generate_rounds(
     bracket_size = len(pairs) * 2
     total_rounds = int(math.log2(bracket_size))
 
-    # Alle Matches für alle Runden erstellen (von vorne nach hinten)
+    # Alle Matches für alle Runden erstellen
     all_matches = []
 
     for round_num in range(1, total_rounds + 1):
@@ -296,7 +367,7 @@ def generate_rounds(
 
             if next_match:
                 match.next_match_id = next_match.id
-                # Gerade Position → away, Ungerade → home
+                # Ungerade Position → home, Gerade → away
                 match.next_match_slot = "home" if match.position % 2 == 1 else "away"
 
     # Runde 1 befüllen
@@ -312,39 +383,18 @@ def generate_rounds(
         match = round1_matches[i]
         match.home_team_id = home_id
         match.away_team_id = away_id
-
-        # Freilos-Handling
-        if away_id is None:
-            # Freilos: home_team steigt direkt auf
-            match.is_bye = 1
-            match.status = "played"
-
-            # Sieger direkt in nächste Runde eintragen
-            if match.next_match_id:
-                next_match = db.get(models.KOMatch, match.next_match_id)
-                if next_match:
-                    if match.next_match_slot == "home":
-                        next_match.home_team_id = home_id
-                    else:
-                        next_match.away_team_id = home_id
-        else:
-            # Normales Match
-            match.status = "scheduled"
+        match.status = "scheduled"  # Alle sind echte Spiele (keine Freilose)
 
     return all_matches
 
 
-def generate_ko_brackets(season_id: int, db: Session) -> Dict:
+def generate_ko_brackets_v2(season_id: int, db: Session) -> Dict:
     """
-    Haupt-Funktion: Generiert alle 3 KO-Brackets für eine Saison.
+    Orchestriert Generierung aller 3 Brackets nach v2-Logik (KEINE Freilose).
 
     Prozess:
-    1. Qualifizierte Teams aus Gruppenphase ermitteln
-    2. Für jeden bracket_type (meister, lucky_loser, loser):
-       - KOBracket erstellen
-       - Freilose hinzufügen
-       - Teams seeden
-       - Matches generieren
+    1. Qualifizierte Teams mit Aufrücker-Logik ermitteln
+    2. Pro Bracket: KOBracket erstellen, Teams seeden, Matches generieren
     3. Alles in DB persistieren
 
     Args:
@@ -354,48 +404,35 @@ def generate_ko_brackets(season_id: int, db: Session) -> Dict:
     Returns:
         Dict mit Zusammenfassung pro Bracket:
         {
-            "meister": {"bracket_id": X, "matches_count": Y, "rounds": Z},
-            "lucky_loser": {...},
-            "loser": {...}
+            "meister": {
+                "bracket_id": X,
+                "matches_count": Y,
+                "rounds": Z,
+                "teams_count": N,
+                "aufruecker_count": M
+            },
+            ...
         }
 
     Raises:
-        ValueError: Wenn Gruppen nicht abgeschlossen oder bereits Brackets existieren
+        ValueError: wenn Season archived oder Gruppen nicht abgeschlossen
     """
-    # Qualifizierte Teams ermitteln
-    qualified = get_qualified_teams(season_id, db)
-
+    qualified = get_qualified_teams_v2(season_id, db)  # prüft archived intern
     result = {}
 
     for bracket_type in ["meister", "lucky_loser", "loser"]:
         teams = qualified[bracket_type]
 
-        if not teams:
-            # Kein Team für dieses Bracket (z.B. nur 2 Gruppen → keine 3. Plätze)
+        if teams is None:
             result[bracket_type] = {
                 "bracket_id": None,
                 "matches_count": 0,
                 "rounds": 0,
-                "message": "Keine Teams für dieses Bracket"
+                "teams_count": 0,
+                "message": "Nicht genug Teams — Bracket nicht generiert"
             }
             continue
 
-        # Prüfe ob Bracket bereits existiert
-        existing = db.query(models.KOBracket).filter(
-            models.KOBracket.season_id == season_id,
-            models.KOBracket.bracket_type == bracket_type
-        ).first()
-
-        if existing:
-            result[bracket_type] = {
-                "bracket_id": existing.id,
-                "matches_count": 0,
-                "rounds": 0,
-                "message": "Bracket bereits vorhanden (übersprungen)"
-            }
-            continue
-
-        # KOBracket erstellen
         bracket = models.KOBracket(
             season_id=season_id,
             bracket_type=bracket_type,
@@ -405,13 +442,7 @@ def generate_ko_brackets(season_id: int, db: Session) -> Dict:
         db.add(bracket)
         db.flush()
 
-        # Freilose hinzufügen
-        teams_with_byes = apply_byes(teams)
-
-        # Teams seeden
-        pairs = seed_teams(teams_with_byes)
-
-        # Runden generieren
+        pairs = seed_teams(teams)
         matches = generate_rounds(
             pairs=pairs,
             bracket_id=bracket.id,
@@ -420,136 +451,76 @@ def generate_ko_brackets(season_id: int, db: Session) -> Dict:
             db=db
         )
 
-        # Ergebnis zusammenfassen
-        bracket_size = len(teams_with_byes)
-        total_rounds = int(math.log2(bracket_size)) if bracket_size > 0 else 0
-
+        total_rounds = int(math.log2(len(teams)))
         result[bracket_type] = {
             "bracket_id": bracket.id,
             "matches_count": len(matches),
             "rounds": total_rounds,
             "teams_count": len(teams),
-            "byes_count": bracket_size - len(teams)
+            "aufruecker_count": len(qualified["aufruecker_info"][bracket_type])
         }
 
     db.commit()
     return result
 
 
-# ============================================================
-# TESTS
-# ============================================================
-
-if __name__ == "__main__":
+def preview_ko_brackets(season_id: int, db: Session) -> Dict:
     """
-    Tests für die Bracket-Generierungs-Logik (ohne DB).
+    Berechnet was generate_ko_brackets_v2 tun würde, OHNE DB-Writes.
+
+    Nützlich für Admin-UI zur Vorschau vor Generierung.
+
+    Args:
+        season_id: ID der Saison
+        db: SQLAlchemy Session
+
+    Returns:
+        {
+            "meister": {
+                "teams": [...team_ids...],
+                "size": 8|16,
+                "rounds": int,
+                "aufruecker": [aufruecker_team_ids],
+                "pairings_r1": [{"home": team_id, "away": team_id}, ...]
+            },
+            "lucky_loser": {...} | None,
+            "loser": {...} | None,
+            "team_names": {team_id: name, ...}
+        }
+
+    Raises:
+        ValueError: wenn Season archived oder Gruppen nicht abgeschlossen
     """
-    print("=" * 60)
-    print("KO-BRACKET-GENERATOR TESTS")
-    print("=" * 60)
+    qualified = get_qualified_teams_v2(season_id, db)  # nur DB reads
 
-    # Test 1: 16 Teams → 0 Freilose
-    print("\n### Test 1: 16 Teams (0 Freilose)")
-    teams_16 = list(range(1, 17))  # [1, 2, 3, ..., 16]
-    teams_with_byes = apply_byes(teams_16)
-    print(f"Original: {len(teams_16)} Teams")
-    print(f"Mit Byes: {len(teams_with_byes)} Teams")
-    print(f"Freilose: {teams_with_byes.count(None)}")
-    print(f"Bracket-Größe: {_next_power_of_two(len(teams_16))}")
+    # Team-Namen für alle beteiligten IDs sammeln
+    all_ids = set()
+    for bt in ["meister", "lucky_loser", "loser"]:
+        if qualified[bt]:
+            all_ids.update(qualified[bt])
 
-    pairs = seed_teams(teams_with_byes)
-    print(f"\nPaarungen (erste 4):")
-    for i, (home, away) in enumerate(pairs[:4], 1):
-        print(f"  Match {i}: Team {home} vs Team {away}")
+    team_names = {}
+    for tid in all_ids:
+        team = db.get(models.Team, tid)
+        team_names[tid] = team.name if team else f"Team#{tid}"
 
-    expected_pairs = [
-        (1, 16), (2, 15), (3, 14), (4, 13),
-        (5, 12), (6, 11), (7, 10), (8, 9)
-    ]
-    assert pairs == expected_pairs, "Seeding-Fehler bei 16 Teams"
-    print("✓ Seeding korrekt")
+    result = {}
+    for bracket_type in ["meister", "lucky_loser", "loser"]:
+        teams = qualified[bracket_type]
+        if teams is None:
+            result[bracket_type] = None
+            continue
 
-    # Test 2: 13 Teams → 3 Freilose
-    print("\n### Test 2: 13 Teams (3 Freilose)")
-    teams_13 = list(range(1, 14))  # [1, 2, 3, ..., 13]
-    teams_with_byes = apply_byes(teams_13)
-    print(f"Original: {len(teams_13)} Teams")
-    print(f"Mit Byes: {len(teams_with_byes)} Teams")
-    print(f"Freilose: {teams_with_byes.count(None)}")
-    print(f"Bracket-Größe: {_next_power_of_two(len(teams_13))}")
+        pairs = seed_teams(teams)
+        result[bracket_type] = {
+            "teams": teams,
+            "size": len(teams),
+            "rounds": int(math.log2(len(teams))),
+            "aufruecker": qualified["aufruecker_info"][bracket_type],
+            "pairings_r1": [
+                {"home": h, "away": a} for h, a in pairs
+            ]
+        }
 
-    # Freilose sollten an Positionen 13, 14, 15 sein
-    assert teams_with_byes[13] is None, "Freilos-Position falsch"
-    assert teams_with_byes[14] is None, "Freilos-Position falsch"
-    assert teams_with_byes[15] is None, "Freilos-Position falsch"
-    print("✓ Freilose an korrekten Positionen (13, 14, 15)")
-
-    pairs = seed_teams(teams_with_byes)
-    print(f"\nPaarungen (alle 8):")
-    for i, (home, away) in enumerate(pairs, 1):
-        away_str = f"Team {away}" if away is not None else "FREILOS"
-        print(f"  Match {i}: Team {home} vs {away_str}")
-
-    # Erwartung: 1 vs None, 2 vs None, 3 vs None, 4 vs 13, 5 vs 12, ...
-    assert pairs[0] == (1, None), "Freilos-Paarung 1 falsch"
-    assert pairs[1] == (2, None), "Freilos-Paarung 2 falsch"
-    assert pairs[2] == (3, None), "Freilos-Paarung 3 falsch"
-    assert pairs[3] == (4, 13), "Paarung 4 falsch"
-    print("✓ Freilose korrekt zugeteilt")
-
-    # Test 3: 5 Teams → 3 Freilose
-    print("\n### Test 3: 5 Teams (3 Freilose)")
-    teams_5 = list(range(1, 6))  # [1, 2, 3, 4, 5]
-    teams_with_byes = apply_byes(teams_5)
-    print(f"Original: {len(teams_5)} Teams")
-    print(f"Mit Byes: {len(teams_with_byes)} Teams")
-    print(f"Freilose: {teams_with_byes.count(None)}")
-    bracket_size = _next_power_of_two(len(teams_5))
-    print(f"Bracket-Größe: {bracket_size}")
-    assert bracket_size == 8, "Bracket-Größe falsch"
-
-    pairs = seed_teams(teams_with_byes)
-    print(f"\nPaarungen (alle 4):")
-    for i, (home, away) in enumerate(pairs, 1):
-        away_str = f"Team {away}" if away is not None else "FREILOS"
-        print(f"  Match {i}: Team {home} vs {away_str}")
-
-    # Test 4: Gespiegeltes Seeding (16 Teams mit Buchstaben)
-    print("\n### Test 4: Gespiegeltes Seeding (A-P)")
-    teams_letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
-                     'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P']
-    pairs_letters = seed_teams(teams_letters)
-    print(f"Paarungen:")
-    for i, (home, away) in enumerate(pairs_letters, 1):
-        print(f"  Match {i}: {home} vs {away}")
-
-    expected = [
-        ('A', 'P'), ('B', 'O'), ('C', 'N'), ('D', 'M'),
-        ('E', 'L'), ('F', 'K'), ('G', 'J'), ('H', 'I')
-    ]
-    assert pairs_letters == expected, "Seeding A-P falsch"
-    print("✓ Gespiegeltes Seeding korrekt")
-
-    # Test 5: Rundenanzahl-Berechnung
-    print("\n### Test 5: Rundenanzahl-Berechnung")
-    test_cases = [
-        (2, 1),   # 2 Teams → 1 Runde (Finale)
-        (4, 2),   # 4 Teams → 2 Runden (HF, Finale)
-        (8, 3),   # 8 Teams → 3 Runden (VF, HF, Finale)
-        (16, 4),  # 16 Teams → 4 Runden
-        (13, 4),  # 13 Teams → 16 Bracket → 4 Runden
-        (5, 3),   # 5 Teams → 8 Bracket → 3 Runden
-    ]
-
-    for team_count, expected_rounds in test_cases:
-        teams = list(range(1, team_count + 1))
-        teams_with_byes = apply_byes(teams)
-        bracket_size = len(teams_with_byes)
-        rounds = int(math.log2(bracket_size))
-        print(f"  {team_count} Teams → Bracket {bracket_size} → {rounds} Runden", end="")
-        assert rounds == expected_rounds, f"Rundenzahl falsch für {team_count} Teams"
-        print(" ✓")
-
-    print("\n" + "=" * 60)
-    print("ALLE TESTS ERFOLGREICH!")
-    print("=" * 60)
+    result["team_names"] = team_names
+    return result

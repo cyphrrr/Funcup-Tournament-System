@@ -56,6 +56,7 @@ async function loadKOStatus() {
 
     html += '<div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1.5rem">';
     if (!status.brackets_generated) {
+      html += `<button class="btn btn-primary" onclick="previewKOBrackets()">👁️ Vorschau</button>`;
       html += `<button class="btn btn-primary" onclick="generateKOBrackets()">🤖 Automatisch generieren</button>`;
       html += `<button class="btn btn-secondary" onclick="showManualBuild()">🔧 Manuell aufbauen</button>`;
     } else {
@@ -115,8 +116,15 @@ async function generateKOBrackets() {
   const seasonId = document.getElementById('ko-season').value;
   if (!seasonId) return;
   try {
-    await authFetch(`${API_URL}/api/seasons/${seasonId}/ko-brackets/generate`, { method: 'POST' });
-    toast('KO-Brackets generiert!');
+    const res = await authFetch(`${API_URL}/api/seasons/${seasonId}/ko-brackets/generate`, { method: 'POST' });
+    const data = await res.json();
+    let msg = 'KO-Brackets generiert!';
+    const counts = [];
+    if (data.meister?.aufruecker_count > 0) counts.push(`${data.meister.aufruecker_count} Aufrücker (M)`);
+    if (data.lucky_loser?.aufruecker_count > 0) counts.push(`${data.lucky_loser.aufruecker_count} Aufrücker (LL)`);
+    if (data.loser?.aufruecker_count > 0) counts.push(`${data.loser.aufruecker_count} Aufrücker (L)`);
+    if (counts.length > 0) msg += ' — ' + counts.join(', ');
+    toast(msg);
     loadKOStatus();
   } catch (e) {
     toast('Fehler: ' + e.message, 'error');
@@ -153,6 +161,62 @@ async function resetKOBrackets() {
   } catch (e) {
     toast('Fehler: ' + e.message, 'error');
   }
+}
+
+async function previewKOBrackets() {
+  const seasonId = document.getElementById('ko-season').value;
+  const statusArea = document.getElementById('ko-status-area');
+  if (!seasonId) return;
+  try {
+    const res = await authFetch(`${API_URL}/api/seasons/${seasonId}/ko-brackets/preview`);
+    const preview = await res.json();
+    renderKOPreview(preview, statusArea);
+  } catch (e) {
+    toast('Fehler: ' + e.message, 'error');
+  }
+}
+
+function renderKOPreview(preview, container) {
+  let html = '<div class="ko-preview-section">';
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">';
+  html += '<h2>KO-Bracket Vorschau</h2>';
+  html += '<button class="btn btn-secondary btn-sm" onclick="loadKOStatus()">✕ Schließen</button>';
+  html += '</div>';
+
+  const teamNames = preview.team_names || {};
+
+  for (const type of ['meister', 'lucky_loser', 'loser']) {
+    const bracket = preview[type];
+    if (!bracket) continue;
+
+    html += '<div class="ko-preview-bracket">';
+    html += `<h3>${KO_TAB_LABELS[type] || type} (${bracket.size} Teams, ${bracket.rounds} Runden)</h3>`;
+
+    // Team pills with promoted badges
+    html += '<div class="ko-preview-teams">';
+    bracket.teams.forEach((teamId, idx) => {
+      const name = teamNames[teamId] || '?';
+      const isPromoted = bracket.aufruecker.includes(teamId);
+      const badge = isPromoted ? ' <span class="ko-promoted-badge">↑ Aufrücker</span>' : '';
+      html += `<div class="ko-team-pill">${name}${badge}</div>`;
+    });
+    html += '</div>';
+
+    // Pairings
+    html += '<div class="ko-preview-pairings">';
+    html += '<div style="font-size:.8rem;color:var(--text-muted);margin-bottom:.5rem">Runde 1 Paarungen:</div>';
+    bracket.pairings_r1.forEach(pair => {
+      const homeName = teamNames[pair.home] || '?';
+      const awayName = teamNames[pair.away] || '?';
+      html += `<div>${homeName} vs ${awayName}</div>`;
+    });
+    html += '</div>';
+
+    html += '</div>';
+  }
+
+  html += '</div>';
+  container.innerHTML = html;
 }
 
 async function loadKOBrackets(seasonId) {
