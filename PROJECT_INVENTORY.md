@@ -495,3 +495,38 @@ b59f90a refactor: Zentrale _ensure_user() Hilfsmethode für Auto-Registration
 - Production-Deployment auf `beta.biw-pokal.de` läuft via Docker
 - n8n-Workflows sind unter `n8n-flows/` versioniert aber nicht im Detail dokumentiert
 - Legacy Single-Bracket Endpoints (`/ko-bracket`) existieren noch im Backend, werden aber nicht mehr vom Frontend genutzt
+
+---
+
+## 15. Versionierung
+
+### Schema
+Semantic Versioning: `MAJOR.MINOR.PATCH[-beta]`
+
+| Phase | Bereich | Beispiel |
+|-------|---------|----------|
+| Beta (aktuell) | `0.x.y-beta` | `0.9.0-beta` |
+| Stable | `MAJOR.MINOR.PATCH` | `1.0.0` |
+
+### Dateien & Komponenten
+
+| Komponente | Datei | Zweck |
+|------------|-------|-------|
+| Single Source of Truth | `VERSION` (Root) | Enthält aktuelle Version |
+| Backend | `backend/app/main.py` | Liest VERSION, setzt `APP_VERSION` |
+| API-Endpoint | `backend/app/routers/version.py` | `GET /api/version` |
+| Frontend (Public) | `frontend/js/version.js` | Zeigt Version im Footer |
+| Frontend (Admin) | `frontend/admin.html` | Zeigt Version in Sidebar |
+| Release-Script | `scripts/release.sh` | Bump + Commit + Git-Tag |
+
+### Release-Workflow
+```bash
+# Bugfix
+./scripts/release.sh patch        # 0.9.0-beta → 0.9.1-beta
+
+# Neues Feature
+./scripts/release.sh minor        # 0.9.1-beta → 0.10.0-beta
+
+# Stable Release
+./scripts/release.sh major stable # 0.x.y-beta → 1.0.0
+```

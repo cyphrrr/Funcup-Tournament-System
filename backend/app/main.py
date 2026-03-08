@@ -1,4 +1,5 @@
 import os
+import pathlib
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -9,7 +10,16 @@ from . import models
 # DB-Tabellen erstellen
 models.Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="BIW Pokal API", version="0.1.0")
+# Version aus VERSION-Datei lesen (Single Source of Truth)
+_version_file = pathlib.Path("/VERSION")
+if not _version_file.exists():
+    _version_file = pathlib.Path(__file__).resolve().parent.parent.parent / "VERSION"
+try:
+    APP_VERSION = _version_file.read_text().strip()
+except FileNotFoundError:
+    APP_VERSION = "0.0.0-unknown"
+
+app = FastAPI(title="BIW Pokal API", version=APP_VERSION)
 
 app.add_middleware(
     CORSMiddleware,

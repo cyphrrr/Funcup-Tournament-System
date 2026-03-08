@@ -116,6 +116,23 @@ Geschützte Endpoints verwenden `Depends(get_current_user)`.
 - Ranglisten
 - KO-Weiterkommen
 
+## Versionierung
+
+Das Projekt nutzt Semantic Versioning (SemVer) mit Beta-Suffix.
+
+- **Single Source of Truth:** `VERSION` Datei im Projekt-Root (z.B. `0.9.0-beta`)
+- **Backend:** `main.py` liest VERSION-Datei, exportiert als `APP_VERSION`
+- **API:** `GET /api/version` → `{"version":"0.9.0-beta","app":"BIW Pokal","status":"beta"}`
+- **Frontend:** `js/version.js` fetcht `/api/version` und zeigt Version im Footer (`#app-version`)
+- **Admin:** Sidebar-Bottom zeigt Version (`#admin-version`)
+- **Git-Tags:** Jede Version wird als annotierter Git-Tag gesetzt (`v0.9.0-beta`)
+- **Release-Script:** `./scripts/release.sh [patch|minor|major] [beta|stable]`
+
+### Regeln
+- Version **NUR** über die VERSION-Datei ändern, nie hardcoded in Code
+- Nach Änderung: `release.sh` nutzen (committed, taggt, und zeigt Push-Befehl)
+- PATCH = Bugfix, MINOR = neues Feature, MAJOR = Stable Release (1.0.0)
+
 ## API-Endpunkte (Wichtigste)
 
 ```
@@ -154,6 +171,9 @@ DELETE /api/news/{id}                        # Artikel löschen
 # Traffic Stats
 POST /api/track                              # Page View tracken (öffentlich, kein Auth)
 GET  /api/admin/stats?days=7                 # Besucherstatistiken (Auth erforderlich)
+
+# System
+GET  /api/version                            # App-Version & Status (public, kein Auth)
 ```
 
 ## Wichtige Code-Patterns

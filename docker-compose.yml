@@ -8,6 +8,7 @@ services:
       - "8000"
     volumes:
       - ./uploads:/app/uploads
+      - ./VERSION:/VERSION:ro
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       - ADMIN_USER=${ADMIN_USER:-admin}

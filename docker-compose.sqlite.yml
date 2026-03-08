@@ -15,6 +15,7 @@ services:
     volumes:
       # biw.db vom Host ins Container mounten
       - ./backend/biw.db:/app/biw.db
+      - ./VERSION:/VERSION:ro
     networks:
       - biw-network
     healthcheck:

@@ -43,3 +43,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Init
 checkAuth();
+
+// Version anzeigen
+fetch(`${API_URL}/api/version`)
+  .then(r => r.json())
+  .then(data => {
+    const el = document.getElementById('admin-version');
+    if (el) el.textContent = `${data.app} v${data.version}`;
+  })
+  .catch(() => {});
