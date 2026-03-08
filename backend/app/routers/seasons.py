@@ -119,9 +119,12 @@ def list_groups_with_teams(season_id: int, db: Session = Depends(get_db)):
             .filter(models.SeasonTeam.group_id == g.id)
             .all()
         )
+        team_map = {t.id: t.name for t in teams}
+
         matches = (
             db.query(models.Match)
             .filter(models.Match.group_id == g.id)
+            .order_by(models.Match.matchday, models.Match.id)
             .all()
         )
         result.append({
@@ -132,6 +135,8 @@ def list_groups_with_teams(season_id: int, db: Session = Depends(get_db)):
                     "id": m.id,
                     "home_team_id": m.home_team_id,
                     "away_team_id": m.away_team_id,
+                    "home_team_name": team_map.get(m.home_team_id, f"Team {m.home_team_id}"),
+                    "away_team_name": team_map.get(m.away_team_id, f"Team {m.away_team_id}"),
                     "home_goals": m.home_goals,
                     "away_goals": m.away_goals,
                     "status": m.status,
