@@ -21,7 +21,7 @@ async function loadNews() {
           <td>${status}</td>
           <td>${date}</td>
           <td>
-            <button class="btn btn-sm btn-secondary" onclick="editNews(${n.id})">✏️</button>
+            <button class="btn btn-sm btn-secondary" onclick="showNewsEditor(${n.id})">✏️</button>
             <button class="btn btn-sm btn-danger" onclick="deleteNews(${n.id})">🗑️</button>
           </td>
         </tr>`;
@@ -63,8 +63,7 @@ async function saveNews() {
       toast('Artikel veröffentlicht!');
     }
 
-    clearNewsForm();
-    loadNews();
+    showNewsList();
   } catch (e) {
     toast('Fehler: ' + e.message, 'error');
   }
@@ -104,4 +103,25 @@ function clearNewsForm() {
   document.getElementById('news-content').value = '';
   document.getElementById('news-author').value = 'Admin';
   document.getElementById('news-published').value = '1';
+}
+
+function showNewsEditor(editId = null) {
+  document.getElementById('news-list-view').style.display = 'none';
+  document.getElementById('news-editor-view').style.display = 'block';
+
+  if (editId) {
+    document.getElementById('news-editor-title').textContent = '✏️ Artikel bearbeiten';
+    editNews(editId);
+  } else {
+    document.getElementById('news-editor-title').textContent = '✏️ Neuer Artikel';
+    clearNewsForm();
+  }
+  loadMatchInserterSeasons();
+}
+
+function showNewsList() {
+  document.getElementById('news-editor-view').style.display = 'none';
+  document.getElementById('news-list-view').style.display = 'block';
+  clearNewsForm();
+  loadNews();
 }

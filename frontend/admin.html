@@ -342,76 +342,90 @@ tr.row-inactive td:first-child   { border-left:3px solid #d1d5db; }
       
       <!-- News -->
       <div id="news" class="section">
-        <h1>News verwalten</h1>
-        <div class="card">
-          <h2>✏️ Neuer Artikel</h2>
-          <div class="form-group" style="margin-bottom:1rem">
-            <label>Titel</label>
-            <input type="text" id="news-title" placeholder="Überschrift">
-          </div>
-          <div class="form-group" style="margin-bottom:1rem">
-            <label>Inhalt</label>
+        <h1>📰 News verwalten</h1>
 
-            <!-- Match Inserter Tool -->
-            <div style="margin-bottom:.75rem;padding:.75rem;background:var(--bg-elevated);border-radius:6px;border:1px solid var(--border-dark)">
-              <div style="display:flex;gap:.5rem;align-items:flex-end;flex-wrap:wrap">
-                <div style="flex:1;min-width:140px">
-                  <label style="font-size:.8rem;margin-bottom:.25rem;display:block">Saison</label>
-                  <select id="match-insert-season" style="width:100%;padding:.4rem;font-size:.85rem">
-                    <option value="">Wählen...</option>
-                  </select>
+        <!-- View 1: Artikel-Liste (Default) -->
+        <div id="news-list-view">
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+              <h2 style="margin:0">Alle Artikel</h2>
+              <button class="btn btn-success" onclick="showNewsEditor()">➕ Neuer Artikel</button>
+            </div>
+            <div id="news-list"></div>
+          </div>
+        </div>
+
+        <!-- View 2: Artikel-Editor (versteckt) -->
+        <div id="news-editor-view" style="display:none">
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+              <h2 id="news-editor-title" style="margin:0">✏️ Neuer Artikel</h2>
+              <a href="#" onclick="showNewsList();return false" style="color:var(--text-muted);text-decoration:none;font-size:.9rem">← Zurück zur Übersicht</a>
+            </div>
+
+            <div class="form-group" style="margin-bottom:1rem">
+              <label>Titel</label>
+              <input type="text" id="news-title" placeholder="Überschrift">
+            </div>
+            <div class="form-group" style="margin-bottom:1rem">
+              <label>Inhalt</label>
+
+              <!-- Match Inserter Tool -->
+              <div style="margin-bottom:.75rem;padding:.75rem;background:var(--bg-elevated);border-radius:6px;border:1px solid var(--border-dark)">
+                <div style="display:flex;gap:.5rem;align-items:flex-end;flex-wrap:wrap">
+                  <div style="flex:1;min-width:140px">
+                    <label style="font-size:.8rem;margin-bottom:.25rem;display:block">Saison</label>
+                    <select id="match-insert-season" style="width:100%;padding:.4rem;font-size:.85rem">
+                      <option value="">Wählen...</option>
+                    </select>
+                  </div>
+                  <div style="flex:1;min-width:140px">
+                    <label style="font-size:.8rem;margin-bottom:.25rem;display:block">Gruppe/Phase</label>
+                    <select id="match-insert-group" style="width:100%;padding:.4rem;font-size:.85rem">
+                      <option value="">Erst Saison wählen</option>
+                    </select>
+                  </div>
+                  <div id="match-insert-matchday-container" style="flex:1;min-width:120px;display:none">
+                    <label style="font-size:.8rem;margin-bottom:.25rem;display:block">Spieltag</label>
+                    <select id="match-insert-matchday" style="width:100%;padding:.4rem;font-size:.85rem">
+                      <option value="">Alle</option>
+                    </select>
+                  </div>
+                  <button class="btn btn-sm btn-primary" onclick="insertMatches()" style="padding:.4rem .8rem">
+                    ➕ Einfügen
+                  </button>
                 </div>
-                <div style="flex:1;min-width:140px">
-                  <label style="font-size:.8rem;margin-bottom:.25rem;display:block">Gruppe/Phase</label>
-                  <select id="match-insert-group" style="width:100%;padding:.4rem;font-size:.85rem">
-                    <option value="">Erst Saison wählen</option>
-                  </select>
-                </div>
-                <div id="match-insert-matchday-container" style="flex:1;min-width:120px;display:none">
-                  <label style="font-size:.8rem;margin-bottom:.25rem;display:block">Spieltag</label>
-                  <select id="match-insert-matchday" style="width:100%;padding:.4rem;font-size:.85rem">
-                    <option value="">Alle</option>
-                  </select>
-                </div>
-                <button class="btn btn-sm btn-primary" onclick="insertMatches()" style="padding:.4rem .8rem">
-                  ➕ Einfügen
-                </button>
+              </div>
+
+              <textarea id="news-content" placeholder="Artikel schreiben... (Markdown wird unterstützt)" style="min-height:150px"></textarea>
+              <div style="margin-top:.5rem;padding:.75rem;background:var(--bg-elevated);border-radius:6px;font-size:.85rem">
+                <strong>Formatierung:</strong><br>
+                <code style="background:var(--bg-hover);padding:.2rem .4rem;border-radius:4px;margin-right:.5rem">**fett**</code>
+                <code style="background:var(--bg-hover);padding:.2rem .4rem;border-radius:4px;margin-right:.5rem">*kursiv*</code>
+                <code style="background:var(--bg-hover);padding:.2rem .4rem;border-radius:4px">[Text](URL)</code> → Links<br>
+                <strong style="margin-top:.5rem;display:inline-block">Matches einbetten:</strong><br>
+                <code style="background:var(--bg-hover);padding:.2rem .4rem;border-radius:4px">[matches:12,13,14,15]</code> → Gruppenphase-Matches<br>
+                <code style="background:var(--bg-hover);padding:.2rem .4rem;border-radius:4px">[ko-matches:5,6,7]</code> → KO-Phase-Matches<br>
+                <span style="color:var(--text-muted);font-size:.8rem">Tipp: Nutze das Tool oben oder kopiere IDs aus "Ergebnisse"</span>
               </div>
             </div>
-
-            <textarea id="news-content" placeholder="Artikel schreiben... (Markdown wird unterstützt)" style="min-height:150px"></textarea>
-            <div style="margin-top:.5rem;padding:.75rem;background:var(--bg-elevated);border-radius:6px;font-size:.85rem">
-              <strong>Formatierung:</strong><br>
-              <code style="background:var(--bg-hover);padding:.2rem .4rem;border-radius:4px;margin-right:.5rem">**fett**</code>
-              <code style="background:var(--bg-hover);padding:.2rem .4rem;border-radius:4px;margin-right:.5rem">*kursiv*</code>
-              <code style="background:var(--bg-hover);padding:.2rem .4rem;border-radius:4px">[Text](URL)</code> → Links<br>
-              <strong style="margin-top:.5rem;display:inline-block">Matches einbetten:</strong><br>
-              <code style="background:var(--bg-hover);padding:.2rem .4rem;border-radius:4px">[matches:12,13,14,15]</code> → Gruppenphase-Matches<br>
-              <code style="background:var(--bg-hover);padding:.2rem .4rem;border-radius:4px">[ko-matches:5,6,7]</code> → KO-Phase-Matches<br>
-              <span style="color:var(--text-muted);font-size:.8rem">Tipp: Nutze das Tool oben oder kopiere IDs aus "Ergebnisse"</span>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Autor</label>
+                <input type="text" id="news-author" placeholder="Admin" value="Admin">
+              </div>
+              <div class="form-group">
+                <label>Status</label>
+                <select id="news-published">
+                  <option value="1">Veröffentlicht</option>
+                  <option value="0">Entwurf</option>
+                </select>
+              </div>
             </div>
+            <input type="hidden" id="news-edit-id" value="">
+            <button class="btn btn-success" onclick="saveNews()">💾 Speichern</button>
+            <button class="btn btn-secondary" onclick="showNewsList()" style="margin-left:.5rem">Abbrechen</button>
           </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Autor</label>
-              <input type="text" id="news-author" placeholder="Admin" value="Admin">
-            </div>
-            <div class="form-group">
-              <label>Status</label>
-              <select id="news-published">
-                <option value="1">Veröffentlicht</option>
-                <option value="0">Entwurf</option>
-              </select>
-            </div>
-          </div>
-          <input type="hidden" id="news-edit-id" value="">
-          <button class="btn btn-success" onclick="saveNews()">💾 Speichern</button>
-          <button class="btn btn-secondary" onclick="clearNewsForm()" style="margin-left:.5rem">Abbrechen</button>
-        </div>
-        
-        <div class="card">
-          <h2>📰 Alle Artikel</h2>
-          <div id="news-list"></div>
         </div>
       </div>
 
