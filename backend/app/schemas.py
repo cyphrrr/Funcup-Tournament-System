@@ -375,6 +375,24 @@ class KOMatchSetBye(BaseModel):
 
 
 # ============================================================
+# Match Bulk Update Schemas
+# ============================================================
+
+class MatchBulkUpdateItem(BaseModel):
+    match_id: int
+    home_goals: int
+    away_goals: int
+    ingame_week: Optional[int] = None
+
+class MatchBulkUpdateRequest(BaseModel):
+    matches: list[MatchBulkUpdateItem]
+
+class MatchBulkUpdateResponse(BaseModel):
+    updated: int
+    errors: list[str]
+
+
+# ============================================================
 # Match Import Schemas (n8n)
 # ============================================================
 

@@ -77,14 +77,23 @@ async function loadGroupMatches(seasonId, container) {
             <span>:</span>
             <input type="number" min="0" id="away-${m.id}" value="${awayGoals}" placeholder="-" style="width:50px">
             <input type="number" min="1" id="week-${m.id}" value="${ingameWeek}" placeholder="W" title="Ingame Woche" style="width:50px;margin-left:.5rem;font-size:.85rem">
-            <button class="btn btn-sm btn-success" onclick="saveGroupMatch(${m.id})">💾</button>
           </div>
         </div>`;
     }
     html += '</div>';
   }
 
-  container.innerHTML = html || '<div class="card"><em>Keine Matches gefunden. Erst Spielplan generieren!</em></div>';
+  if (html) {
+    const saveAllBtn = `
+      <div style="display:flex;justify-content:flex-end;margin-bottom:1rem">
+        <button class="btn btn-success" onclick="saveAllGroupMatches()" style="font-size:1rem;padding:.6rem 1.5rem">
+          💾 Alle Ergebnisse speichern
+        </button>
+      </div>`;
+    container.innerHTML = saveAllBtn + html;
+  } else {
+    container.innerHTML = '<div class="card"><em>Keine Matches gefunden. Erst Spielplan generieren!</em></div>';
+  }
 }
 
 async function saveGroupMatch(matchId) {
@@ -113,6 +122,55 @@ async function saveGroupMatch(matchId) {
       body: JSON.stringify(body)
     });
     toast('Ergebnis gespeichert!');
+    loadMatchesForPhase();
+  } catch (e) {
+    toast('Fehler: ' + e.message, 'error');
+  }
+}
+
+async function saveAllGroupMatches() {
+  const matchCards = document.querySelectorAll('#matches-list .match-card');
+  const updates = [];
+
+  matchCards.forEach(card => {
+    const homeInput = card.querySelector('input[id^="home-"]');
+    if (!homeInput) return;
+    const matchId = parseInt(homeInput.id.replace('home-', ''));
+    const awayInput = card.querySelector(`#away-${matchId}`);
+    const weekInput = card.querySelector(`#week-${matchId}`);
+
+    const homeVal = homeInput.value;
+    const awayVal = awayInput.value;
+
+    if (homeVal !== '' && awayVal !== '') {
+      const item = {
+        match_id: matchId,
+        home_goals: parseInt(homeVal),
+        away_goals: parseInt(awayVal)
+      };
+      if (weekInput && weekInput.value !== '') {
+        item.ingame_week = parseInt(weekInput.value);
+      }
+      updates.push(item);
+    }
+  });
+
+  if (updates.length === 0) {
+    toast('Keine Ergebnisse zum Speichern gefunden', 'error');
+    return;
+  }
+
+  try {
+    const res = await authFetch(`${API_URL}/api/matches/bulk-update`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ matches: updates })
+    });
+    const result = await res.json();
+    toast(`✅ ${result.updated} Ergebnis(se) gespeichert!`);
+    if (result.errors.length > 0) {
+      toast(`⚠️ ${result.errors.length} Fehler: ${result.errors.join(', ')}`, 'error');
+    }
     loadMatchesForPhase();
   } catch (e) {
     toast('Fehler: ' + e.message, 'error');

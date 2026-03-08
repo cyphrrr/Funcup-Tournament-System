@@ -135,6 +135,34 @@ def create_match(group_id: int, match: schemas.MatchCreate, db: Session = Depend
     return obj
 
 
+@router.patch("/matches/bulk-update")
+def bulk_update_matches(
+    payload: schemas.MatchBulkUpdateRequest,
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_user)
+):
+    """Mehrere Match-Ergebnisse auf einmal eintragen."""
+    updated = 0
+    errors = []
+
+    for item in payload.matches:
+        match = db.get(models.Match, item.match_id)
+        if not match:
+            errors.append(f"Match {item.match_id} nicht gefunden")
+            continue
+
+        match.home_goals = item.home_goals
+        match.away_goals = item.away_goals
+        if item.ingame_week is not None:
+            match.ingame_week = item.ingame_week
+        if match.status == "scheduled":
+            match.status = "played"
+        updated += 1
+
+    db.commit()
+    return {"updated": updated, "errors": errors}
+
+
 @router.patch("/matches/{match_id}", response_model=schemas.MatchRead)
 def update_match(match_id: int, update: schemas.MatchUpdate, db: Session = Depends(get_db), _: str = Depends(get_current_user)):
     """
