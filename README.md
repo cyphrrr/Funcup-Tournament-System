@@ -1,4 +1,4 @@
-# BIW Pokal
+# FUNCUP TOURNAMENT SYSTEM
 
 Offenes, automatisierbares Turnier‑System für Pokal‑ und Ligawettbewerbe.
 
