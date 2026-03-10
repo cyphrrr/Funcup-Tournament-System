@@ -81,9 +81,4 @@ Die Flows liegen unter `n8n-flows/` und sind **versionierbar**.
 
 ## 📜 Lizenz
 
-Geplant: MIT License (offen & frei nutzbar)
-
----
-
-> Dieses Projekt ist bewusst **klein, offen und ehrlich** gehalten.
-> Es soll verstanden, erweitert und geteilt werden können.
+GNU General Public License v3.0
