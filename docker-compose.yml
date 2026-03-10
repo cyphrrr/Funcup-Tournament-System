@@ -12,7 +12,7 @@ services:
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       - ADMIN_USER=${ADMIN_USER:-admin}
-      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-biw2026!}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-password}
       - API_KEY=${API_KEY:-biw-n8n-secret-key-change-me}
       - JWT_SECRET=${JWT_SECRET:-super-secret-jwt-key-change-in-production}
       - DISCORD_CLIENT_ID=${DISCORD_CLIENT_ID}
@@ -83,7 +83,7 @@ services:
       - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN}
       - DISCORD_GUILD_ID=${DISCORD_GUILD_ID}
       - BACKEND_URL=http://backend:8000
-      - DASHBOARD_URL=${DASHBOARD_URL:-https://biw-pokal.de}
+      - DASHBOARD_URL=${DASHBOARD_URL:-https://your.server}
       - API_KEY=${API_KEY:-biw-n8n-secret-key-change-me}
     depends_on:
       backend:
