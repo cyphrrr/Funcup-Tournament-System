@@ -246,6 +246,48 @@ class BackendAPIClient:
             logger.error(f"Team-Claim fehlgeschlagen: {e}")
             return {"success": False, "error": str(e)}
 
+    # --- Spieltag / Turnier-Daten ---
+
+    async def get_seasons(self) -> list:
+        """
+        Alle Saisons abrufen.
+
+        Returns:
+            Liste von Season-Dicts oder leere Liste
+        """
+        result = await self._request('GET', '/api/seasons')
+        return result if result else []
+
+    async def get_groups_with_teams(self, season_id: int) -> list:
+        """
+        Gruppen + Teams + Matches einer Saison abrufen.
+
+        Returns:
+            Liste von Group-Dicts (mit .group, .teams, .matches) oder leere Liste
+        """
+        result = await self._request('GET', f'/api/seasons/{season_id}/groups-with-teams')
+        return result if result else []
+
+    async def get_ko_brackets(self, season_id: int) -> dict:
+        """
+        Alle KO-Brackets einer Saison mit Matches abrufen.
+
+        Returns:
+            Dict mit season_id + brackets (meister/lucky_loser/loser) oder leeres Dict
+        """
+        result = await self._request('GET', f'/api/seasons/{season_id}/ko-brackets')
+        return result if result else {}
+
+    async def get_ko_brackets_status(self, season_id: int) -> dict:
+        """
+        KO-Bracket Status-Übersicht (für Verfügbarkeitsprüfung).
+
+        Returns:
+            Dict mit brackets_generated, brackets Status oder leeres Dict
+        """
+        result = await self._request('GET', f'/api/seasons/{season_id}/ko-brackets/status')
+        return result if result else {}
+
     # --- Health Check ---
 
     async def health_check(self) -> bool:
