@@ -357,7 +357,7 @@ function renderKOBracket() {
         </div>
         <div style="display:flex;gap:.25rem;align-items:center">
           <span style="font-size:.7rem;color:var(--text-muted)">ID: ${m.match_id}</span>
-          ${hasBothTeams && !hasResult ? `<button class="btn btn-sm btn-secondary" onclick="editKOMatch(${m.match_id})">Bearbeiten</button>` : ''}
+          ${hasBothTeams ? `<button class="btn btn-sm btn-secondary" onclick="editKOMatch(${m.match_id})">Bearbeiten</button>` : ''}
         </div>
       </div>`;
 
