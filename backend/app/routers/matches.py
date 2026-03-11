@@ -84,8 +84,55 @@ def import_matches(items: list[schemas.MatchImportItem], db: Session = Depends(g
                 was_swapped = True
 
         if not match:
-            skipped += 1
-            errors.append(schemas.MatchImportError(heim=home_name, gast=away_name, reason="no_match"))
+            # Fallback: KO-Matches durchsuchen
+            ko_candidates = db.query(models.KOMatch).filter(
+                models.KOMatch.season_id == season.id,
+                models.KOMatch.status != "played",
+                models.KOMatch.is_bye != 1,
+            ).all()
+
+            ko_match = None
+            ko_swapped = False
+            direct_hits = [m for m in ko_candidates if m.home_team_id == home_id and m.away_team_id == away_id]
+            swap_hits = [m for m in ko_candidates if m.home_team_id == away_id and m.away_team_id == home_id]
+
+            if len(direct_hits) + len(swap_hits) > 1:
+                skipped += 1
+                errors.append(schemas.MatchImportError(heim=home_name, gast=away_name, reason="ambiguous_ko_match"))
+                continue
+            elif direct_hits:
+                ko_match = direct_hits[0]
+            elif swap_hits:
+                ko_match = swap_hits[0]
+                home_goals, away_goals = away_goals, home_goals
+                ko_swapped = True
+
+            if not ko_match:
+                skipped += 1
+                errors.append(schemas.MatchImportError(heim=home_name, gast=away_name, reason="no_match"))
+                continue
+
+            # KO-Ergebnis eintragen
+            ko_match.home_goals = home_goals
+            ko_match.away_goals = away_goals
+            ko_match.status = "played"
+
+            # Sieger-Weiterleitung (nur bei klarem Sieger)
+            if home_goals != away_goals:
+                winner_id = ko_match.home_team_id if home_goals > away_goals else ko_match.away_team_id
+                if ko_match.next_match_id:
+                    next_match = db.get(models.KOMatch, ko_match.next_match_id)
+                    if next_match:
+                        if ko_match.next_match_slot == "home":
+                            next_match.home_team_id = winner_id
+                        else:
+                            next_match.away_team_id = winner_id
+                        if next_match.home_team_id and next_match.away_team_id:
+                            next_match.status = "scheduled"
+
+            imported += 1
+            if ko_swapped:
+                swapped += 1
             continue
 
         if match.status == "played":
