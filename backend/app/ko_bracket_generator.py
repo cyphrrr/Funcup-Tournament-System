@@ -1,10 +1,11 @@
 """
-KO-Bracket-Generierung für 3-Bracket-System (v2).
+KO-Bracket-Generierung für 3-Bracket-System (v3).
 
-Neue Logik v2 (seit 08.03.2026):
+Logik (seit 11.03.2026):
 - KEINE Freilose mehr — Brackets haben exakt 8 oder 16 Teams
 - Fehlende Slots werden mit Aufrückern aus niedrigeren Platzierungen gefüllt
-- Aufrücker werden nach Onlineliga-Ranking sortiert (niedrigerer Ø = besser)
+- Aufrücker-Ranking nach WM/EM-Methode (Punkte → TD → Tore → Gegentore → OL-Ranking)
+- Freispiel-Wertung für 3er-Gruppen (+3 Pkt, +2:0) für Vergleichbarkeit
 
 Brackets:
 - Meisterrunde: Gruppenerste + Aufrücker aus Zweiten
@@ -23,11 +24,112 @@ from . import models
 from .ranking_service import get_team_ranking
 
 
+def _get_normalised_stats(team_id: int, group_id: int, placement: int, db: Session) -> Dict:
+    """
+    Gibt normalisierte Gruppenphase-Statistiken zurück.
+
+    Für Teams aus 3er-Gruppen (nur 2 Spiele) wird ein fiktives Freispiel
+    addiert: +3 Punkte, +2 erzielte Tore, +0 kassierte Tore.
+    Das gleicht alle Platzierungen auf eine 3-Spiele-Basis an.
+
+    Args:
+        team_id: ID des Teams
+        group_id: ID der Gruppe
+        placement: 1, 2 oder 3 (Gruppenplatz des Teams)
+        db: SQLAlchemy Session
+    """
+    matches = db.query(models.Match).filter(
+        models.Match.group_id == group_id
+    ).all()
+
+    stats = {"team_id": team_id, "played": 0, "points": 0, "goals_for": 0, "goals_against": 0}
+
+    for m in matches:
+        if m.home_goals is None or m.away_goals is None:
+            continue
+        if m.home_team_id == team_id:
+            stats["played"] += 1
+            stats["goals_for"] += m.home_goals
+            stats["goals_against"] += m.away_goals
+            if m.home_goals > m.away_goals:
+                stats["points"] += 3
+            elif m.home_goals == m.away_goals:
+                stats["points"] += 1
+        elif m.away_team_id == team_id:
+            stats["played"] += 1
+            stats["goals_for"] += m.away_goals
+            stats["goals_against"] += m.home_goals
+            if m.away_goals > m.home_goals:
+                stats["points"] += 3
+            elif m.away_goals == m.home_goals:
+                stats["points"] += 1
+
+    # Freispiel für 3er-Gruppen (2 Spiele statt 3)
+    group_size = db.query(models.SeasonTeam).filter(
+        models.SeasonTeam.group_id == group_id
+    ).count()
+
+    if group_size == 3:
+        stats["points"] += 3
+        stats["goals_for"] += 2
+        stats["played"] += 1
+
+    return stats
+
+
+def _wm_sort_key(stats: Dict, ol_ranking: float) -> tuple:
+    """
+    Sort-Key für WM/EM-Methode.
+    Kleineres Ergebnis = besser (für sorted(..., key=...) ohne reverse).
+
+    Kriterien (Priorität):
+    1. Punkte (höher = besser → negiert)
+    2. Tordifferenz (höher = besser → negiert)
+    3. Erzielte Tore (höher = besser → negiert)
+    4. Kassierte Tore (niedriger = besser → direkt)
+    5. OL-Ranking (niedriger = besser → direkt)
+    """
+    td = stats["goals_for"] - stats["goals_against"]
+    return (
+        -stats["points"],
+        -td,
+        -stats["goals_for"],
+        stats["goals_against"],
+        ol_ranking,
+    )
+
+
+def _rank_promotable_teams(
+    team_ids_with_groups: List[Tuple[int, int]],
+    placement: int,
+    db: Session
+) -> List[int]:
+    """
+    Sortiert eine Liste von Teams nach WM/EM-Methode.
+    Gibt sortierte Liste von team_ids zurück (bester zuerst).
+
+    Args:
+        team_ids_with_groups: [(team_id, group_id), ...]
+        placement: 1, 2 oder 3 (Gruppenplatz)
+        db: SQLAlchemy Session
+    """
+    scored = []
+    for team_id, group_id in team_ids_with_groups:
+        stats = _get_normalised_stats(team_id, group_id, placement, db)
+        team = db.get(models.Team, team_id)
+        team_name = team.name if team else ""
+        ol_ranking = get_team_ranking(team_name, db)
+        key = _wm_sort_key(stats, ol_ranking)
+        scored.append((key, team_id))
+    scored.sort(key=lambda x: x[0])
+    return [tid for _, tid in scored]
+
+
 def get_qualified_teams_v2(season_id: int, db: Session, require_completed: bool = True) -> Dict:
     """
-    Ermittelt Team-Pools für alle drei Brackets nach v2-Logik.
+    Ermittelt Team-Pools für alle drei Brackets nach v3-Logik.
 
-    KEINE Freilose. Aufrücker nach Onlineliga-Ranking.
+    KEINE Freilose. Aufrücker nach WM/EM-Methode (normalisierte Gruppenphase-Stats).
     Gilt NUR für nicht-archivierte Saisons.
 
     Args:
@@ -86,8 +188,8 @@ def get_qualified_teams_v2(season_id: int, db: Session, require_completed: bool 
 
     # 3. Plätze 1–4 extrahieren (sortiert nach Gruppenname A, B, C...)
     erste_ids = []   # team_ids in Gruppenname-Reihenfolge
-    zweite = []
-    dritte = []
+    lucky_loser_candidates: List[Tuple[int, int]] = []  # [(team_id, group_id), ...]
+    loser_candidates: List[Tuple[int, int]] = []
     vierte = []
 
     for group in groups:  # bereits nach name sortiert
@@ -95,13 +197,13 @@ def get_qualified_teams_v2(season_id: int, db: Session, require_completed: bool 
         if len(standings) >= 1:
             erste_ids.append(standings[0]["team_id"])
         if len(standings) >= 2:
-            zweite.append(standings[1]["team_id"])
+            lucky_loser_candidates.append((standings[1]["team_id"], group.id))
         if len(standings) >= 3:
-            dritte.append(standings[2]["team_id"])
+            loser_candidates.append((standings[2]["team_id"], group.id))
         if len(standings) >= 4:
             vierte.append(standings[3]["team_id"])
 
-    # 4. Hilfsfunktion: team_ids nach Ranking sortieren (niedrigerer Wert = besser)
+    # 4. Hilfsfunktion: team_ids nach OL-Ranking sortieren (niedrigerer Wert = besser)
     def sort_by_ranking(team_ids: List[int]) -> List[int]:
         """Sortiert Teams nach Onlineliga-Ranking (niedrigerer Ø = besser)."""
         scored = []
@@ -113,6 +215,10 @@ def get_qualified_teams_v2(season_id: int, db: Session, require_completed: bool 
         scored.sort(key=lambda x: x[0])  # aufsteigend
         return [tid for _, tid in scored]
 
+    # Zweite und Dritte nach WM/EM-Methode sortieren
+    zweite_sorted = _rank_promotable_teams(lucky_loser_candidates, 2, db)
+    dritte_sorted = _rank_promotable_teams(loser_candidates, 3, db)
+
     # 5. SCHRITT 1 — Meisterrunde
     meister_aufruecker = []
     zweite_fuer_lucky = []
@@ -121,10 +227,9 @@ def get_qualified_teams_v2(season_id: int, db: Session, require_completed: bool 
         # Zu viele Erste: best 16 nach Ranking
         sorted_erste = sort_by_ranking(erste_ids)
         meister_teams = sorted_erste[:16]
-        # übrige Erste + alle Zweite in Lucky Loser pool
-        zweite_fuer_lucky = sorted_erste[16:] + zweite
+        # übrige Erste + alle Zweite (WM/EM-sortiert) in Lucky Loser pool
+        zweite_fuer_lucky = sorted_erste[16:] + zweite_sorted
     else:
-        zweite_sorted = sort_by_ranking(zweite)
         bedarf_16 = 16 - len(erste_ids)
 
         if len(erste_ids) + len(zweite_sorted) >= 16:
@@ -151,7 +256,6 @@ def get_qualified_teams_v2(season_id: int, db: Session, require_completed: bool 
                     )
 
     # 6. SCHRITT 2 — Lucky Loser
-    dritte_sorted = sort_by_ranking(dritte)
     lucky_loser_aufruecker = []
     dritte_fuer_loser = dritte_sorted
     lucky_loser_teams = None
