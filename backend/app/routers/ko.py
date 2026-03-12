@@ -414,6 +414,19 @@ def update_ko_match_result(
             if next_match.home_team_id and next_match.away_team_id:
                 next_match.status = "scheduled"
 
+    if match.loser_next_match_id:
+        loser_id = match.away_team_id if winner_id == match.home_team_id else match.home_team_id
+        if loser_id:
+            third_place_match = db.get(models.KOMatch, match.loser_next_match_id)
+            if third_place_match:
+                if match.loser_next_match_slot == "home":
+                    third_place_match.home_team_id = loser_id
+                else:
+                    third_place_match.away_team_id = loser_id
+
+                if third_place_match.home_team_id and third_place_match.away_team_id:
+                    third_place_match.status = "scheduled"
+
     db.commit()
 
     bracket = db.query(models.KOBracket).filter(
