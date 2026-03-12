@@ -245,11 +245,15 @@ def build_ko_embed(season: dict, bracket_type: str, brackets_data: dict, user: d
         if not matches:
             continue
 
+        # Normale Matches und Platz-3-Matches trennen
+        normal_matches = [m for m in matches if not m.get("is_third_place")]
+        third_place_matches = [m for m in matches if m.get("is_third_place")]
+
         # Runden-Name aus dem ersten Match nehmen
         round_name = matches[0].get("round", round_key)
 
         lines = []
-        for m in matches:
+        for m in normal_matches:
             # Freilos überspringen
             if m.get("is_bye"):
                 continue
@@ -268,16 +272,40 @@ def build_ko_embed(season: dict, bracket_type: str, brackets_data: dict, user: d
 
             lines.append(f"{home_name}  {score}  {away_name}{status_icon}")
 
-        if not lines:
-            continue
+        if lines:
+            field_value = "```\n" + "\n".join(lines) + "\n```"
 
-        field_value = "```\n" + "\n".join(lines) + "\n```"
+            embed.add_field(
+                name=f"🥊 {round_name}",
+                value=field_value,
+                inline=False
+            )
 
-        embed.add_field(
-            name=f"🥊 {round_name}",
-            value=field_value,
-            inline=False
-        )
+        # Platz-3-Spiel als eigenes Field
+        if third_place_matches:
+            tp_lines = []
+            for m in third_place_matches:
+                home = m.get("home_team", {})
+                away = m.get("away_team", {})
+
+                home_name = home.get("name", "TBD") if home else "TBD"
+                away_name = away.get("name", "TBD") if away else "TBD"
+
+                score = format_score(m.get("home_goals"), m.get("away_goals"), m.get("status", ""))
+
+                status_icon = ""
+                if m.get("status") != "played":
+                    status_icon = "  ⏳"
+
+                tp_lines.append(f"{home_name}  {score}  {away_name}{status_icon}")
+
+            if tp_lines:
+                tp_value = "```\n" + "\n".join(tp_lines) + "\n```"
+                embed.add_field(
+                    name="🥉 Spiel um Platz 3",
+                    value=tp_value,
+                    inline=False
+                )
 
     embed.set_footer(text=f"Gepostet von {user.display_name} via /spieltag")
     return embed
