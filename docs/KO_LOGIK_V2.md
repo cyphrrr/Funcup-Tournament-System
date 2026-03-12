@@ -14,6 +14,7 @@
 4. **8 ist das absolute Minimum** — unter 8 Teams wird kein Bracket generiert
 5. **Aufrücker-Ranking** über Onlineliga Google Sheets (niedrigerer Ø = besser)
 6. **Platzierungsgrenzen:** Meisterrunde nur Erste+Zweite, Lucky Loser nur Zweite+Dritte, Loser nur Dritte+Vierte
+7. **Spiel um Platz 3** — jedes Bracket enthält automatisch ein Spiel zwischen den Halbfinal-Verlierern
 
 ---
 
@@ -166,6 +167,8 @@ Lucky L:  6 Zweite übrig, bedarf 10 Dritte → 6+11=17 ≥ 16 ✓
 Loser:    1 Dritter + 8 Vierte = 9 < 16
           → NICHT GENERIERT
 
+Platz 3:  ✓ Meister + Lucky Loser (je 1 Spiel)
+
 KO-Teilnehmer: 32/41 = 78%
 ```
 
@@ -177,6 +180,8 @@ E=16, Z=16, D=16, V=16
 Meister:  16 Erste = 16 ✓ (keine Aufrücker)
 Lucky L:  16 Zweite = 16 ✓ (keine Aufrücker)
 Loser:    16 Dritte = 16 ✓ (keine Aufrücker)
+
+Platz 3:  ✓ alle 3 Brackets (je 1 Spiel)
 
 KO-Teilnehmer: 48/64 = 75%
 ```
@@ -190,6 +195,8 @@ Meister:  12 Erste + 4 Zweite = 16 ✓
 Lucky L:  8 Zweite + 8 Dritte = 16 ✓
 Loser:    4 Dritte + 12 Vierte = 16 ✓
 
+Platz 3:  ✓ alle 3 Brackets (je 1 Spiel)
+
 KO-Teilnehmer: 48/48 = 100% (!)
 ```
 
@@ -202,6 +209,8 @@ Meister:  13 Erste + 3 Zweite = 16 ✓
 Lucky L:  10 Zweite + 6 Dritte = 16 ✓
 Loser:    7 Dritte + 12 Vierte = 19 ≥ 16
           = 7 Dritte + 9 Vierte = 16 ✓
+
+Platz 3:  ✓ alle 3 Brackets (je 1 Spiel)
 
 KO-Teilnehmer: 48/51 = 94%
 ```
@@ -218,6 +227,8 @@ Lucky L:  2 Zweite, bedarf 14 → 2+5=7 < 16 → Fallback 8
           2+5=7 < 8 → NICHT GENERIERT
 
 Loser:    → NICHT GENERIERT
+
+Platz 3:  ✓ Meister (1 Spiel); Lucky Loser + Loser entfallen
 
 KO-Teilnehmer: 8/20 = 40%
 ```
@@ -236,6 +247,8 @@ Lucky L:  0 Zweite übrig → bedarf 16 Dritte → 0+8=8 < 16 → Fallback 8
 Loser:    0 Dritte + 8 Vierte = 8 < 16
           → NICHT GENERIERT
 
+Platz 3:  ✓ Meister + Lucky Loser (je 1 Spiel); Loser entfällt
+
 KO-Teilnehmer: 24/32 = 75%
 ```
 
@@ -253,20 +266,71 @@ Meister:  3+3=6 < 16 → Fallback 8
 
 ---
 
+## Spiel um Platz 3
+
+Jedes der 3 Brackets (Meister, Lucky Loser, Loser) enthält ein Spiel um Platz 3. Die beiden Halbfinal-Verlierer spielen gegeneinander.
+
+### Datenmodell
+
+Drei zusätzliche Spalten auf `ko_matches`:
+
+| Spalte | Typ | Beschreibung |
+|--------|-----|--------------|
+| `is_third_place` | Integer (0/1) | 1 = Spiel um Platz 3 |
+| `loser_next_match_id` | FK → ko_matches | Verlierer-Weiterleitung vom Halbfinale |
+| `loser_next_match_slot` | String | `"home"` / `"away"` |
+
+### Generierung
+
+- Automatisch bei Bracket-Erstellung in `create_bracket_matches()`
+- `round = total_rounds` (gleiche Runde wie Finale), `position = 2`
+- Beide Halbfinal-Matches erhalten `loser_next_match_id` → Platz-3-Match
+- Slot-Zuweisung: HF Position 1 (ungerade) → `home`, Position 2 (gerade) → `away`
+- Nur bei Brackets mit ≥ 2 Runden (mind. 4 Teams = VF-Bracket)
+
+### Ergebnis-Weiterleitung
+
+Beim Eintragen eines Halbfinal-Ergebnisses (PATCH + n8n-Import):
+- Sieger → Finale (via `next_match_id`, wie bisher)
+- Verlierer → Platz-3-Spiel (via `loser_next_match_id`)
+- Bei Unentschieden + Tiebreaker: gleiche Logik, Verlierer = das andere Team
+
+### Frontend
+
+- Eigene Spalte neben dem Finale, visuell abgetrennt (gestrichelte Linie links)
+- Volle Admin-Funktionalität (Ergebnis eintragen, Team-Zuweisung)
+- Auch in `archiv.html` Kompaktansicht dargestellt
+
+### Sonderfall: bestehende Brackets
+
+Bereits generierte Brackets (vor diesem Feature) haben kein Platz-3-Match. Diese können manuell über den Admin nicht angelegt werden — sie entfallen für die betroffene Saison. Ab der nächsten Bracket-Generierung automatisch enthalten.
+
+---
+
 ## Abhängigkeiten
 
 | Komponente | Status | Beschreibung |
 |-----------|--------|-------------|
-| `ranking_service.py` | ✅ existiert | Google Sheets Ranking, 10min Cache |
-| `ko_bracket_generator.py` | 🔄 muss umgeschrieben werden | Neue Logik ohne Freilose |
-| `routers/ko.py` | 🔄 Endpoint anpassen | `generate_ko_brackets` aufrufen |
-| `admin.html` KO-Section | 🔄 UI anpassen | Aufrücker-Info anzeigen |
-| `ko.html` | ✅ bleibt kompatibel | Rendert weiterhin Brackets nach Runden |
+| `ranking_service.py` | ✅ implementiert | Google Sheets Ranking, 10min Cache |
+| `ko_bracket_generator.py` | ✅ implementiert | Neue Logik ohne Freilose, inkl. Platz-3-Generierung |
+| `routers/ko.py` PATCH | ✅ erweitert | Sieger + Verlierer-Weiterleitung |
+| `routers/matches.py` Import | ✅ erweitert | Verlierer-Weiterleitung bei n8n-Import |
+| `admin.html` / `ko-phase.js` | ✅ erweitert | Aufrücker-Info + Platz-3-Verwaltung |
+| `ko.html` | ✅ erweitert | Bracket-Darstellung inkl. Platz-3-Spalte |
+| `archiv.html` | ✅ erweitert | Kompakte Bracket-Ansicht inkl. Platz 3 |
+
+---
+
+## Entscheidungen
+
+- [x] **Keine Freilose:** Brackets haben exakt 8 oder 16 Teams, Aufrücker füllen auf
+- [x] **Aufrücker-Ranking:** WM/EM-Methode (Punkte → TD → Tore → OL-Ranking)
+- [x] **Freispiel-Wertung:** 3er-Gruppen erhalten fiktives Freispiel für Vergleichbarkeit
+- [x] **Preview-Endpoint:** Dry-Run vor Generierung (`/ko-brackets/preview`)
+- [x] **Spiel um Platz 3:** In allen 3 Brackets automatisch generiert, eigene Spalte im Frontend
 
 ---
 
 ## Offene Fragen
 
-- [ ] Soll die API im Response kommunizieren welche Teams Aufrücker sind? (z.B. für UI-Kennzeichnung)
 - [ ] Soll der Admin die Aufrücker-Auswahl manuell überschreiben können?
-- [ ] Soll es einen Dry-Run-Endpoint geben der zeigt was passieren WÜRDE?
