@@ -157,6 +157,9 @@ class KOMatchRead(BaseModel):
     status: str
     next_match_id: int | None
     next_match_slot: str | None
+    is_third_place: int = 0
+    loser_next_match_id: Optional[int] = None
+    loser_next_match_slot: Optional[str] = None
 
     class Config:
         from_attributes = True

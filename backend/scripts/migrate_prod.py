@@ -91,6 +91,24 @@ REQUIRED_MIGRATIONS = [
         "sql": "ALTER TABLE ko_matches ADD COLUMN IF NOT EXISTS bracket_type VARCHAR DEFAULT 'meister' NOT NULL",
         "description": "ko_matches.bracket_type  (Bracket-Zugehörigkeit: meister/lucky_loser/loser)",
     },
+    {
+        "table": "ko_matches",
+        "column": "is_third_place",
+        "sql": "ALTER TABLE ko_matches ADD COLUMN IF NOT EXISTS is_third_place INTEGER DEFAULT 0 NOT NULL",
+        "description": "ko_matches.is_third_place  (1 = Spiel um Platz 3)",
+    },
+    {
+        "table": "ko_matches",
+        "column": "loser_next_match_id",
+        "sql": "ALTER TABLE ko_matches ADD COLUMN IF NOT EXISTS loser_next_match_id INTEGER REFERENCES ko_matches(id)",
+        "description": "ko_matches.loser_next_match_id  (Verlierer-Weiterleitung für Halbfinale)",
+    },
+    {
+        "table": "ko_matches",
+        "column": "loser_next_match_slot",
+        "sql": "ALTER TABLE ko_matches ADD COLUMN IF NOT EXISTS loser_next_match_slot VARCHAR",
+        "description": "ko_matches.loser_next_match_slot  (home | away - wohin der Verlierer geht)",
+    },
 ]
 
 # ── Erwartete Spalten pro Tabelle (aus SQLAlchemy-Models) ─────────────────────
@@ -124,6 +142,7 @@ EXPECTED_COLUMNS: dict[str, list[str]] = {
         "id", "season_id", "bracket_type", "round", "position",
         "home_team_id", "away_team_id", "home_goals", "away_goals",
         "is_bye", "status", "ingame_week", "next_match_id", "next_match_slot",
+        "is_third_place", "loser_next_match_id", "loser_next_match_slot",
     ],
     "user_profiles": [
         "id", "discord_id", "discord_username", "discord_avatar_url",

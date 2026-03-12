@@ -111,6 +111,9 @@ class KOMatch(Base):
     ingame_week = Column(Integer, nullable=True)  # Ingame Spielwoche (z.B. W39)
     next_match_id = Column(Integer, ForeignKey("ko_matches.id"), nullable=True)
     next_match_slot = Column(String, nullable=True)  # "home" oder "away" - wohin der Sieger geht
+    is_third_place = Column(Integer, default=0)  # 1 = Spiel um Platz 3
+    loser_next_match_id = Column(Integer, ForeignKey("ko_matches.id"), nullable=True)
+    loser_next_match_slot = Column(String, nullable=True)  # "home" | "away"
 
     # Relationship zu KOBracket
     bracket = relationship(
