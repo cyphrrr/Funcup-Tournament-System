@@ -198,6 +198,7 @@ function renderKOPreview(preview, container) {
 
     html += '<div class="ko-preview-bracket">';
     html += `<h3>${KO_TAB_LABELS[type] || type} (${bracket.size} Teams, ${bracket.rounds} Runden)</h3>`;
+    html += `<div style="font-size:.8rem;color:var(--text-muted);margin-top:.25rem">inkl. Spiel um Platz 3</div>`;
 
     // Team pills with promoted badges
     html += '<div class="ko-preview-teams">';
@@ -299,12 +300,17 @@ function renderKOBracket() {
   const sortedKeys = koSortRounds(Object.keys(rounds));
 
   let html = '<div class="ko-admin-bracket">';
+  let thirdPlaceMatch = null;
 
   sortedKeys.forEach(roundKey => {
     html += `<div class="ko-admin-round">`;
     html += `<div class="ko-admin-round-header">${koRoundLabel(roundKey)}</div>`;
 
-    rounds[roundKey].forEach(m => {
+    const normalMatches = rounds[roundKey].filter(m => !m.is_third_place);
+    const tpInRound = rounds[roundKey].find(m => m.is_third_place);
+    if (tpInRound) thirdPlaceMatch = tpInRound;
+
+    normalMatches.forEach(m => {
       if (m.is_bye) {
         const teamName = m.home_team ? m.home_team.name : '?';
         html += `<div class="ko-admin-match bye">
@@ -379,6 +385,71 @@ function renderKOBracket() {
 
     html += '</div>';
   });
+
+  if (thirdPlaceMatch) {
+    const m = thirdPlaceMatch;
+    const homeName = m.home_team ? m.home_team.name : '?';
+    const awayName = m.away_team ? m.away_team.name : '?';
+    const hasResult = m.home_goals !== null && m.away_goals !== null;
+    const hasBothTeams = m.home_team && m.away_team;
+    const statusClass = hasResult ? 'played' : 'pending';
+
+    html += `<div class="ko-admin-round ko-admin-third-place">`;
+    html += `<div class="ko-admin-round-header">Spiel um Platz 3</div>`;
+
+    if (!m.home_team && !m.away_team) {
+      const availableTeams = koSeasonTeams.filter(t => !assignedTeamIds.has(t.id));
+      const opts = availableTeams.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+      html += `<div class="ko-admin-match pending" style="opacity:.5">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span>? vs ?</span>
+          <span style="font-size:.7rem;color:var(--text-muted)">ID: ${m.match_id}</span>
+        </div>
+        <div style="margin-top:.5rem;font-size:.8rem">
+          <div style="display:flex;gap:.25rem;align-items:center;margin-bottom:.25rem">
+            <span style="width:35px">Heim:</span>
+            <select id="ko-set-home-${m.match_id}" style="flex:1;font-size:.8rem"><option value="">Wählen...</option>${opts}</select>
+            <button class="btn btn-sm btn-secondary" onclick="setKOTeam(${m.match_id},'home')">Setzen</button>
+          </div>
+          <div style="display:flex;gap:.25rem;align-items:center">
+            <span style="width:35px">Gast:</span>
+            <select id="ko-set-away-${m.match_id}" style="flex:1;font-size:.8rem"><option value="">Wählen...</option>${opts}</select>
+            <button class="btn btn-sm btn-secondary" onclick="setKOTeam(${m.match_id},'away')">Setzen</button>
+          </div>
+        </div>
+      </div>`;
+    } else {
+      html += `<div class="ko-admin-match ${statusClass}">`;
+      html += `<div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <strong>${homeName}</strong> vs <strong>${awayName}</strong>
+          ${hasResult ? `<span style="margin-left:.5rem;font-weight:700">${m.home_goals}:${m.away_goals}</span>` : ''}
+          ${m.winner_id ? `<span style="font-size:.7rem;color:var(--success);margin-left:.25rem">✓</span>` : ''}
+        </div>
+        <div style="display:flex;gap:.25rem;align-items:center">
+          <span style="font-size:.7rem;color:var(--text-muted)">ID: ${m.match_id}</span>
+          ${hasBothTeams ? `<button class="btn btn-sm btn-secondary" onclick="editKOMatch(${m.match_id})">Bearbeiten</button>` : ''}
+        </div>
+      </div>`;
+
+      if (!m.home_team || !m.away_team) {
+        const availableTeams = koSeasonTeams.filter(t => !assignedTeamIds.has(t.id));
+        const opts = availableTeams.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+        const missingSlot = !m.home_team ? 'home' : 'away';
+        const label = missingSlot === 'home' ? 'Heim' : 'Gast';
+        html += `<div style="margin-top:.5rem;display:flex;gap:.25rem;align-items:center;font-size:.8rem">
+          <span>${label}:</span>
+          <select id="ko-set-${missingSlot}-${m.match_id}" style="flex:1;font-size:.8rem"><option value="">Wählen...</option>${opts}</select>
+          <button class="btn btn-sm btn-secondary" onclick="setKOTeam(${m.match_id},'${missingSlot}')">Setzen</button>
+        </div>`;
+      }
+
+      html += `<div id="ko-edit-${m.match_id}"></div>`;
+      html += '</div>';
+    }
+
+    html += `</div>`;
+  }
 
   html += '</div>';
   contentDiv.innerHTML = html;
