@@ -74,6 +74,8 @@
     .ko-match::after{content:"";position:absolute;right:-1rem;top:50%;width:1rem;height:1px;background:var(--border)}
     .ko-round:last-child .ko-match::after{display:none}
     .ko-empty{text-align:center;padding:2rem;color:var(--muted)}
+    .ko-third-place{border-left:2px dashed var(--border);padding-left:1.5rem}
+    .ko-third-place .ko-round-header{background:color-mix(in srgb,var(--primary) 10%,var(--card));font-style:italic}
 
     /* Dark mode toggle */
     .dark-mode-toggle{appearance:none;cursor:pointer;width:50px;height:28px;background:var(--border);border:none;border-radius:14px;position:relative;transition:background .3s}
@@ -265,12 +267,30 @@ function renderBracket(bracketData) {
     header.textContent = roundLabel(key);
     col.appendChild(header);
 
-    rounds[key].forEach(m => {
+    const normalMatches = rounds[key].filter(m => !m.is_third_place);
+    normalMatches.forEach(m => {
       col.appendChild(renderMatch(m));
     });
 
     container.appendChild(col);
   });
+
+  // Spiel um Platz 3 als eigene Spalte nach dem Finale
+  const finaleKey = sortedKeys[sortedKeys.length - 1];
+  const thirdPlace = rounds[finaleKey]?.find(m => m.is_third_place);
+
+  if (thirdPlace) {
+    const tpCol = document.createElement('div');
+    tpCol.className = 'ko-round ko-third-place';
+
+    const tpHeader = document.createElement('div');
+    tpHeader.className = 'ko-round-header';
+    tpHeader.textContent = 'Spiel um Platz 3';
+    tpCol.appendChild(tpHeader);
+
+    tpCol.appendChild(renderMatch(thirdPlace));
+    container.appendChild(tpCol);
+  }
 
   return container;
 }

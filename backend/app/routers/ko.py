@@ -331,6 +331,7 @@ def get_season_ko_brackets(season_id: int, db: Session = Depends(get_db)):
                 "away_goals": match.away_goals,
                 "winner_id": winner_id,
                 "is_bye": match.is_bye == 1,
+                "is_third_place": match.is_third_place == 1,
                 "status": match.status
             })
 

@@ -349,6 +349,7 @@ function renderCompactBracket(bracket) {
   });
 
   let html = '<div class="ko-bracket-compact">';
+  let thirdPlaceMatch = null;
 
   Object.keys(rounds).sort((a,b) => a-b).forEach(roundNum => {
     const roundLabel = roundName(parseInt(roundNum), bracket.total_rounds);
@@ -356,6 +357,10 @@ function renderCompactBracket(bracket) {
       <div class="ko-round-header-compact">${roundLabel}</div>`;
 
     rounds[roundNum].sort((a,b) => a.position - b.position).forEach(m => {
+      if (m.is_third_place) {
+        thirdPlaceMatch = m;
+        return;
+      }
       if (m.is_bye) {
         html += `<div class="ko-match-compact" style="opacity:.6">
           <div style="text-align:center;font-size:.75rem">${crestImg(m.home_team_id)}${teamName(m.home_team_id)} – Freilos</div>
@@ -383,6 +388,28 @@ function renderCompactBracket(bracket) {
 
     html += '</div>';
   });
+
+  // Spiel um Platz 3
+  if (thirdPlaceMatch) {
+    const m = thirdPlaceMatch;
+    const hasResult = m.home_goals !== null && m.away_goals !== null;
+    const homeWin = hasResult && m.home_goals > m.away_goals;
+    const awayWin = hasResult && m.away_goals > m.home_goals;
+    const cls = m.status === 'played' ? 'played' : '';
+    html += `<div class="ko-round-compact" style="border-left:2px dashed var(--border);padding-left:1rem">
+      <div class="ko-round-header-compact" style="font-style:italic">Platz 3</div>
+      <div class="ko-match-compact ${cls}">
+        <div class="ko-team-compact ${homeWin ? 'winner' : ''}">
+          <span>${m.home_team_id ? crestImg(m.home_team_id) + teamName(m.home_team_id) : '?'}</span>
+          <span>${hasResult ? m.home_goals : ''}</span>
+        </div>
+        <div class="ko-team-compact ${awayWin ? 'winner' : ''}">
+          <span>${m.away_team_id ? crestImg(m.away_team_id) + teamName(m.away_team_id) : '?'}</span>
+          <span>${hasResult ? m.away_goals : ''}</span>
+        </div>
+      </div>
+    </div>`;
+  }
 
   html += '</div>';
   return html;
