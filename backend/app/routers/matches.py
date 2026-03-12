@@ -130,6 +130,19 @@ def import_matches(items: list[schemas.MatchImportItem], db: Session = Depends(g
                         if next_match.home_team_id and next_match.away_team_id:
                             next_match.status = "scheduled"
 
+                # Verlierer-Weiterleitung ins Platz-3-Spiel
+                if ko_match.loser_next_match_id:
+                    loser_id = ko_match.away_team_id if winner_id == ko_match.home_team_id else ko_match.home_team_id
+                    if loser_id:
+                        third_place_match = db.get(models.KOMatch, ko_match.loser_next_match_id)
+                        if third_place_match:
+                            if ko_match.loser_next_match_slot == "home":
+                                third_place_match.home_team_id = loser_id
+                            else:
+                                third_place_match.away_team_id = loser_id
+                            if third_place_match.home_team_id and third_place_match.away_team_id:
+                                third_place_match.status = "scheduled"
+
             imported += 1
             if ko_swapped:
                 swapped += 1
