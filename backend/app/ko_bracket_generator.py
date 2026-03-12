@@ -493,6 +493,27 @@ def generate_rounds(
         match.away_team_id = away_id
         match.status = "scheduled"  # Alle sind echte Spiele (keine Freilose)
 
+    # --- Spiel um Platz 3 ---
+    if total_rounds >= 2:
+        third_place_match = models.KOMatch(
+            season_id=season_id,
+            bracket_type=bracket_type,
+            round=total_rounds,
+            position=2,
+            is_third_place=1,
+            status="pending"
+        )
+        db.add(third_place_match)
+        db.flush()
+
+        # Halbfinal-Matches mit Verlierer-Weiterleitung verknüpfen
+        semi_finals = [m for m in all_matches if m.round == total_rounds - 1]
+        for sf in semi_finals:
+            sf.loser_next_match_id = third_place_match.id
+            sf.loser_next_match_slot = "home" if sf.position % 2 == 1 else "away"
+
+        all_matches.append(third_place_match)
+
     return all_matches
 
 
