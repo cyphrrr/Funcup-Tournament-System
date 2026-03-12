@@ -186,7 +186,8 @@ tr.row-inactive td:first-child   { border-left:3px solid #d1d5db; }
         <a href="#teams" data-section="teams">👥 Teams</a>
         <a href="#seasons" data-section="seasons">📅 Saisons</a>
         <a href="#news" data-section="news">📰 News</a>
-        <a href="#saison-setup" data-section="saison-setup" style="margin-top:.75rem;border-top:1px solid rgba(255,255,255,.1);padding-top:.75rem">🏆 Saison-Setup</a>
+        <a href="#design" data-section="design" style="margin-top:.75rem;border-top:1px solid rgba(255,255,255,.1);padding-top:.75rem">🎨 Design</a>
+        <a href="#saison-setup" data-section="saison-setup">🏆 Saison-Setup</a>
       </nav>
       <div style="position:absolute;bottom:1rem;left:1rem;right:1rem;font-size:.7rem;color:var(--text-muted);opacity:.5" id="admin-version"></div>
       <div style="position:absolute;bottom:1rem;left:1rem;right:1rem">
@@ -596,6 +597,24 @@ tr.row-inactive td:first-child   { border-left:3px solid #d1d5db; }
         </div>
       </div>
 
+      <!-- ========== DESIGN ========== -->
+      <div id="design" class="section">
+        <h1>🎨 Design-Einstellungen</h1>
+        <div class="card">
+          <h2>Hintergrundbild</h2>
+          <p style="color:var(--text-muted);font-size:.85rem;margin-bottom:1rem">Lade ein Foto hoch, das als Hintergrund auf allen öffentlichen Seiten angezeigt wird. Das Standard-Logo-Pattern wird ersetzt, wenn ein Bild aktiv ist.</p>
+          <div id="bg-upload-area" style="border:2px dashed var(--border-dark);border-radius:12px;padding:2rem;text-align:center;cursor:pointer;background:var(--bg-elevated);transition:border-color .2s,background .2s;margin-bottom:1.5rem">
+            <div style="font-size:2rem;margin-bottom:.5rem">📷</div>
+            <div style="color:var(--text-muted);font-size:.9rem">Bild hierher ziehen oder klicken zum Auswählen</div>
+            <div style="color:var(--text-muted);font-size:.75rem;margin-top:.25rem">JPG, PNG, WebP — max. 10 MB</div>
+            <input type="file" id="bg-file-input" accept="image/jpeg,image/png,image/webp" style="display:none">
+          </div>
+          <div id="bg-gallery" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:1rem">
+            <em style="color:var(--text-muted)">Lade...</em>
+          </div>
+        </div>
+      </div>
+
       <!-- ========== SAISON-SETUP ========== -->
       <div id="saison-setup" class="section">
         <h1>🏆 Saison-Setup</h1>
@@ -836,6 +855,7 @@ const API_URL = (() => {
 <script src="js/admin/ko-phase.js"></script>
 <script src="js/admin/anmeldungen.js"></script>
 <script src="js/admin/discord.js"></script>
+<script src="js/admin/design.js"></script>
 <script src="js/init.js"></script>
 </body>
 </html>

@@ -29,7 +29,8 @@ CREST_MAX_HEIGHT = int(os.getenv("CREST_MAX_HEIGHT", 512))
 def validate_image_file(
     filename: str,
     content_type: str,
-    file_size: int
+    file_size: int,
+    max_file_size: int | None = None
 ) -> Tuple[bool, str]:
     """
     Validiert hochgeladene Bilddatei.
@@ -58,8 +59,9 @@ def validate_image_file(
         )
 
     # Dateigröße prüfen
-    if file_size > MAX_FILE_SIZE:
-        max_mb = MAX_FILE_SIZE / (1024 * 1024)
+    limit = max_file_size if max_file_size is not None else MAX_FILE_SIZE
+    if file_size > limit:
+        max_mb = limit / (1024 * 1024)
         current_mb = file_size / (1024 * 1024)
         return False, (
             f"Datei zu groß: {current_mb:.2f}MB. "
@@ -169,6 +171,45 @@ def _fix_image_orientation(image: Image.Image) -> Image.Image:
         logger.warning(f"Konnte EXIF Orientation nicht korrigieren: {e}")
 
     return image
+
+
+async def process_background_image(
+    file_content: bytes,
+    max_width: int = 2560,
+    max_height: int = 1440
+) -> bytes:
+    """
+    Verarbeitet hochgeladenes Hintergrundbild:
+    - Resized auf max 2560x1440 (Aspect Ratio erhalten)
+    - Konvertiert zu WebP quality 85
+    - EXIF Orientation korrigieren
+    """
+    try:
+        image = Image.open(io.BytesIO(file_content))
+        image.verify()
+        image = Image.open(io.BytesIO(file_content))
+        image = _fix_image_orientation(image)
+
+        if image.mode not in ("RGB", "RGBA"):
+            image = image.convert("RGB")
+        elif image.mode == "RGBA":
+            # Backgrounds sollten kein Alpha haben
+            image = image.convert("RGB")
+
+        image.thumbnail((max_width, max_height), Image.Resampling.LANCZOS)
+
+        logger.info(
+            f"Background verarbeitet: {image.size[0]}x{image.size[1]}px, Mode: {image.mode}"
+        )
+
+        output = io.BytesIO()
+        image.save(output, format="WEBP", quality=85, method=6)
+        output.seek(0)
+        return output.read()
+
+    except Exception as e:
+        logger.error(f"Fehler bei Background-Verarbeitung: {e}")
+        raise ValueError(f"Ungültiges Bild oder Fehler bei Verarbeitung: {str(e)}")
 
 
 def get_file_extension(filename: str) -> str:

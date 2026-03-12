@@ -11,6 +11,7 @@ from .oauth import router as oauth_router
 from .uploads import router as uploads_router
 from .tracking import router as tracking_router
 from .version import router as version_router
+from .backgrounds import router as backgrounds_router
 from ..services.standings import router as standings_router
 
 router = APIRouter()
@@ -31,3 +32,4 @@ router.include_router(uploads_router)
 router.include_router(tracking_router)
 router.include_router(version_router)
 router.include_router(standings_router)
+router.include_router(backgrounds_router)

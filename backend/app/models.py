@@ -161,6 +161,17 @@ class UserProfile(Base):
     team = relationship("Team", backref="user_profile", foreign_keys=[team_id])
 
 
+class Background(Base):
+    """Hintergrundbilder für öffentliche Seiten."""
+    __tablename__ = "backgrounds"
+    id = Column(Integer, primary_key=True, index=True)
+    filename = Column(String, nullable=False, unique=True)
+    original_name = Column(String, nullable=False)
+    is_active = Column(Integer, default=0)
+    opacity = Column(Integer, default=15)
+    uploaded_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
 class PageView(Base):
     __tablename__ = "page_views"
     id = Column(Integer, primary_key=True, index=True)

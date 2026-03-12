@@ -420,3 +420,42 @@ class MatchImportResponse(BaseModel):
     skipped: int
     swapped: int
     errors: list[MatchImportError]
+
+
+# ============================================================
+# Background Schemas
+# ============================================================
+
+class BackgroundRead(BaseModel):
+    id: int
+    filename: str
+    original_name: str
+    is_active: int
+    opacity: int
+    uploaded_at: datetime
+    url: str
+
+    class Config:
+        from_attributes = True
+
+
+class BackgroundUploadResponse(BaseModel):
+    id: int
+    filename: str
+    original_name: str
+    url: str
+    message: str = "Hintergrundbild erfolgreich hochgeladen"
+
+
+class BackgroundDeleteResponse(BaseModel):
+    message: str = "Hintergrundbild erfolgreich gelöscht"
+
+
+class BackgroundActivateResponse(BaseModel):
+    id: int
+    is_active: int
+    message: str
+
+
+class BackgroundOpacityUpdate(BaseModel):
+    opacity: int = Field(..., ge=0, le=100)

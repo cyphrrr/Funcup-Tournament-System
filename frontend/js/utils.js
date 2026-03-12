@@ -42,5 +42,6 @@ function showSection(name) {
     loadMatchInserterSeasons();
   }
   if (name === 'ko-phase') loadKOSeasons();
+  if (name === 'design') loadBackgrounds();
   if (name === 'saison-setup') initSaisonSetup();
 }
