@@ -207,9 +207,9 @@ async function renderMatchesBlock(matchIds, isKO = false) {
 
       html += `
         <tr>
-          <td style="text-align:right;padding:.4rem"><span style="display:inline-flex;align-items:center;justify-content:flex-end">${homeTeam}${crestImg(m.home_team_id)}</span></td>
+          <td style="text-align:right;padding:.4rem;width:calc(50% - 30px)"><span style="display:inline-flex;align-items:center;justify-content:flex-end">${homeTeam}${crestImg(m.home_team_id)}</span></td>
           <td style="text-align:center;padding:.4rem;width:60px">${score}</td>
-          <td style="text-align:left;padding:.4rem"><span style="display:inline-flex;align-items:center">${crestImg(m.away_team_id)}${awayTeam}</span></td>
+          <td style="text-align:left;padding:.4rem;width:calc(50% - 30px)"><span style="display:inline-flex;align-items:center">${crestImg(m.away_team_id)}${awayTeam}</span></td>
         </tr>`;
     });
 
