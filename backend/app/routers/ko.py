@@ -194,7 +194,7 @@ def get_ko_matches_batch(match_ids: str, db: Session = Depends(get_db)):
 
     matches = db.query(models.KOMatch).filter(
         models.KOMatch.id.in_(ids),
-        models.KOMatch.is_bye == False
+        models.KOMatch.is_bye == 0
     ).all()
 
     result = []
