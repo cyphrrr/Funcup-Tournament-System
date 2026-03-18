@@ -56,10 +56,6 @@
     td{padding:.5rem .6rem;border-bottom:1px solid var(--border);text-align:center}
     tr.leader{font-weight:700;color:var(--primary)}
 
-    /* Two-column layout for start page */
-    .start-grid{display:grid;grid-template-columns:2fr 1fr;gap:2rem;align-items:start}
-    @media(max-width:768px){.start-grid{grid-template-columns:1fr}}
-
     /* Compact standings */
     .compact-standings{background:linear-gradient(145deg,var(--card) 0%,var(--card-alt) 100%);border:1px solid var(--border);border-radius:12px;padding:1rem;margin-bottom:1rem;font-size:.85rem;box-shadow:0 2px 8px rgba(0,0,0,.04),inset 0 1px 0 color-mix(in srgb,var(--primary) 12%,transparent)}
     .compact-standings h3{margin:0 0 .75rem;font-size:.95rem;font-weight:600}
@@ -88,6 +84,61 @@
     tr:hover td{background:color-mix(in srgb,var(--primary) 8%,transparent)}
     tr.leader td{background:color-mix(in srgb,var(--primary) 6%,transparent)}
     .card h2{padding-bottom:.5rem;border-bottom:2px solid color-mix(in srgb,var(--primary) 40%,transparent);margin-bottom:1rem}
+
+    /* Hero Dashboard Bar */
+    .hero-bar{background:linear-gradient(135deg,var(--card) 0%,var(--card-alt) 100%);border-bottom:1px solid var(--border);padding:1rem 2rem}
+    .hero-bar-inner{max-width:1200px;margin:0 auto;display:flex;gap:1rem;align-items:center;flex-wrap:wrap}
+    .hero-stat{background:var(--card-alt);border:1px solid var(--border);border-radius:8px;padding:.5rem 1rem;text-align:center;flex:1;min-width:100px}
+    .hero-stat .hero-label{font-size:.7rem;text-transform:uppercase;color:var(--muted);letter-spacing:0.05em;margin-bottom:2px}
+    .hero-stat .hero-value{font-family:'Outfit',sans-serif;font-size:1rem;font-weight:700;color:var(--primary)}
+    .hero-stat .hero-value.neutral{color:var(--text)}
+    .hero-stat-divider{width:1px;height:2rem;background:var(--border);flex-shrink:0}
+    .phase-badge{display:inline-block;font-size:.7rem;font-weight:700;padding:2px 8px;border-radius:4px;text-transform:uppercase;letter-spacing:0.04em}
+    .phase-badge.group{background:color-mix(in srgb,var(--success) 15%,transparent);color:var(--success);border:1px solid var(--success)}
+    .phase-badge.ko{background:color-mix(in srgb,var(--danger) 15%,transparent);color:var(--danger);border:1px solid var(--danger)}
+    @media(max-width:768px){.hero-bar-inner{display:grid;grid-template-columns:1fr 1fr;gap:.5rem}.hero-stat-divider{display:none}}
+
+    /* Tabs */
+    .tab-bar{display:flex;gap:4px;margin-bottom:0}
+    .tab-btn{padding:.5rem 1rem;border:1px solid var(--border);border-bottom:none;border-radius:8px 8px 0 0;background:var(--card);color:var(--muted);font-family:'DM Sans',sans-serif;font-size:.85rem;font-weight:500;cursor:pointer;transition:all .2s}
+    .tab-btn:hover{color:var(--text);background:var(--card-alt)}
+    .tab-btn.active{color:var(--primary);font-weight:700;background:var(--card-alt);border-color:var(--primary);border-bottom:2px solid var(--card-alt);position:relative;z-index:1;margin-bottom:-1px}
+    .tab-content{background:linear-gradient(145deg,var(--card) 0%,var(--card-alt) 100%);border:1px solid var(--border);border-top-color:var(--primary);border-radius:0 8px 8px 8px;padding:1.25rem 1.5rem;min-height:200px}
+    .tab-panel{display:none}
+    .tab-panel.active{display:block}
+
+    /* Accordion */
+    .accordion-toggle{display:flex;align-items:center;gap:.5rem;padding:.6rem 0;border:none;background:none;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:.8rem;font-weight:600;cursor:pointer;width:100%;text-align:left;border-top:1px solid var(--border);margin-top:.5rem}
+    .accordion-toggle:hover{color:var(--text)}
+    .accordion-toggle .arrow{transition:transform .2s;font-size:.7rem}
+    .accordion-toggle.open .arrow{transform:rotate(90deg)}
+    .accordion-body{display:none}
+    .accordion-body.open{display:block}
+
+    /* Match rows */
+    .match-row{display:flex;align-items:center;padding:.5rem 0;border-bottom:1px solid var(--border)}
+    .match-row:last-child{border-bottom:none}
+    .match-team{flex:1;font-size:.85rem;font-weight:500;display:inline-flex;align-items:center}
+    .match-team.home{justify-content:flex-end;text-align:right}
+    .match-team.away{justify-content:flex-start;text-align:left}
+    .match-score-center{margin:0 .5rem;min-width:50px;text-align:center}
+    .matchday-label{font-size:.75rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:.5rem;margin-top:.25rem}
+
+    /* Content grid (tabs + sidebar) */
+    .content-grid{display:grid;grid-template-columns:2fr 1fr;gap:1.5rem;align-items:start}
+    @media(max-width:768px){.content-grid{grid-template-columns:1fr}}
+
+    /* Mini KO Bracket (sidebar) */
+    .mini-bracket{margin-top:.5rem}
+    .mini-bracket-round{display:flex;gap:.75rem;align-items:center;margin-bottom:.5rem}
+    .mini-match-card{background:var(--card);border:1px solid var(--border);border-radius:6px;padding:.4rem .6rem;font-size:.75rem;min-width:100px;flex:1}
+    .mini-match-card .mini-team-row{display:flex;justify-content:space-between;padding:2px 0}
+    .mini-match-card .mini-team-row.winner{color:var(--primary);font-weight:700}
+    .mini-connector{color:var(--muted);font-size:.9rem;flex-shrink:0}
+    .bracket-label{font-size:.8rem;font-weight:700;color:var(--primary);margin:1rem 0 .25rem;font-family:'Outfit',sans-serif}
+    .bracket-label:first-child{margin-top:0}
+    .bracket-link{display:block;text-align:center;margin-top:.75rem;font-size:.8rem;color:var(--primary);text-decoration:none}
+    .bracket-link:hover{text-decoration:underline}
   </style>
 </head>
 <body>
@@ -128,26 +179,50 @@
     </ul>
   </nav>
 
-  <main>
-    <section id="start">
-      <div class="start-grid">
-        <!-- News Spalte (2/3) -->
-        <div id="start-news-container">
-          <div class="card">
-            <h2 style="margin-top:0">Aktuelle News</h2>
-            <div id="start-news"><em>Lade News...</em></div>
-          </div>
-        </div>
+  <!-- Hero Dashboard Bar -->
+  <div class="hero-bar">
+    <div class="hero-bar-inner">
+      <div class="hero-stat">
+        <div class="hero-label">Saison</div>
+        <div class="hero-value neutral" id="hero-season">...</div>
+      </div>
+      <div class="hero-stat-divider"></div>
+      <div class="hero-stat">
+        <div class="hero-label">Phase</div>
+        <div class="hero-value" id="hero-phase">...</div>
+      </div>
+      <div class="hero-stat-divider"></div>
+      <div class="hero-stat">
+        <div class="hero-label" id="hero-matchday-label">Spieltag</div>
+        <div class="hero-value" id="hero-matchday">...</div>
+      </div>
+      <div class="hero-stat-divider"></div>
+      <div class="hero-stat">
+        <div class="hero-label" id="hero-teams-label">Teams</div>
+        <div class="hero-value neutral" id="hero-teams">...</div>
+      </div>
+    </div>
+  </div>
 
-        <!-- Tabellen Spalte (1/3) -->
-        <div>
-          <div class="card">
-            <h2 style="margin-top:0">Tabellen</h2>
-            <div id="start-standings"><em>Lade Tabellen...</em></div>
-          </div>
+  <main>
+    <div class="content-grid">
+      <!-- Tabs (2/3) -->
+      <div>
+        <div class="tab-bar" id="tab-bar">
+          <button class="tab-btn active" data-tab="ergebnisse">Ergebnisse</button>
+          <button class="tab-btn" data-tab="news">News</button>
+        </div>
+        <div class="tab-content">
+          <div class="tab-panel active" id="panel-ergebnisse"><em>Lade Ergebnisse...</em></div>
+          <div class="tab-panel" id="panel-news"><em>Lade News...</em></div>
         </div>
       </div>
-    </section>
+
+      <!-- Sidebar (1/3) -->
+      <div id="sidebar">
+        <div id="sidebar-content"><em>Lade Tabellen...</em></div>
+      </div>
+    </div>
   </main>
 
 <script type="module">
