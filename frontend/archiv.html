@@ -208,7 +208,7 @@ async function loadSeasonDetails(seasonId) {
         const standings = await fetch(`${API}/api/groups/${g.group.id}/standings`).then(r => r.json());
 
         if (standings.length > 0) {
-          html += '<table class="compact-table"><thead><tr><th>#</th><th style="text-align:left">Team</th><th>Sp</th><th>S</th><th>U</th><th>N</th><th>T+</th><th>T-</th><th>Pkt</th></tr></thead><tbody>';
+          html += '<div style="overflow-x:auto"><table class="compact-table"><thead><tr><th>#</th><th style="text-align:left">Team</th><th>Sp</th><th>S</th><th>U</th><th>N</th><th>T+</th><th>T-</th><th>Pkt</th></tr></thead><tbody>';
 
           standings.forEach((row, idx) => {
             const cls = idx === 0 ? 'class="leader"' : '';
@@ -225,7 +225,7 @@ async function loadSeasonDetails(seasonId) {
             </tr>`;
           });
 
-          html += '</tbody></table>';
+          html += '</tbody></table></div>';
         } else {
           html += '<p style="color:var(--muted);font-size:.85rem;margin-top:.5rem">Noch keine Spiele ausgetragen</p>';
         }

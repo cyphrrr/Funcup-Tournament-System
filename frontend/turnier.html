@@ -191,7 +191,10 @@ async function loadSeason(season, clickedElement) {
         tr.insertCell().textContent = row.goals_against;
         tr.insertCell().textContent = row.points;
       });
-      card.appendChild(tbl);
+      const scrollWrap = document.createElement('div');
+      scrollWrap.style.overflowX = 'auto';
+      scrollWrap.appendChild(tbl);
+      card.appendChild(scrollWrap);
     }
 
     // Matches anzeigen

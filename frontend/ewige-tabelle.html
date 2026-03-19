@@ -103,7 +103,7 @@ async function loadAllTimeStandings() {
     }
 
     let html = `
-      <table>
+      <div style="overflow-x:auto"><table>
         <thead>
           <tr>
             <th>#</th>
@@ -147,7 +147,7 @@ async function loadAllTimeStandings() {
       `;
     });
 
-    html += '</tbody></table>';
+    html += '</tbody></table></div>';
     container.innerHTML = html;
   } catch (e) {
     container.innerHTML = '<div class="loading" style="color:var(--danger)">Fehler beim Laden der Daten</div>';
