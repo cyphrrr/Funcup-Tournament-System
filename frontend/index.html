@@ -130,7 +130,6 @@
 
     /* Mini KO Bracket (sidebar) */
     .mini-bracket{margin-top:.5rem}
-    .mini-bracket-round{display:flex;gap:.75rem;align-items:center;margin-bottom:.5rem}
     .mini-match-card{background:var(--card);border:1px solid var(--border);border-radius:6px;padding:.4rem .6rem;font-size:.75rem;min-width:100px;flex:1}
     .mini-match-card .mini-team-row{display:flex;justify-content:space-between;padding:2px 0}
     .mini-match-card .mini-team-row.winner{color:var(--primary);font-weight:700}
@@ -228,6 +227,9 @@
 <script type="module">
 import { API_URL } from './js/config.js';
 const API = API_URL;
+
+// --- Constants ---
+const BRACKET_LABELS = { meister: 'Meister-Bracket', lucky_loser: 'Lucky Loser', loser: 'Trostpflaster' };
 
 // --- State ---
 let teamCache = {};
@@ -490,7 +492,7 @@ function renderKOErgebnisse() {
 
   cacheKOTeamNames();
 
-  const bracketLabels = { meister: 'Meister-Bracket', lucky_loser: 'Lucky Loser', loser: 'Trostpflaster' };
+  const bracketLabels = BRACKET_LABELS;
   let html = '';
 
   for (const [bracketType, bracket] of Object.entries(koBrackets)) {
@@ -672,7 +674,7 @@ function renderMiniBracket() {
 
   cacheKOTeamNames();
 
-  const bracketLabels = { meister: 'Meister-Bracket', lucky_loser: 'Lucky Loser', loser: 'Trostpflaster' };
+  const bracketLabels = BRACKET_LABELS;
   let html = '';
 
   for (const [bracketType, bracket] of Object.entries(koBrackets)) {
@@ -736,21 +738,30 @@ function renderMiniBracket() {
     return;
   }
 
-  await Promise.all([
+  // Load data in parallel — individual failures don't block other sections
+  const results = await Promise.allSettled([
     loadGroupsAndTeams(activeSeason.id),
     loadCrests(),
     detectKOPhase(activeSeason.id).then(result => { isKOPhase = result; })
   ]);
 
+  if (results[0].status === 'rejected') {
+    console.error('Failed to load groups/teams:', results[0].reason);
+    document.getElementById('panel-ergebnisse').innerHTML = '<p style="color:var(--danger)">Fehler beim Laden</p>';
+    document.getElementById('sidebar-content').innerHTML = '<p style="color:var(--danger)">Fehler beim Laden</p>';
+  }
+
   renderHero();
   initTabs();
 
-  if (isKOPhase) {
-    renderKOErgebnisse();
-    renderMiniBracket();
-  } else {
-    renderGroupErgebnisse();
-    renderGroupStandings();
+  if (results[0].status === 'fulfilled') {
+    if (isKOPhase) {
+      renderKOErgebnisse();
+      renderMiniBracket();
+    } else {
+      renderGroupErgebnisse();
+      renderGroupStandings();
+    }
   }
 
   loadNews();
