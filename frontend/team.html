@@ -103,48 +103,12 @@
 
 <script type="module">
 import { API_URL } from './js/config.js';
+import { initBurgerMenu, initAdminLink, initBackendStatus } from './js/shared-ui.js';
 const API = API_URL;
 
-// Auth check
-if (localStorage.getItem('biw_token')) {
-  document.getElementById('admin-link').style.display = 'block';
-}
-
-// Burger Menu
-const burgerBtn = document.getElementById('burger-btn');
-const navMenu = document.getElementById('nav-menu');
-const menuOverlay = document.getElementById('menu-overlay');
-
-function toggleMenu() {
-  burgerBtn.classList.toggle('open');
-  navMenu.classList.toggle('open');
-  menuOverlay.classList.toggle('open');
-}
-
-burgerBtn.addEventListener('click', toggleMenu);
-menuOverlay.addEventListener('click', toggleMenu);
-
-navMenu.querySelectorAll('a').forEach(link => {
-  link.addEventListener('click', () => {
-    if (navMenu.classList.contains('open')) toggleMenu();
-  });
-});
-
-// Backend Status Monitor
-function updateBackendStatus() {
-  const statusDot = document.getElementById("backend-status-dot");
-  const statusText = document.getElementById("backend-status-text");
-  if (!statusDot || !statusText) return;
-  fetch(`${API}/api/seasons`).then(r => {
-    statusDot.className = r.ok ? "status-dot online" : "status-dot offline";
-    statusText.textContent = r.ok ? "Backend verbunden" : "Backend getrennt";
-  }).catch(() => {
-    statusDot.className = "status-dot offline";
-    statusText.textContent = "Backend getrennt";
-  });
-}
-updateBackendStatus();
-setInterval(updateBackendStatus, 30000);
+initBurgerMenu();
+initAdminLink();
+initBackendStatus();
 
 // Get team ID from URL
 const urlParams = new URLSearchParams(window.location.search);

@@ -225,6 +225,7 @@
 
 <script type="module">
 import { API_URL } from './js/config.js';
+import { initBurgerMenu, initAdminLink, initBackendStatus } from './js/shared-ui.js';
 const API = API_URL;
 
 // ── State ──
@@ -532,41 +533,9 @@ async function init() {
 init();
 
 // ── Shared UI ──
-
-if (localStorage.getItem('biw_token')) {
-  document.getElementById('admin-link').style.display = 'block';
-}
-
-const burgerBtn = document.getElementById('burger-btn');
-const navMenu = document.getElementById('nav-menu');
-const menuOverlay = document.getElementById('menu-overlay');
-
-function toggleMenu() {
-  burgerBtn.classList.toggle('open');
-  navMenu.classList.toggle('open');
-  menuOverlay.classList.toggle('open');
-}
-
-burgerBtn.addEventListener('click', toggleMenu);
-menuOverlay.addEventListener('click', toggleMenu);
-
-navMenu.querySelectorAll('a').forEach(link => {
-  link.addEventListener('click', () => {
-    if (navMenu.classList.contains('open')) toggleMenu();
-  });
-});
-
-function updateBackendStatus() {
-  const dot = document.getElementById('backend-status-dot');
-  const txt = document.getElementById('backend-status-text');
-  if (!dot || !txt) return;
-  fetch(`${API}/api/seasons`).then(r => {
-    if (r.ok) { dot.className = 'status-dot online'; txt.textContent = 'Backend verbunden'; }
-    else throw new Error();
-  }).catch(() => { dot.className = 'status-dot offline'; txt.textContent = 'Backend getrennt'; });
-}
-updateBackendStatus();
-setInterval(updateBackendStatus, 30000);
+initBurgerMenu();
+initAdminLink();
+initBackendStatus();
 </script>
 
 <footer>
