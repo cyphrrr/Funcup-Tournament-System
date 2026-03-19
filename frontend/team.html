@@ -103,7 +103,7 @@
 
 <script type="module">
 import { API_URL } from './js/config.js';
-import { initBurgerMenu, initAdminLink, initBackendStatus } from './js/shared-ui.js';
+import { initBurgerMenu, initAdminLink, initBackendStatus, setBackendStatus } from './js/shared-ui.js';
 const API = API_URL;
 
 initBurgerMenu();
@@ -128,6 +128,7 @@ async function loadTeamProfile(teamId) {
       if (!r.ok) throw new Error('Team nicht gefunden');
       return r.json();
     });
+    setBackendStatus(true);
 
     const logoHTML = team.logo_url
       ? `<img src="${team.logo_url}" alt="${team.name} Logo">`
@@ -206,6 +207,7 @@ async function loadTeamProfile(teamId) {
 
     container.innerHTML = html;
   } catch (e) {
+    setBackendStatus(false);
     container.innerHTML = `<div class="empty-state" style="color:var(--danger)">Fehler: ${e.message}</div>`;
   }
 }

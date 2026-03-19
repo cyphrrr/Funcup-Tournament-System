@@ -164,7 +164,7 @@
 
 <script type="module">
 import { API_URL } from './js/config.js';
-import { initBurgerMenu, initAdminLink, initBackendStatus } from './js/shared-ui.js';
+import { initBurgerMenu, initAdminLink, initBackendStatus, setBackendStatus } from './js/shared-ui.js';
 import { loadCrests, crestImg, teamName, registerTeams, registerTeam } from './js/team-utils.js';
 const API = API_URL;
 
@@ -641,7 +641,9 @@ function renderMiniBracket() {
 (async () => {
   try {
     activeSeason = await resolveActiveSeason();
+    setBackendStatus(true);
   } catch (e) {
+    setBackendStatus(false);
     document.getElementById('hero-season').textContent = 'Fehler beim Laden';
     document.getElementById('panel-ergebnisse').innerHTML = '<p style="color:var(--danger)">Fehler beim Laden</p>';
     document.getElementById('sidebar-content').innerHTML = '<p style="color:var(--danger)">Fehler beim Laden</p>';

@@ -101,7 +101,7 @@
 
 <script type="module">
 import { API_URL } from './js/config.js';
-import { initBurgerMenu, initAdminLink } from './js/shared-ui.js';
+import { initBurgerMenu, initAdminLink, setBackendStatus } from './js/shared-ui.js';
 import { loadCrests, crestImg } from './js/team-utils.js';
 const API = API_URL;
 
@@ -311,6 +311,7 @@ async function loadKOBrackets(seasonId) {
 
 // Load seasons
 fetch(`${API}/api/seasons`).then(r => r.json()).then(seasons => {
+  setBackendStatus(true);
   seasonsDiv.innerHTML = '';
 
   // Sortiere nach ID absteigend (neueste zuerst), nur die 3 neuesten

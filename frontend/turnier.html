@@ -87,7 +87,7 @@
 
 <script type="module">
 import { API_URL } from './js/config.js';
-import { initBurgerMenu, initAdminLink } from './js/shared-ui.js';
+import { initBurgerMenu, initAdminLink, setBackendStatus } from './js/shared-ui.js';
 import { loadCrests, crestImg, teamName, registerTeams } from './js/team-utils.js';
 const API = API_URL;
 
@@ -277,6 +277,7 @@ async function loadSeason(season, clickedElement) {
 
 // Saisons laden
 fetch(`${API}/api/seasons`).then(r => r.json()).then(seasons => {
+  setBackendStatus(true);
   seasonsContainer.innerHTML = '';
 
   // Sortiere nach ID absteigend (neueste zuerst), nur die 3 neuesten anzeigen

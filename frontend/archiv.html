@@ -98,7 +98,7 @@
 
 <script type="module">
 import { API_URL } from './js/config.js';
-import { initBurgerMenu, initAdminLink } from './js/shared-ui.js';
+import { initBurgerMenu, initAdminLink, setBackendStatus } from './js/shared-ui.js';
 import { loadCrests, crestImg, teamName, registerTeams } from './js/team-utils.js';
 const API = API_URL;
 
@@ -422,6 +422,7 @@ async function loadSeasons() {
 
   try {
     const seasons = await fetch(`${API}/api/seasons`).then(r => r.json());
+    setBackendStatus(true);
 
     if (seasons.length === 0) {
       container.innerHTML = '<div class="empty-state">Noch keine Saisons vorhanden</div>';
@@ -462,6 +463,7 @@ async function loadSeasons() {
 
     container.innerHTML = html;
   } catch (e) {
+    setBackendStatus(false);
     container.innerHTML = `<div class="empty-state" style="color:var(--danger)">Fehler: ${e.message}</div>`;
   }
 }

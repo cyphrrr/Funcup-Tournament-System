@@ -26,21 +26,20 @@ export function initAdminLink() {
   }
 }
 
-export function initBackendStatus() {
+export function setBackendStatus(online) {
   const statusDot = document.getElementById('backend-status-dot');
   const statusText = document.getElementById('backend-status-text');
   if (!statusDot || !statusText) return;
+  statusDot.className = online ? 'status-dot online' : 'status-dot offline';
+  statusText.textContent = online ? 'Backend verbunden' : 'Backend getrennt';
+}
 
-  function update() {
-    fetch(`${API_URL}/api/seasons`).then(r => {
-      statusDot.className = r.ok ? 'status-dot online' : 'status-dot offline';
-      statusText.textContent = r.ok ? 'Backend verbunden' : 'Backend getrennt';
+export function initBackendStatus() {
+  setInterval(() => {
+    fetch(`${API_URL}/api/version`).then(r => {
+      setBackendStatus(r.ok);
     }).catch(() => {
-      statusDot.className = 'status-dot offline';
-      statusText.textContent = 'Backend getrennt';
+      setBackendStatus(false);
     });
-  }
-
-  update();
-  setInterval(update, 30000);
+  }, 30000);
 }

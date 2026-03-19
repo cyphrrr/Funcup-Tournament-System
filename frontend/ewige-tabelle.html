@@ -73,7 +73,7 @@
 
 <script type="module">
 import { API_URL } from './js/config.js';
-import { initBurgerMenu, initAdminLink } from './js/shared-ui.js';
+import { initBurgerMenu, initAdminLink, setBackendStatus } from './js/shared-ui.js';
 import { loadCrests, crestImg } from './js/team-utils.js';
 const API = API_URL;
 
@@ -87,6 +87,7 @@ async function loadAllTimeStandings() {
   try {
     await loadCrests();
     const standings = await fetch(`${API}/api/all-time-standings`).then(r => r.json());
+    setBackendStatus(true);
 
     if (standings.length === 0) {
       container.innerHTML = '<div class="loading"><em>Noch keine Spiele vorhanden</em></div>';
@@ -141,6 +142,7 @@ async function loadAllTimeStandings() {
     html += '</tbody></table></div>';
     container.innerHTML = html;
   } catch (e) {
+    setBackendStatus(false);
     container.innerHTML = '<div class="loading" style="color:var(--danger)">Fehler beim Laden der Daten</div>';
   }
 }

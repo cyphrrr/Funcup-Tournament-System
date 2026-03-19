@@ -225,7 +225,7 @@
 
 <script type="module">
 import { API_URL } from './js/config.js';
-import { initBurgerMenu, initAdminLink, initBackendStatus } from './js/shared-ui.js';
+import { initBurgerMenu, initAdminLink, initBackendStatus, setBackendStatus } from './js/shared-ui.js';
 const API = API_URL;
 
 // ── State ──
@@ -524,7 +524,12 @@ async function init() {
   const hasToken = initOAuth();
 
   if (hasToken) {
-    await loadProfile();
+    try {
+      await loadProfile();
+      setBackendStatus(true);
+    } catch (e) {
+      setBackendStatus(false);
+    }
   } else {
     showLogin();
   }
