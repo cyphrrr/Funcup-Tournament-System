@@ -1,6 +1,6 @@
 # CSS Consolidation Design Spec
 
-> Eliminiert ~490 Zeilen CSS-Duplication über 9 Public-Seiten durch Auslagerung in eine gemeinsame `shared.css`.
+> Eliminiert ~490 Zeilen CSS-Duplication über 10 Public-Seiten durch Auslagerung in eine gemeinsame `shared.css`.
 
 ## Entscheidungen
 
@@ -12,12 +12,14 @@
 
 ## Scope
 
-**In Scope:** 9 Public-Seiten (index, turnier, ko, dashboard, archiv, ewige-tabelle, team, regeln, datenschutz, impressum)
+**In Scope:** 10 Public-Seiten (index, turnier, ko, dashboard, archiv, ewige-tabelle, team, regeln, datenschutz, impressum)
 **Out of Scope:** admin.html (eigenes CSS-System, dark-only Theme)
+
+**Voraussetzung:** Verzeichnis `frontend/css/` muss erstellt werden.
 
 ## Neue Datei: `frontend/css/shared.css`
 
-Flache Datei, ~490 Zeilen, 8 Sektionen mit Kommentar-Headern:
+Flache Datei, 8 Sektionen mit Kommentar-Headern:
 
 ### Sektion 1 — Reset & Basis
 
@@ -34,7 +36,9 @@ a:hover{text-decoration:none;opacity:.8}
 h2{margin-bottom:1.5rem}
 ```
 
-**Hinweis:** `body::before` background-URL wird zu `url('../img/logo-bg.png')` (relativ von `css/` aus).
+**Hinweis `body::before`:** URL relativ von `css/` aus: `url('../img/logo-bg.png')`.
+
+**Hinweis `a`-Styles:** Bisher nur auf index.html und dashboard.html global gesetzt. Wird jetzt universell. Seiten die `text-decoration:none` brauchen (datenschutz, impressum, team) müssen inline überschreiben.
 
 ### Sektion 2 — Header
 
@@ -42,7 +46,15 @@ h2{margin-bottom:1.5rem}
 /* === Header === */
 header{background:linear-gradient(135deg,var(--card) 0%,var(--card-alt) 100%);border-bottom:2px solid var(--primary);box-shadow:0 2px 20px color-mix(in srgb,var(--primary) 8%,transparent);padding:1rem 2rem;z-index:50;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
 @media(min-width:769px){header{position:sticky;top:0}}
+header h1{margin:0;font-size:1.5rem}
+header p{margin:.25rem 0 0;color:var(--muted)}
 ```
+
+**Achtung `team.html`:** Nutzt einen flat Header ohne Gradient/Shadow/Primary-Border:
+```css
+header{background:var(--card);border-bottom:1px solid var(--border);box-shadow:none}
+```
+Muss inline überschrieben werden (3 Properties).
 
 ### Sektion 3 — Burger Menu & Dark Mode Toggle
 
@@ -80,10 +92,6 @@ nav a.active{background:color-mix(in srgb,var(--primary) 15%,var(--card));color:
 main{max-width:1200px;margin:0 auto;padding:2.5rem 2rem}
 ```
 
-**Seitenspezifische Overrides:**
-- `ko.html`: `main{max-width:1400px}` (inline)
-- `dashboard.html`: `main{max-width:800px}` (inline)
-
 ### Sektion 5 — Cards
 
 ```css
@@ -94,6 +102,12 @@ main{max-width:1200px;margin:0 auto;padding:2.5rem 2rem}
 .card-sub{color:var(--muted);font-size:.9rem}
 .card h2{padding-bottom:.5rem;border-bottom:2px solid color-mix(in srgb,var(--primary) 40%,transparent);margin-bottom:1rem}
 ```
+
+**Achtung `team.html`:** Nutzt flat Cards ohne Gradient/Primary-Border/Inset-Shadow:
+```css
+.card{background:var(--card);border-top:1px solid var(--border);border-top-left-radius:12px;border-top-right-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,.04)}
+```
+Muss inline überschrieben werden.
 
 ### Sektion 6 — Tables
 
@@ -107,14 +121,20 @@ tr.leader{font-weight:700;color:var(--primary)}
 tr.leader td{background:color-mix(in srgb,var(--primary) 6%,transparent)}
 ```
 
-**Hinweis:** `td{text-align:center}` als Default. Seiten die linksbündige erste Spalten brauchen (turnier, archiv) überschreiben inline.
+**Hinweis `td{text-align:center}`:** Mehrheit der Seiten nutzt center. Seiten mit abweichendem Alignment überschreiben inline (turnier, ewige-tabelle, archiv).
 
-### Sektion 7 — Match Score Badge
+### Sektion 7 — Match Score Badge & Utilities
 
 ```css
 /* === Match Score === */
 .match-score{font-family:'Outfit',sans-serif;font-weight:700;font-size:.95rem;letter-spacing:0.05em;padding:.2rem .6rem;border-radius:6px;background:var(--primary);color:var(--bg);box-shadow:0 2px 8px color-mix(in srgb,var(--primary) 30%,transparent)}
+
+/* === Utilities === */
+.loading{text-align:center;padding:2rem;color:var(--muted)}
+.empty-state{text-align:center;padding:3rem;color:var(--muted)}
 ```
+
+**Achtung `team.html`:** Nutzt invertiertes `.match-score` (`background:var(--card-alt);color:var(--primary)`). Muss inline überschrieben werden.
 
 ### Sektion 8 — Footer
 
@@ -146,7 +166,7 @@ Jede Public-Seite bekommt diesen `<head>`-Block:
   <link rel="icon" type="image/png" href="img/logo_comic.png">
   <title>Seitentitel – BIW Pokal</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <!-- Theme-System zuerst (setzt CSS-Variablen sofort, kein Flash) -->
+  <!-- Theme-System zuerst (synchron, setzt CSS-Variablen sofort, kein Flash) -->
   <script src="js/themes.js"></script>
   <script type="module" src="js/background.js"></script>
   <!-- Shared CSS (nutzt die CSS-Variablen) -->
@@ -162,30 +182,40 @@ Jede Public-Seite bekommt diesen `<head>`-Block:
 </head>
 ```
 
+**Hinweis:** `themes.js` lädt synchron (kein `defer`/`async`), daher stehen die CSS-Variablen bereit bevor `shared.css` geparsed wird. Kein FOUC.
+
 ## Was pro Seite inline bleibt
 
 | Seite | Inline-CSS Inhalt |
 |-------|-------------------|
-| `index.html` | Hero Bar, Tabs, Accordions, Match Rows, Content Grid, Compact Standings, Mini Bracket |
-| `turnier.html` | Season Grid, Match Items (4-col grid), Match Header, Matchday Groups, `td:first-child` Override |
-| `ko.html` | KO Bracket (flex), Round Headers, Match Cards, Connectors, Bracket Tabs, Third-Place, `main{max-width:1400px}` |
-| `dashboard.html` | Login Screen, Profile Header, Discord Button, Badges, Forms, Toggle Switch, Crest Upload, Team Search, Toasts, `main{max-width:800px}` |
-| `archiv.html` | Season Cards (collapsible), Season Badges, Compact Tables, KO Bracket Compact, Champion Badge, Empty States |
-| `ewige-tabelle.html` | Sticky Header Offset, Top-3 Highlights, Rank Column |
-| `team.html` | Team-spezifische Styles |
-| `regeln.html` | Minimal |
-| `datenschutz.html` | Kein Inline-CSS nötig |
-| `impressum.html` | Kein Inline-CSS nötig |
+| `index.html` | `h2{margin-bottom:1rem}`, Hero Bar, Tabs, Accordions, Match Rows, Content Grid, Compact Standings, Mini Bracket |
+| `turnier.html` | Season Grid, Match Items (4-col grid), Match Header, Matchday Groups, `td:first-child{text-align:center;width:40px}`, `td:nth-child(2){text-align:left}` |
+| `ko.html` | `main{max-width:1400px}`, KO Bracket (flex), Round Headers, Match Cards, Connectors, Bracket Tabs, Third-Place, Bye Badges |
+| `dashboard.html` | `main{max-width:800px}`, `h2{margin-bottom:1rem}`, Login Screen, Profile Header, Discord Button, Badges, Forms, Toggle Switch, Crest Upload, Team Search, Toasts |
+| `archiv.html` | Season Cards (collapsible), Season Badges, Compact Tables, KO Bracket Compact, Champion Badge, `td{text-align}` Overrides |
+| `ewige-tabelle.html` | `th{position:sticky;top:0;background:var(--card);z-index:10}`, `@media(min-width:769px){th{top:72px}}`, `td:first-child,th:first-child{text-align:left;padding-left:1rem}`, Top-3 Highlights (`tr.top1`, `tr.top3`), Rank Column |
+| `team.html` | `main{max-width:900px}`, Header-Override (flat), `.card`-Override (flat), `.match-score`-Override (invertiert), `a{text-decoration:none}`, Back-Link, Team Header, Stats Grid, Match List, Badges |
+| `regeln.html` | `main{max-width:900px}`, `h2{margin:2rem 0 1rem;font-size:1.5rem}`, `h3{margin:1.5rem 0 .75rem;color:var(--primary)}`, `.card{line-height:1.7}`, `.card h3`, `.card ul`, `.card li`, `.card strong`, `.intro` |
+| `datenschutz.html` | `main{max-width:900px}`, `h2{margin:2rem 0 1rem;font-size:1.5rem}`, `h3` Override, `.card{line-height:1.7}`, `.card p`, `.card ul`, `.card li`, `a{text-decoration:none}` |
+| `impressum.html` | Wie datenschutz + **`:root`-Block entfernen** (hardcoded dark-theme Variablen, wird durch themes.js ersetzt) |
 
 ## Inkonsistenzen — Harmonisierung
 
-| Eigenschaft | Shared Default | Seitenspezifische Overrides |
-|-------------|---------------|----------------------------|
-| `main` max-width | `1200px` | ko: `1400px`, dashboard: `800px` |
-| `td` text-align | `center` | turnier: `td:first-child{text-align:center;width:40px}`, `td:nth-child(2){text-align:left}` |
-| `h2` margin-bottom | `1.5rem` | index: `h2{margin-bottom:1rem}` |
-| `a` global styles | `color:var(--primary);text-decoration:underline` | Neu als globaler Default (fehlte auf den meisten Seiten) |
-| `footer a:visited` | `color:var(--primary)` | Fehlte auf index/dashboard, jetzt global |
+| Eigenschaft | Shared Default | Seitenspezifische Overrides (inline) |
+|-------------|---------------|--------------------------------------|
+| `main` max-width | `1200px` | ko: `1400px`, dashboard: `800px`, team/regeln/datenschutz/impressum: `900px` |
+| `td` text-align | `center` | turnier: `td:first-child{center;width:40px}` + `td:nth-child(2){left}`, ewige-tabelle: `td:first-child,th:first-child{left}`, archiv: nach Bedarf |
+| `h2` margin-bottom | `1.5rem` | index/dashboard: `1rem`, regeln/datenschutz/impressum: `margin:2rem 0 1rem;font-size:1.5rem` |
+| `a` global styles | `text-decoration:underline` | datenschutz/impressum/team: `a{text-decoration:none}` |
+| `header` style | Gradient + primary border + shadow | team: flat `background:var(--card)`, `1px border`, kein shadow |
+| `.card` style | Gradient + primary top-border + inset shadow | team: flat `background:var(--card)`, keine Akzente |
+| `.match-score` | `background:var(--primary);color:var(--bg)` | team: `background:var(--card-alt);color:var(--primary)` |
+| `header h1` / `header p` | Shared (8 von 10 Seiten identisch) | index: hat keine `header h1/p` Rules (nutzt inline-styles im HTML) |
+| `footer a:visited` | `color:var(--primary)` | Neu als globaler Default (bisher nur auf 3 Seiten) |
+
+## Sonderfall: `impressum.html` `:root`-Block
+
+`impressum.html` enthält einen hardcoded `:root`-Block mit Dark-Theme-Variablen. Dieser wird bei der Migration **entfernt**, da `themes.js` diese Variablen bereits setzt. Die `:root`-Werte sind identisch mit dem Flutlicht-Dark-Theme.
 
 ## Pfad-Anpassung
 
