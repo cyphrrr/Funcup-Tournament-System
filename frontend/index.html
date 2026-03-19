@@ -164,14 +164,14 @@
 
 <script type="module">
 import { API_URL } from './js/config.js';
+import { initBurgerMenu, initAdminLink, initBackendStatus } from './js/shared-ui.js';
+import { loadCrests, crestImg, teamName, registerTeams, registerTeam } from './js/team-utils.js';
 const API = API_URL;
 
 // --- Constants ---
 const BRACKET_LABELS = { meister: 'Meister-Bracket', lucky_loser: 'Lucky Loser', loser: 'Trostpflaster' };
 
 // --- State ---
-let teamCache = {};
-let crestCache = {};
 let groupsData = [];
 let allMatches = [];
 let koBrackets = null;
@@ -179,25 +179,6 @@ let activeSeason = null;
 let isKOPhase = false;
 
 // --- Data Loading ---
-
-async function loadCrests() {
-  try {
-    crestCache = await fetch(`${API}/api/teams/crests`).then(r => r.json());
-  } catch (e) {
-    console.warn('Crests konnten nicht geladen werden:', e);
-  }
-}
-
-function crestImg(teamId, size = 20) {
-  const url = crestCache[String(teamId)];
-  if (!url) return '';
-  const src = url.startsWith('http') ? url : `${API}${url}`;
-  return `<img src="${src}" alt="" loading="lazy" style="width:${size}px;height:${size}px;object-fit:contain;vertical-align:middle;margin-right:4px;border-radius:3px;flex-shrink:0" onerror="this.style.display='none'">`;
-}
-
-function teamName(id) {
-  return teamCache[id] || `Team ${id}`;
-}
 
 async function resolveActiveSeason() {
   const seasons = await fetch(`${API}/api/seasons`).then(r => r.json());
@@ -211,7 +192,7 @@ async function resolveActiveSeason() {
 
 async function loadGroupsAndTeams(seasonId) {
   groupsData = await fetch(`${API}/api/seasons/${seasonId}/groups-with-teams`).then(r => r.json());
-  groupsData.forEach(g => g.teams.forEach(t => { teamCache[t.id] = t.name; }));
+  registerTeams(groupsData);
   allMatches = groupsData.flatMap(g =>
     (g.matches || []).map(m => ({ ...m, groupName: g.group.name }))
   );
@@ -414,8 +395,8 @@ function cacheKOTeamNames() {
     if (!bracket || !bracket.rounds) continue;
     for (const matches of Object.values(bracket.rounds)) {
       matches.forEach(m => {
-        if (m.home_team) teamCache[m.home_team.id] = m.home_team.name;
-        if (m.away_team) teamCache[m.away_team.id] = m.away_team.name;
+        if (m.home_team) registerTeam(m.home_team.id, m.home_team.name);
+        if (m.away_team) registerTeam(m.away_team.id, m.away_team.name);
       });
     }
   }
@@ -705,49 +686,10 @@ function renderMiniBracket() {
   loadNews();
 })();
 
-// --- UI: Admin link ---
-if (localStorage.getItem('biw_token')) {
-  document.getElementById('admin-link').style.display = 'block';
-}
-
-// --- UI: Burger Menu ---
-const burgerBtn = document.getElementById('burger-btn');
-const navMenu = document.getElementById('nav-menu');
-const menuOverlay = document.getElementById('menu-overlay');
-
-function toggleMenu() {
-  burgerBtn.classList.toggle('open');
-  navMenu.classList.toggle('open');
-  menuOverlay.classList.toggle('open');
-}
-
-burgerBtn.addEventListener('click', toggleMenu);
-menuOverlay.addEventListener('click', toggleMenu);
-navMenu.querySelectorAll('a').forEach(link => {
-  link.addEventListener('click', () => {
-    if (navMenu.classList.contains('open')) toggleMenu();
-  });
-});
-
-// --- UI: Backend Status ---
-function updateBackendStatus() {
-  const statusDot = document.getElementById('backend-status-dot');
-  const statusText = document.getElementById('backend-status-text');
-  if (!statusDot || !statusText) return;
-
-  fetch(`${API}/api/seasons`).then(r => {
-    if (r.ok) {
-      statusDot.className = 'status-dot online';
-      statusText.textContent = 'Backend verbunden';
-    } else { throw new Error('API Error'); }
-  }).catch(() => {
-    statusDot.className = 'status-dot offline';
-    statusText.textContent = 'Backend getrennt';
-  });
-}
-
-updateBackendStatus();
-setInterval(updateBackendStatus, 30000);
+// --- UI: Shared init ---
+initBurgerMenu();
+initAdminLink();
+initBackendStatus();
 </script>
 
 <footer>
