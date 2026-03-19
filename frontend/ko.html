@@ -23,6 +23,8 @@
     .bracket-tab:hover{background:var(--muted);color:#fff}
     .bracket-tab.active{background:var(--primary);color:#fff;font-weight:700}
     /* KO Bracket */
+    .ko-scroll-wrapper{position:relative}
+    .ko-scroll-wrapper::after{content:'';position:absolute;top:0;right:0;width:40px;height:100%;background:linear-gradient(to right,transparent,var(--bg));pointer-events:none}
     .ko-bracket{display:flex;gap:2rem;overflow-x:auto;padding:1rem 0;align-items:flex-start}
     .ko-round{min-width:180px;max-width:220px;display:flex;flex-direction:column;justify-content:space-around}
     .ko-round-header{text-align:center;margin:0 0 1rem;font-size:.95rem;font-weight:600;background:var(--card-alt);border-radius:8px;padding:.4rem .75rem;display:inline-block;color:var(--text)}
@@ -267,7 +269,10 @@ function showBracket() {
     return;
   }
   contentDiv.innerHTML = '';
-  contentDiv.appendChild(renderBracket(bracketsCache.brackets[activeTab]));
+  const scrollWrapper = document.createElement('div');
+  scrollWrapper.className = 'ko-scroll-wrapper';
+  scrollWrapper.appendChild(renderBracket(bracketsCache.brackets[activeTab]));
+  contentDiv.appendChild(scrollWrapper);
 }
 
 async function loadKOBrackets(seasonId) {

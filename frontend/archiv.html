@@ -34,6 +34,8 @@
     .compact-table th{font-size:.75rem}
     .compact-table td{padding:.4rem .5rem}
     /* KO Bracket Compact */
+    .ko-scroll-wrapper{position:relative}
+    .ko-scroll-wrapper::after{content:'';position:absolute;top:0;right:0;width:40px;height:100%;background:linear-gradient(to right,transparent,var(--bg));pointer-events:none}
     .ko-bracket-compact{display:flex;gap:1.5rem;overflow-x:auto;padding:1rem 0;font-size:.85rem}
     .ko-round-compact{min-width:150px;display:flex;flex-direction:column;gap:.5rem}
     .ko-round-header-compact{text-align:center;font-size:.8rem;font-weight:600;color:var(--muted);margin-bottom:.5rem}
@@ -305,7 +307,7 @@ function renderCompactBracket(bracket) {
     rounds[m.round].push(m);
   });
 
-  let html = '<div class="ko-bracket-compact">';
+  let html = '<div class="ko-scroll-wrapper"><div class="ko-bracket-compact">';
   let thirdPlaceMatch = null;
 
   Object.keys(rounds).sort((a,b) => a-b).forEach(roundNum => {
@@ -368,7 +370,7 @@ function renderCompactBracket(bracket) {
     </div>`;
   }
 
-  html += '</div>';
+  html += '</div></div>';
   return html;
 }
 
@@ -380,7 +382,7 @@ function renderCompactBracketV2(bracket) {
     return numA - numB;
   });
 
-  let html = '<div class="ko-bracket-compact">';
+  let html = '<div class="ko-scroll-wrapper"><div class="ko-bracket-compact">';
   let thirdPlaceMatch = null;
 
   for (const key of roundKeys) {
@@ -451,7 +453,7 @@ function renderCompactBracketV2(bracket) {
     </div>`;
   }
 
-  html += '</div>';
+  html += '</div></div>';
   return html;
 }
 
