@@ -137,11 +137,11 @@ Header, Navigation und Footer sind in jeder Datei manuell kopiert:
 ### Bereich D: Visuelle Konsistenz
 
 **Scope:**
-- [ ] Header-Subtitel-Konvention klären (mit/ohne auf Index?)
-- [ ] `.season-item`-Styling vereinheitlichen (turnier vs. ko)
-- [ ] Tabellen-Alignment konsistent machen
-- [ ] Button-Klassen (`.btn`, `.btn-primary`) in `shared.css` global verfügbar machen
-- [ ] Archiv: KO-API auf neues Format (`/ko-brackets`) migrieren
+- [x] Header-Subtitel-Konvention klären (mit/ohne auf Index?) → "/ Start" hinzugefügt
+- [x] `.season-item`-Styling vereinheitlichen (turnier vs. ko) → turnier-Variante in shared.css
+- [ ] Tabellen-Alignment konsistent machen → kein Handlungsbedarf (verschiedene Spaltentypen)
+- [x] Button-Klassen (`.btn`, `.btn-primary`) in `shared.css` global verfügbar machen
+- [x] Archiv: KO-API auf neues Format (`/ko-brackets`) migrieren (mit v1-Fallback)
 
 ### Bereich E: Performance
 
@@ -179,3 +179,4 @@ Header, Navigation und Footer sind in jeder Datei manuell kopiert:
 > Hier werden abgeschlossene Schritte dokumentiert.
 
 - **2026-03-19: Bereich A (CSS konsolidieren) abgeschlossen** — `css/shared.css` erstellt, 10 Seiten migriert, ~490 Zeilen Duplication eliminiert. Preconnect-Hints (Bereich E) gleich mit erledigt.
+- **2026-03-19: Bereich D (Visuelle Konsistenz) abgeschlossen** — Header-Subtitel `/ Start` auf index.html, `.season-item` und `.btn` in shared.css vereinheitlicht, archiv.html KO-API auf `/ko-brackets` migriert (mit v1-Fallback).
