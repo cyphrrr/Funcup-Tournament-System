@@ -8,9 +8,11 @@
 
 - **Zwei Module:** `js/shared-ui.js` (alle 10 Seiten) + `js/team-utils.js` (5 datengetriebene Seiten)
 - **ES Modules:** Alle Seiten auf `<script type="module">` umstellen
-- **Crest-Größe:** Einheitlich 24px (kein size-Parameter)
+- **Crest-Größe:** Default 24px, aber mit optionalem `size`-Parameter für Sonderfälle (index.html Sidebar nutzt 18px)
 - **Backend-Status:** Nur zusammenlegen, keine Performance-Optimierung (bleibt Bereich E)
 - **admin.html:** Nicht betroffen
+- **Script-Platzierung:** Der `<script type="module">`-Block mit den Imports muss am Ende von `<body>` stehen (nach dem Footer), damit alle DOM-Elemente existieren
+- **Bestehende `version.js` und `tracking.js`** bleiben als klassische `<script>`-Tags, werden nicht zu Modulen konvertiert
 
 ---
 
@@ -92,7 +94,7 @@ Neues ES Module. Wird nur von 5 Seiten importiert: index.html, turnier.html, ko.
 import { API_URL } from './config.js';
 
 let crestCache = {};
-export let teamCache = {};
+const teamCache = {};  // Objekt wird per registerTeams()/registerTeam() befüllt, nicht reassigned
 
 export async function loadCrests() {
   try {
@@ -102,12 +104,12 @@ export async function loadCrests() {
   }
 }
 
-export function crestImg(teamId) {
+export function crestImg(teamId, size = 24) {
   if (!teamId) return '';
   const url = crestCache[String(teamId)];
   if (!url) return '';
   const src = url.startsWith('http') ? url : `${API_URL}${url}`;
-  return `<img src="${src}" alt="" loading="lazy" style="width:24px;height:24px;object-fit:contain;vertical-align:middle;margin-right:4px;border-radius:3px;flex-shrink:0" onerror="this.style.display='none'">`;
+  return `<img src="${src}" alt="" loading="lazy" style="width:${size}px;height:${size}px;object-fit:contain;vertical-align:middle;margin-right:4px;border-radius:3px;flex-shrink:0" onerror="this.style.display='none'">`;
 }
 
 export function teamName(id) {
@@ -117,7 +119,16 @@ export function teamName(id) {
 export function registerTeams(groups) {
   groups.forEach(g => g.teams.forEach(t => { teamCache[t.id] = t.name; }));
 }
+
+export function registerTeam(id, name) {
+  teamCache[id] = name;
+}
 ```
+
+**Hinweise zur Nutzung:**
+- `registerTeams(groups)` — für Gruppen-Daten (groups-with-teams API-Antwort)
+- `registerTeam(id, name)` — für Einzelregistrierung, z.B. aus KO-Bracket-Daten (`registerTeam(m.home_team.id, m.home_team.name)`)
+- turnier.html und archiv.html haben eigene `loadTeams()`-Funktionen die per API fetchen → nach dem Fetch `registerTeams(groups)` aufrufen, lokale teamCache-Definitionen entfernen
 
 ### Nutzung (datengetriebene Seiten)
 
@@ -163,10 +174,14 @@ export function registerTeams(groups) {
 6. Bestehende `crestImg()`-Aufrufe bleiben (Signatur ist kompatibel, Output wird einheitlich 24px)
 7. Separaten `<script type="module">`-Block für Backend-Status entfernen
 
+### Achtung: `onclick` in innerHTML + Module Scope
+
+Seiten die per `innerHTML` onclick-Handler setzen (z.B. `onclick="toggleSeason(${id})"` in archiv.html) müssen die Funktion auf `window` exponieren: `window.toggleSeason = toggleSeason;` — Module Scope macht Funktionen nicht global verfügbar.
+
 ### Was sich NICHT ändert
 
 - Seitenspezifische Logik (Bracket-Rendering, Tabellen, Tabs, Formulare etc.)
-- `js/themes.js`, `js/version.js`, `js/tracking.js`, `js/background.js`
+- `js/themes.js`, `js/version.js`, `js/tracking.js`, `js/background.js` — bleiben als klassische `<script>`-Tags
 - `admin.html` — eigenes JS-System, nicht betroffen
 
 ---
@@ -176,5 +191,5 @@ export function registerTeams(groups) {
 - **~250 Zeilen** duplizierter JS-Code eliminiert
 - **2 neue Dateien:** `js/shared-ui.js` (~40 Zeilen), `js/team-utils.js` (~30 Zeilen)
 - **10 HTML-Dateien** modifiziert (Boilerplate raus, Imports rein)
-- **Einheitliche Crest-Darstellung** (24px auf allen Seiten)
+- **Einheitliche Crest-Darstellung** (Default 24px, optional per Parameter anpassbar)
 - **Konsistentes Module-Format** auf allen Public-Seiten
