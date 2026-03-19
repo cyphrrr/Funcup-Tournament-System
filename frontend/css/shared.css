@@ -340,6 +340,33 @@ tr.leader td {
 }
 
 
+/* === Season Items === */
+.season-item {
+  padding: .5rem 1rem;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all .2s;
+  background: var(--card);
+  border: 1px solid var(--border);
+  font-size: .9rem;
+  white-space: nowrap;
+}
+
+.season-item:hover {
+  background: color-mix(in srgb, var(--primary) 10%, var(--card));
+  border-color: var(--primary);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,.1);
+}
+
+.season-item.active {
+  background: color-mix(in srgb, var(--primary) 15%, var(--card));
+  color: var(--primary);
+  font-weight: 600;
+  border-color: var(--primary);
+}
+
+
 /* === Footer === */
 footer {
   background: var(--card);
