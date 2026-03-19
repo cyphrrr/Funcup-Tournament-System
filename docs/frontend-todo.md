@@ -147,9 +147,9 @@ Header, Navigation und Footer sind in jeder Datei manuell kopiert:
 
 **Scope:**
 - [x] `<link rel="preconnect" href="https://fonts.googleapis.com">` hinzufügen (erledigt mit CSS-Konsolidierung)
-- [ ] Backend-Status: Nur einmal prüfen statt doppelt (Season-Fetch + Status-Fetch)
-- [ ] Archiv: Parallelisierung der Saison-Loads (`Promise.all` statt sequential `await`)
-- [ ] Crest/Team-Cache in `sessionStorage` für seitenübergreifende Nutzung
+- [x] Backend-Status: Nur einmal prüfen statt doppelt → `setBackendStatus(online)` + `/api/version`-Polling
+- [x] Archiv: Parallelisierung der Saison-Loads → `Promise.all` für groups + standings, doppelten Fetch eliminiert
+- [x] Crest/Team-Cache in `sessionStorage` → 10min TTL, cross-page Caching
 
 ### Bereich F: Mobile & UX
 
@@ -182,3 +182,4 @@ Header, Navigation und Footer sind in jeder Datei manuell kopiert:
 - **2026-03-19: Bereich D (Visuelle Konsistenz) abgeschlossen** — Header-Subtitel `/ Start` auf index.html, `.season-item` und `.btn` in shared.css vereinheitlicht, archiv.html KO-API auf `/ko-brackets` migriert (mit v1-Fallback).
 - **2026-03-19: Bereich F (Mobile & UX) abgeschlossen** — Nav overflow-y, Tabellen overflow-x Wrapper, KO-Bracket scroll-hint Gradient, Burger touch-target 44px.
 - **2026-03-19: Bereich B (JS-Boilerplate konsolidieren) abgeschlossen** — `shared-ui.js` (Burger, Admin-Link, Backend-Status) und `team-utils.js` (Crests, Team-Cache) erstellt. 10 Seiten auf ES Module Imports migriert, ~250 Zeilen Duplication eliminiert.
+- **2026-03-19: Bereich E (Performance) abgeschlossen** — Backend-Status: `setBackendStatus(online)` eliminiert doppelten Fetch, Interval nutzt `/api/version`. Archiv: `Promise.all` für parallele Season/Standings-Loads, doppelten groups-with-teams-Fetch eliminiert. Crests: `sessionStorage`-Cache mit 10min TTL.
