@@ -105,11 +105,6 @@ const API = API_URL;
 initBurgerMenu();
 initAdminLink();
 
-async function loadTeams(seasonId) {
-  const groups = await fetch(`${API}/api/seasons/${seasonId}/groups-with-teams`).then(r => r.json());
-  registerTeams(groups);
-}
-
 function roundName(roundNum, totalRounds) {
   const remaining = totalRounds - roundNum + 1;
   if (remaining === 1) return '🏆 Finale';
@@ -149,11 +144,12 @@ async function loadSeasonDetails(seasonId) {
   container.innerHTML = '<div class="loading"><em>Lade Details...</em></div>';
 
   try {
-    // Load teams and crests
-    await Promise.all([loadTeams(seasonId), loadCrests()]);
-
-    // Load groups
-    const groups = await fetch(`${API}/api/seasons/${seasonId}/groups-with-teams`).then(r => r.json());
+    // Load groups+teams and crests in parallel (single groups fetch, not two)
+    const [groups, _] = await Promise.all([
+      fetch(`${API}/api/seasons/${seasonId}/groups-with-teams`).then(r => r.json()),
+      loadCrests()
+    ]);
+    registerTeams(groups);
 
     let html = '<div class="card"><h3 style="margin:0 0 .75rem;font-size:1rem">Gruppenphase</h3>';
 
@@ -161,13 +157,19 @@ async function loadSeasonDetails(seasonId) {
       html += '<p style="color:var(--muted)">Keine Gruppen vorhanden</p>';
       html += '</div>';
     } else {
-      for (const g of groups) {
+      // Fetch all standings in parallel
+      const standingsResults = await Promise.all(
+        groups.map(g => fetch(`${API}/api/groups/${g.group.id}/standings`).then(r => r.json()))
+      );
+
+      for (let i = 0; i < groups.length; i++) {
+        const g = groups[i];
+        const standings = standingsResults[i];
+
         html += `<div class="card" style="margin-bottom:1rem">
           <div class="card-header">
             <div class="card-title">Gruppe ${g.group.name}</div>
           </div>`;
-
-        const standings = await fetch(`${API}/api/groups/${g.group.id}/standings`).then(r => r.json());
 
         if (standings.length > 0) {
           html += '<div style="overflow-x:auto"><table class="compact-table"><thead><tr><th>#</th><th style="text-align:left">Team</th><th>Sp</th><th>S</th><th>U</th><th>N</th><th>T+</th><th>T-</th><th>Pkt</th></tr></thead><tbody>';
@@ -432,14 +434,16 @@ async function loadSeasons() {
     // Sort by ID descending (newest first)
     seasons.sort((a, b) => b.id - a.id);
 
-    let html = '';
+    // Fetch all group data in parallel
+    const groupResults = await Promise.all(
+      seasons.map(s => fetch(`${API}/api/seasons/${s.id}/groups-with-teams`).then(r => r.json()))
+    );
 
-    for (const season of seasons) {
+    let html = '';
+    seasons.forEach((season, i) => {
+      const groups = groupResults[i];
       const badgeClass = season.status === 'active' ? 'active' : season.status === 'archived' ? 'archived' : 'planned';
       const badgeText = season.status === 'active' ? 'Aktiv' : season.status === 'archived' ? 'Archiviert' : 'Geplant';
-
-      // Count teams
-      const groups = await fetch(`${API}/api/seasons/${season.id}/groups-with-teams`).then(r => r.json());
       const teamCount = groups.reduce((sum, g) => sum + g.teams.length, 0);
 
       html += `
@@ -459,7 +463,7 @@ async function loadSeasons() {
           </div>
           <div class="season-content" id="season-content-${season.id}"></div>
         </div>`;
-    }
+    });
 
     container.innerHTML = html;
   } catch (e) {
