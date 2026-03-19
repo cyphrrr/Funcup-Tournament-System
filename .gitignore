@@ -55,6 +55,7 @@ htmlcov/
 .pytest_cache/
 .claude/
 .worktrees/
+.superpowers/
 
 # Basic Auth (sensible Passwörter)
 .htpasswd
@@ -74,3 +75,4 @@ uploads/*
 uploads/crests/*.webp
 uploads/crests/*.png
 uploads/crests/*.jpg
+.worktrees/
