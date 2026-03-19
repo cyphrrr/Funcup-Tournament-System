@@ -63,16 +63,18 @@ Standings-Tabellen werden als Teil eines größeren HTML-Strings gebaut. Die `<t
 
 **Problem:** `.ko-bracket` und `.ko-bracket-compact` haben `overflow-x: auto`, aber keinen visuellen Hinweis, dass horizontal gescrollt werden kann.
 
-**Lösung:** Statischer CSS-Gradient via `::after` Pseudo-Element. Ein halbtransparenter Fade am rechten Rand signalisiert, dass mehr Content vorhanden ist. Kein JS nötig.
+**Lösung:** Wrapper-Div mit `position: relative` + `::after` Pseudo-Element. Der Gradient liegt auf dem Wrapper (nicht auf dem scrollbaren Container selbst), damit er beim Scrollen fixiert bleibt.
+
+**Wichtig:** `::after` auf einem `overflow: auto`-Element scrollt mit dem Content — daher muss der Gradient auf einem **nicht-scrollenden Parent** liegen.
+
+Jede `.ko-bracket` / `.ko-bracket-compact` wird in ein `<div class="ko-scroll-wrapper">` gewrappt:
 
 ```css
-.ko-bracket,
-.ko-bracket-compact {
+.ko-scroll-wrapper {
   position: relative;
 }
 
-.ko-bracket::after,
-.ko-bracket-compact::after {
+.ko-scroll-wrapper::after {
   content: '';
   position: absolute;
   top: 0;
@@ -81,15 +83,16 @@ Standings-Tabellen werden als Teil eines größeren HTML-Strings gebaut. Die `<t
   height: 100%;
   background: linear-gradient(to right, transparent, var(--bg));
   pointer-events: none;
-  border-radius: 0 8px 8px 0;
 }
 ```
 
 Der Gradient nutzt `var(--bg)` (Hintergrundfarbe), damit er in beiden Themes (Light/Dark) korrekt ausblendet.
 
-**Hinweis:** `.ko-bracket` ist inline in `ko.html` definiert (Zeile 26), `.ko-bracket-compact` inline in `archiv.html` (Zeile 37). Die `position: relative` und `::after`-Regeln kommen in die jeweiligen Inline-Styles oder als ergänzende Regeln. Da diese Klassen nur auf je einer Seite vorkommen, bleiben sie inline — nur die Scroll-Hint-Regeln werden ergänzt.
+**Umsetzung:**
+- `ko.html`: Das `<div>` mit Klasse `ko-bracket` (per JS erzeugt) in ein Wrapper-Div einbetten. CSS-Klasse `.ko-scroll-wrapper` inline in `ko.html` definieren.
+- `archiv.html`: Analog für `.ko-bracket-compact`. CSS-Klasse `.ko-scroll-wrapper` inline in `archiv.html` definieren. Alternativ: da beide Seiten die gleiche Klasse brauchen, kann `.ko-scroll-wrapper` in `shared.css` landen.
 
-**Dateien:** `ko.html` (Inline-CSS), `archiv.html` (Inline-CSS)
+**Dateien:** `ko.html` (HTML/JS + Inline-CSS), `archiv.html` (HTML/JS + Inline-CSS), ggf. `css/shared.css`
 
 ---
 
