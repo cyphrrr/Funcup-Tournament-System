@@ -98,57 +98,16 @@
 
 <script type="module">
 import { API_URL } from './js/config.js';
+import { initBurgerMenu, initAdminLink } from './js/shared-ui.js';
+import { loadCrests, crestImg, teamName, registerTeams } from './js/team-utils.js';
 const API = API_URL;
-let teamCache = {};
-let crestCache = {};
 
-async function loadCrests() {
-  try { crestCache = await fetch(`${API}/api/teams/crests`).then(r => r.json()); } catch(e) {}
-}
+initBurgerMenu();
+initAdminLink();
 
-function crestImg(teamId) {
-  if (!teamId) return '';
-  const url = crestCache[String(teamId)];
-  if (!url) return '';
-  const src = url.startsWith('http') ? url : `${API}${url}`;
-  return `<img src="${src}" alt="" loading="lazy" style="width:18px;height:18px;object-fit:contain;vertical-align:middle;margin-right:3px;border-radius:3px;flex-shrink:0" onerror="this.style.display='none'">`;
-}
-
-// Check if user is logged in (show admin link)
-if (localStorage.getItem('biw_token')) {
-  document.getElementById('admin-link').style.display = 'block';
-}
-
-// Burger Menu Toggle
-const burgerBtn = document.getElementById('burger-btn');
-const navMenu = document.getElementById('nav-menu');
-const menuOverlay = document.getElementById('menu-overlay');
-
-function toggleMenu() {
-  burgerBtn.classList.toggle('open');
-  navMenu.classList.toggle('open');
-  menuOverlay.classList.toggle('open');
-}
-
-burgerBtn.addEventListener('click', toggleMenu);
-menuOverlay.addEventListener('click', toggleMenu);
-
-navMenu.querySelectorAll('a').forEach(link => {
-  link.addEventListener('click', () => {
-    if (navMenu.classList.contains('open')) {
-      toggleMenu();
-    }
-  });
-});
-
-// Team Cache
 async function loadTeams(seasonId) {
   const groups = await fetch(`${API}/api/seasons/${seasonId}/groups-with-teams`).then(r => r.json());
-  groups.forEach(g => g.teams.forEach(t => teamCache[t.id] = t.name));
-}
-
-function teamName(id) {
-  return teamCache[id] || `Team ${id}`;
+  registerTeams(groups);
 }
 
 function roundName(roundNum, totalRounds) {
@@ -160,6 +119,7 @@ function roundName(roundNum, totalRounds) {
   return `Runde ${roundNum}`;
 }
 
+window.toggleSeason = toggleSeason;
 function toggleSeason(seasonId) {
   const content = document.getElementById(`season-content-${seasonId}`);
   const toggle = document.getElementById(`season-toggle-${seasonId}`);
@@ -528,22 +488,8 @@ loadSeasons();
   </div>
 </footer>
 <script type="module">
-import { API_URL } from './js/config.js';
-
-function updateBackendStatus() {
-  const statusDot = document.getElementById("backend-status-dot");
-  const statusText = document.getElementById("backend-status-text");
-  if (!statusDot || !statusText) return;
-  fetch(`${API_URL}/api/seasons`).then(r => {
-    statusDot.className = r.ok ? "status-dot online" : "status-dot offline";
-    statusText.textContent = r.ok ? "Backend verbunden" : "Backend getrennt";
-  }).catch(() => {
-    statusDot.className = "status-dot offline";
-    statusText.textContent = "Backend getrennt";
-  });
-}
-updateBackendStatus();
-setInterval(updateBackendStatus, 30000);
+import { initBackendStatus } from './js/shared-ui.js';
+initBackendStatus();
 </script>
 
 <script src="js/version.js"></script>
