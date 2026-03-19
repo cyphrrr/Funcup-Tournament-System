@@ -123,16 +123,21 @@ Header, Navigation und Footer sind in jeder Datei manuell kopiert:
 
 **Geschätzter Effekt:** ~250+ Zeilen JS-Duplication eliminiert.
 
-### Bereich C: HTML-Templates (Optional, Low Priority)
+### Bereich C: HTML-Templates
 
-**Ziel:** Header/Nav/Footer dynamisch laden oder als Web Component.
+**Ziel:** Header/Nav/Footer-Duplication über 10 Public-Seiten eliminieren.
 
-**Optionen:**
-1. **JS-Include:** `shared-ui.js` injiziert Header/Nav/Footer ins DOM (einfach, aber Flash)
-2. **HTML Imports via fetch:** `fetch('partials/header.html')` (FOUC-Problem)
-3. **Status quo beibehalten:** Bei 9 Seiten ist manuelles Kopieren tragbar
+**Lösung:** `<fts-layout>` Web Component (Light DOM, Custom Elements API).
 
-**Empfehlung:** Noch abwarten — CSS/JS-Konsolidierung hat den größeren Hebel.
+**Scope:**
+- [x] `js/fts-layout.js` erstellen — Custom Element rendert Header, Nav, Footer; verschiebt Children in `<main>`
+- [x] `shared-ui.js` erweitern: `initBackendStatus()` als eigene Funktion, `initBurgerMenu()` + `initAdminLink()` bleiben
+- [x] Alle 10 Public-Seiten migrieren: Header/Nav/Footer HTML entfernt, `<fts-layout page-title="/ ...">` Wrapper
+- [x] Seiten-Scripts: `initBurgerMenu`/`initAdminLink`/`initBackendStatus` Imports entfernt (Component übernimmt)
+- [x] Active Nav-Link: Automatische Erkennung via `window.location.pathname`
+- [x] Version + Tracking: Component übernimmt `/api/version` Fetch und `/api/track` Call
+
+**Geschätzter Effekt:** ~540 Zeilen HTML-Duplication eliminiert (Header ~20 + Nav ~15 + Footer ~16 = ~51 Zeilen × 10 Seiten, plus Script-Blöcke).
 
 ### Bereich D: Visuelle Konsistenz
 
@@ -183,3 +188,4 @@ Header, Navigation und Footer sind in jeder Datei manuell kopiert:
 - **2026-03-19: Bereich F (Mobile & UX) abgeschlossen** — Nav overflow-y, Tabellen overflow-x Wrapper, KO-Bracket scroll-hint Gradient, Burger touch-target 44px.
 - **2026-03-19: Bereich B (JS-Boilerplate konsolidieren) abgeschlossen** — `shared-ui.js` (Burger, Admin-Link, Backend-Status) und `team-utils.js` (Crests, Team-Cache) erstellt. 10 Seiten auf ES Module Imports migriert, ~250 Zeilen Duplication eliminiert.
 - **2026-03-19: Bereich E (Performance) abgeschlossen** — Backend-Status: `setBackendStatus(online)` eliminiert doppelten Fetch, Interval nutzt `/api/version`. Archiv: `Promise.all` für parallele Season/Standings-Loads, doppelten groups-with-teams-Fetch eliminiert. Crests: `sessionStorage`-Cache mit 10min TTL.
+- **2026-03-19: Bereich C (HTML-Templates) abgeschlossen** — `<fts-layout>` Web Component (Light DOM, Custom Elements API) erstellt. 10 Seiten migriert, ~540 Zeilen HTML-Duplication eliminiert. Header, Nav, Footer, Version-Display und Page-Tracking werden zentral vom Component gerendert.
