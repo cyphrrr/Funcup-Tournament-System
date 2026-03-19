@@ -132,34 +132,10 @@
     </section>
   </main>
 
-<script>
-// Check if user is logged in (show admin link)
-if (localStorage.getItem('biw_token')) {
-  document.getElementById('admin-link').style.display = 'block';
-}
-
-// Burger Menu Toggle
-const burgerBtn = document.getElementById('burger-btn');
-const navMenu = document.getElementById('nav-menu');
-const menuOverlay = document.getElementById('menu-overlay');
-
-function toggleMenu() {
-  burgerBtn.classList.toggle('open');
-  navMenu.classList.toggle('open');
-  menuOverlay.classList.toggle('open');
-}
-
-burgerBtn.addEventListener('click', toggleMenu);
-menuOverlay.addEventListener('click', toggleMenu);
-
-// Close menu on navigation
-navMenu.querySelectorAll('a').forEach(link => {
-  link.addEventListener('click', () => {
-    if (navMenu.classList.contains('open')) {
-      toggleMenu();
-    }
-  });
-});
+<script type="module">
+import { initBurgerMenu, initAdminLink } from './js/shared-ui.js';
+initBurgerMenu();
+initAdminLink();
 </script>
 
 <footer>
@@ -179,22 +155,8 @@ navMenu.querySelectorAll('a').forEach(link => {
   </div>
 </footer>
 <script type="module">
-import { API_URL } from './js/config.js';
-
-function updateBackendStatus() {
-  const statusDot = document.getElementById("backend-status-dot");
-  const statusText = document.getElementById("backend-status-text");
-  if (!statusDot || !statusText) return;
-  fetch(`${API_URL}/api/seasons`).then(r => {
-    statusDot.className = r.ok ? "status-dot online" : "status-dot offline";
-    statusText.textContent = r.ok ? "Backend verbunden" : "Backend getrennt";
-  }).catch(() => {
-    statusDot.className = "status-dot offline";
-    statusText.textContent = "Backend getrennt";
-  });
-}
-updateBackendStatus();
-setInterval(updateBackendStatus, 30000);
+import { initBackendStatus } from './js/shared-ui.js';
+initBackendStatus();
 </script>
 
 <script src="js/version.js"></script>
