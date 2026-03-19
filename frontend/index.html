@@ -434,8 +434,13 @@ function renderGroupErgebnisse() {
     const isOpen = isCurrentOrNewer || current === 0;
 
     if (isOpen) {
-      html += `<div class="matchday-label">Spieltag ${md}</div>`;
-      html += mdMatches.map(renderMatchRow).join('');
+      html += `
+        <button class="accordion-toggle open" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">
+          <span class="arrow">▸</span> Spieltag ${md}
+        </button>
+        <div class="accordion-body open">
+          ${mdMatches.map(renderMatchRow).join('')}
+        </div>`;
     } else {
       const playedCount = mdMatches.filter(m => m.status === 'played').length;
       html += `
@@ -603,7 +608,7 @@ async function loadNews() {
       panel.appendChild(newsCard);
     }
   } catch (e) {
-    panel.innerHTML = '<p style="color:var(--danger)">News konnten nicht geladen werden.</p>';
+    panel.innerHTML = '<p style="color:var(--danger)">Fehler beim Laden</p>';
   }
 }
 
@@ -612,8 +617,9 @@ async function loadNews() {
 async function renderGroupStandings() {
   const container = document.getElementById('sidebar-content');
   try {
-    if (groupsData.length === 0) {
-      container.innerHTML = '<p style="color:var(--muted);font-size:.85rem">Keine Gruppen vorhanden</p>';
+    const hasTeams = groupsData.some(g => g.teams && g.teams.length > 0);
+    if (groupsData.length === 0 || !hasTeams) {
+      container.innerHTML = '<p style="color:var(--muted);font-size:.85rem">Keine Teams zugeordnet</p>';
       return;
     }
 
