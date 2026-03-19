@@ -228,14 +228,17 @@
 <script type="module">
 import { API_URL } from './js/config.js';
 const API = API_URL;
-const headerStatus = document.getElementById('header-status');
-let teamCache = {}; // team_id → name
-let crestCache = {}; // team_id → crest_url
 
-// Health Check
-fetch(`${API}/health`).then(r => r.json())
-  .then(() => headerStatus && (headerStatus.innerHTML = '<span style="color:var(--success)">✓ Verbunden</span>'))
-  .catch(() => headerStatus && (headerStatus.innerHTML = '<span style="color:var(--danger)">✗ Offline</span>'));
+// --- State ---
+let teamCache = {};
+let crestCache = {};
+let groupsData = [];
+let allMatches = [];
+let koBrackets = null;
+let activeSeason = null;
+let isKOPhase = false;
+
+// --- Data Loading ---
 
 async function loadCrests() {
   try {
@@ -245,41 +248,300 @@ async function loadCrests() {
   }
 }
 
-function crestImg(teamId) {
+function crestImg(teamId, size = 20) {
   const url = crestCache[String(teamId)];
   if (!url) return '';
   const src = url.startsWith('http') ? url : `${API}${url}`;
-  return `<img src="${src}" alt="" loading="lazy" style="width:24px;height:24px;object-fit:contain;vertical-align:middle;margin-right:6px;border-radius:4px;flex-shrink:0" onerror="this.style.display='none'">`;
-}
-
-// Team-Namen laden
-async function loadTeams(seasonId) {
-  const groups = await fetch(`${API}/api/seasons/${seasonId}/groups-with-teams`).then(r => r.json());
-  groups.forEach(g => g.teams.forEach(t => teamCache[t.id] = t.name));
+  return `<img src="${src}" alt="" loading="lazy" style="width:${size}px;height:${size}px;object-fit:contain;vertical-align:middle;margin-right:4px;border-radius:3px;flex-shrink:0" onerror="this.style.display='none'">`;
 }
 
 function teamName(id) {
   return teamCache[id] || `Team ${id}`;
 }
 
-// Render Matches Block für News
+async function resolveActiveSeason() {
+  const seasons = await fetch(`${API}/api/seasons`).then(r => r.json());
+  const activeSeasons = seasons.filter(s => s.status === 'active');
+  if (activeSeasons.length > 0) {
+    activeSeasons.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    return activeSeasons[0];
+  }
+  return seasons[0] || null;
+}
+
+async function loadGroupsAndTeams(seasonId) {
+  groupsData = await fetch(`${API}/api/seasons/${seasonId}/groups-with-teams`).then(r => r.json());
+  groupsData.forEach(g => g.teams.forEach(t => { teamCache[t.id] = t.name; }));
+  allMatches = groupsData.flatMap(g =>
+    (g.matches || []).map(m => ({ ...m, groupName: g.group.name }))
+  );
+}
+
+// KO brackets API response format:
+// { season_id, brackets: { meister: { bracket_id, status, rounds: { runde_1: [...], runde_2: [...] } }, lucky_loser: ..., loser: ... } }
+// Each match: { match_id, round (string like "finale"), home_team: {id, name} | null, away_team: {id, name} | null, home_goals, away_goals, winner_id, is_bye, is_third_place, status }
+
+async function detectKOPhase(seasonId) {
+  try {
+    const resp = await fetch(`${API}/api/seasons/${seasonId}/ko-brackets`);
+    if (!resp.ok) return false;
+    const data = await resp.json();
+    if (data && data.brackets) {
+      const hasBrackets = Object.values(data.brackets).some(b => b && b.rounds && Object.keys(b.rounds).length > 0);
+      if (hasBrackets) {
+        koBrackets = data.brackets;
+        return true;
+      }
+    }
+  } catch (e) {
+    console.warn('KO brackets not available:', e);
+  }
+  return false;
+}
+
+function flattenBracketMatches(bracket) {
+  if (!bracket || !bracket.rounds) return [];
+  return Object.values(bracket.rounds).flat();
+}
+
+function deriveCurrentMatchday() {
+  if (allMatches.length === 0) return { current: 0, total: 0 };
+  const matchdays = [...new Set(allMatches.map(m => m.matchday))].sort((a, b) => a - b);
+  const total = matchdays.length > 0 ? Math.max(...matchdays) : 0;
+  const playedMatchdays = matchdays.filter(md =>
+    allMatches.some(m => m.matchday === md && m.status === 'played')
+  );
+  const current = playedMatchdays.length > 0 ? Math.max(...playedMatchdays) : 0;
+  return { current, total };
+}
+
+function deriveKORoundInfo() {
+  if (!koBrackets || !koBrackets.meister) return { roundName: '—', teamsRemaining: 0 };
+  const meisterMatches = flattenBracketMatches(koBrackets.meister);
+  if (meisterMatches.length === 0) return { roundName: '—', teamsRemaining: 0 };
+
+  const roundKeys = Object.keys(koBrackets.meister.rounds).sort();
+  const currentRoundKey = roundKeys.find(key =>
+    koBrackets.meister.rounds[key].some(m => m.status !== 'played' && !m.is_bye)
+  ) || roundKeys[roundKeys.length - 1];
+
+  const currentRoundMatches = koBrackets.meister.rounds[currentRoundKey] || [];
+  const nonByeMatches = currentRoundMatches.filter(m => !m.is_bye);
+
+  const roundName = nonByeMatches.length > 0
+    ? nonByeMatches[0].round.charAt(0).toUpperCase() + nonByeMatches[0].round.slice(1)
+    : '—';
+
+  const teamIds = new Set();
+  nonByeMatches.forEach(m => {
+    if (m.home_team) teamIds.add(m.home_team.id);
+    if (m.away_team) teamIds.add(m.away_team.id);
+  });
+
+  return { roundName, teamsRemaining: teamIds.size };
+}
+
+// --- Hero Bar ---
+
+function renderHero() {
+  document.getElementById('hero-season').textContent = activeSeason ? activeSeason.name : 'Keine aktive Saison';
+
+  if (!activeSeason) {
+    document.getElementById('hero-phase').innerHTML = '<span class="phase-badge group">—</span>';
+    document.getElementById('hero-matchday').textContent = '—';
+    document.getElementById('hero-teams').textContent = '—';
+    return;
+  }
+
+  if (isKOPhase) {
+    document.getElementById('hero-phase').innerHTML = '<span class="phase-badge ko">KO-Phase</span>';
+    const { roundName, teamsRemaining } = deriveKORoundInfo();
+    document.getElementById('hero-matchday-label').textContent = 'Runde';
+    document.getElementById('hero-matchday').textContent = roundName;
+    document.getElementById('hero-teams-label').textContent = 'Teams übrig';
+    document.getElementById('hero-teams').textContent = teamsRemaining;
+  } else {
+    document.getElementById('hero-phase').innerHTML = '<span class="phase-badge group">Gruppenphase</span>';
+    const { current, total } = deriveCurrentMatchday();
+    document.getElementById('hero-matchday-label').textContent = 'Spieltag';
+    document.getElementById('hero-matchday').textContent = `SP${current} / SP${total}`;
+    document.getElementById('hero-teams-label').textContent = 'Teams';
+    document.getElementById('hero-teams').textContent = activeSeason.participant_count || '—';
+  }
+}
+
+// --- Tab System ---
+
+function initTabs() {
+  const tabBar = document.getElementById('tab-bar');
+  const buttons = tabBar.querySelectorAll('.tab-btn');
+
+  if (isKOPhase) {
+    const ergebnisseBtn = tabBar.querySelector('[data-tab="ergebnisse"]');
+    if (ergebnisseBtn) ergebnisseBtn.textContent = 'KO-Ergebnisse';
+  }
+
+  buttons.forEach(btn => {
+    btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+  });
+
+  const hash = window.location.hash.replace('#', '');
+  if (hash && document.getElementById(`panel-${hash}`)) {
+    switchTab(hash);
+  }
+}
+
+function switchTab(tabId) {
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === tabId);
+  });
+  document.querySelectorAll('.tab-panel').forEach(panel => {
+    panel.classList.toggle('active', panel.id === `panel-${tabId}`);
+  });
+  window.location.hash = tabId;
+}
+
+// --- Ergebnisse Tab ---
+
+function renderMatchRow(m) {
+  const home = teamName(m.home_team_id);
+  const away = teamName(m.away_team_id);
+  const score = m.status === 'played'
+    ? `<span class="match-score">${m.home_goals}:${m.away_goals}</span>`
+    : '<span style="color:var(--muted)">-:-</span>';
+  return `
+    <div class="match-row">
+      <span class="match-team home">${home}&nbsp;${crestImg(m.home_team_id)}</span>
+      <span class="match-score-center">${score}</span>
+      <span class="match-team away">${crestImg(m.away_team_id)}&nbsp;${away}</span>
+    </div>`;
+}
+
+function renderGroupErgebnisse() {
+  const panel = document.getElementById('panel-ergebnisse');
+  if (allMatches.length === 0) {
+    panel.innerHTML = '<p style="color:var(--muted)">Noch keine Ergebnisse.</p>';
+    return;
+  }
+
+  const { current } = deriveCurrentMatchday();
+  const matchdays = [...new Set(allMatches.map(m => m.matchday))].sort((a, b) => b - a);
+
+  let html = '';
+  matchdays.forEach(md => {
+    const mdMatches = allMatches.filter(m => m.matchday === md);
+    const isCurrentOrNewer = md >= current && current > 0;
+    const isOpen = isCurrentOrNewer || current === 0;
+
+    if (isOpen) {
+      html += `<div class="matchday-label">Spieltag ${md}</div>`;
+      html += mdMatches.map(renderMatchRow).join('');
+    } else {
+      const playedCount = mdMatches.filter(m => m.status === 'played').length;
+      html += `
+        <button class="accordion-toggle" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">
+          <span class="arrow">▸</span> Spieltag ${md} (${playedCount} Spiele)
+        </button>
+        <div class="accordion-body">
+          ${mdMatches.map(renderMatchRow).join('')}
+        </div>`;
+    }
+  });
+
+  panel.innerHTML = html;
+}
+
+// --- KO Ergebnisse Tab ---
+
+function koMatchToMatchRow(m) {
+  return {
+    home_team_id: m.home_team ? m.home_team.id : null,
+    away_team_id: m.away_team ? m.away_team.id : null,
+    home_goals: m.home_goals,
+    away_goals: m.away_goals,
+    status: m.status
+  };
+}
+
+function cacheKOTeamNames() {
+  if (!koBrackets) return;
+  for (const bracket of Object.values(koBrackets)) {
+    if (!bracket || !bracket.rounds) continue;
+    for (const matches of Object.values(bracket.rounds)) {
+      matches.forEach(m => {
+        if (m.home_team) teamCache[m.home_team.id] = m.home_team.name;
+        if (m.away_team) teamCache[m.away_team.id] = m.away_team.name;
+      });
+    }
+  }
+}
+
+function renderKOErgebnisse() {
+  const panel = document.getElementById('panel-ergebnisse');
+  if (!koBrackets) {
+    panel.innerHTML = '<p style="color:var(--muted)">KO-Bracket nicht verfügbar.</p>';
+    return;
+  }
+
+  cacheKOTeamNames();
+
+  const bracketLabels = { meister: 'Meister-Bracket', lucky_loser: 'Lucky Loser', loser: 'Trostpflaster' };
+  let html = '';
+
+  for (const [bracketType, bracket] of Object.entries(koBrackets)) {
+    if (!bracket || !bracket.rounds) continue;
+
+    const roundKeys = Object.keys(bracket.rounds).sort().reverse();
+    const allEmpty = roundKeys.every(key => bracket.rounds[key].filter(m => !m.is_bye).length === 0);
+    if (allEmpty) continue;
+
+    html += `<div class="matchday-label" style="margin-top:1rem;font-size:.85rem;color:var(--primary)">${bracketLabels[bracketType] || bracketType}</div>`;
+
+    roundKeys.forEach((roundKey, idx) => {
+      const roundMatches = bracket.rounds[roundKey].filter(m => !m.is_bye);
+      if (roundMatches.length === 0) return;
+
+      const roundLabel = roundMatches[0].round
+        ? roundMatches[0].round.charAt(0).toUpperCase() + roundMatches[0].round.slice(1)
+        : roundKey;
+
+      const isOpen = idx === 0;
+
+      if (isOpen) {
+        html += `<div class="matchday-label">${roundLabel}</div>`;
+        html += roundMatches.map(m => renderMatchRow(koMatchToMatchRow(m))).join('');
+      } else {
+        const playedCount = roundMatches.filter(m => m.status === 'played').length;
+        html += `
+          <button class="accordion-toggle" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">
+            <span class="arrow">▸</span> ${roundLabel} (${playedCount}/${roundMatches.length} Spiele)
+          </button>
+          <div class="accordion-body">
+            ${roundMatches.map(m => renderMatchRow(koMatchToMatchRow(m))).join('')}
+          </div>`;
+      }
+    });
+  }
+
+  panel.innerHTML = html || '<p style="color:var(--muted)">Noch keine KO-Spiele.</p>';
+}
+
+// --- News Tab ---
+
 async function renderMatchesBlock(matchIds, isKO = false) {
   try {
     const endpoint = isKO ? 'ko-matches/batch' : 'matches/batch';
     const matches = await fetch(`${API}/api/${endpoint}?match_ids=${matchIds}`).then(r => r.json());
-
     if (matches.length === 0) return '<em style="color:var(--muted)">Keine Matches gefunden</em>';
 
     let html = '<div style="background:var(--card-alt);border:1px solid var(--border);border-radius:8px;padding:1rem;margin:1rem 0">';
     html += '<table style="width:100%;font-size:.9rem">';
-
     matches.forEach(m => {
       const homeTeam = teamName(m.home_team_id);
       const awayTeam = teamName(m.away_team_id);
       const score = m.status === 'played'
         ? `<span class="match-score">${m.home_goals}:${m.away_goals}</span>`
         : '<span style="color:var(--muted)">-:-</span>';
-
       html += `
         <tr>
           <td style="text-align:right;padding:.4rem;width:calc(50% - 30px)"><span style="display:inline-flex;align-items:center;justify-content:flex-end">${homeTeam}${crestImg(m.home_team_id)}</span></td>
@@ -287,7 +549,6 @@ async function renderMatchesBlock(matchIds, isKO = false) {
           <td style="text-align:left;padding:.4rem;width:calc(50% - 30px)"><span style="display:inline-flex;align-items:center">${crestImg(m.away_team_id)}${awayTeam}</span></td>
         </tr>`;
     });
-
     html += '</table></div>';
     return html;
   } catch (e) {
@@ -295,51 +556,40 @@ async function renderMatchesBlock(matchIds, isKO = false) {
   }
 }
 
-// News laden
 async function loadNews() {
+  const panel = document.getElementById('panel-news');
   try {
     const news = await fetch(`${API}/api/news`).then(r => r.json());
-
     if (news.length === 0) {
-      document.getElementById('start-news').innerHTML = '<p style="color:var(--muted)">Noch keine News vorhanden.</p>';
+      panel.innerHTML = '<p style="color:var(--muted)">Noch keine News vorhanden.</p>';
       return;
     }
 
-    const container = document.getElementById('start-news');
-    container.innerHTML = '';
-
+    panel.innerHTML = '';
     for (const n of news) {
       const date = new Date(n.created_at).toLocaleDateString('de-DE', {
         day: '2-digit', month: 'long', year: 'numeric'
       });
 
-      // Simple Markdown: [Text](URL), **bold**, *italic*, newlines
       let content = n.content
         .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
         .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
         .replace(/\*(.+?)\*/g, '<em>$1</em>')
         .replace(/\n/g, '<br>');
 
-      // Render [matches:...] and [ko-matches:...] blocks
       const matchPattern = /\[matches:([0-9,\s]+)\]/g;
       const koMatchPattern = /\[ko-matches:([0-9,\s]+)\]/g;
       const matchBlocks = [];
       let match;
-
       while ((match = matchPattern.exec(content)) !== null) {
-        const matchIds = match[1].trim();
-        matchBlocks.push({ placeholder: match[0], matchIds, isKO: false });
+        matchBlocks.push({ placeholder: match[0], matchIds: match[1].trim(), isKO: false });
       }
-
       while ((match = koMatchPattern.exec(content)) !== null) {
-        const matchIds = match[1].trim();
-        matchBlocks.push({ placeholder: match[0], matchIds, isKO: true });
+        matchBlocks.push({ placeholder: match[0], matchIds: match[1].trim(), isKO: true });
       }
-
-      // Replace placeholders with rendered matches
       for (const block of matchBlocks) {
-        const renderedMatches = await renderMatchesBlock(block.matchIds, block.isKO);
-        content = content.replace(block.placeholder, renderedMatches);
+        const rendered = await renderMatchesBlock(block.matchIds, block.isKO);
+        content = content.replace(block.placeholder, rendered);
       }
 
       const newsCard = document.createElement('div');
@@ -350,49 +600,30 @@ async function loadNews() {
           <div class="card-sub">${date} · ${n.author}</div>
         </div>
         <div style="line-height:1.6">${content}</div>`;
-
-      container.appendChild(newsCard);
+      panel.appendChild(newsCard);
     }
   } catch (e) {
-    document.getElementById('start-news').innerHTML = '<p style="color:var(--danger)">News konnten nicht geladen werden.</p>';
+    panel.innerHTML = '<p style="color:var(--danger)">News konnten nicht geladen werden.</p>';
   }
 }
 
-// Kompakte Tabellen für Startseite laden
-async function loadStartStandings() {
-  const container = document.getElementById('start-standings');
+// --- Sidebar ---
 
+async function renderGroupStandings() {
+  const container = document.getElementById('sidebar-content');
   try {
-    // Hole aktive Saison
-    const seasons = await fetch(`${API}/api/seasons`).then(r => r.json());
-    const activeSeason = seasons.find(s => s.status === 'active') || seasons[0];
-
-    if (!activeSeason) {
-      container.innerHTML = '<p style="color:var(--muted);font-size:.85rem">Keine Saison verfügbar</p>';
-      return;
-    }
-
-    // Teams cachen
-    await loadTeams(activeSeason.id);
-
-    // Gruppen laden
-    const groups = await fetch(`${API}/api/seasons/${activeSeason.id}/groups-with-teams`).then(r => r.json());
-
-    if (groups.length === 0) {
+    if (groupsData.length === 0) {
       container.innerHTML = '<p style="color:var(--muted);font-size:.85rem">Keine Gruppen vorhanden</p>';
       return;
     }
 
     container.innerHTML = '';
-
-    for (const g of groups) {
+    for (const g of groupsData) {
       const standings = await fetch(`${API}/api/groups/${g.group.id}/standings`).then(r => r.json());
-
       if (standings.length === 0) continue;
 
       const div = document.createElement('div');
       div.className = 'compact-standings';
-
       div.innerHTML = `
         <h3>Gruppe ${g.group.name}</h3>
         <table>
@@ -400,6 +631,9 @@ async function loadStartStandings() {
             <tr>
               <th class="pos">#</th>
               <th style="text-align:left">Team</th>
+              <th>S</th>
+              <th>U</th>
+              <th>N</th>
               <th>Pkt</th>
             </tr>
           </thead>
@@ -407,14 +641,15 @@ async function loadStartStandings() {
             ${standings.map((row, idx) => `
               <tr ${idx === 0 ? 'class="leader"' : ''}>
                 <td class="pos">${idx + 1}</td>
-                <td style="text-align:left"><a href="team.html?id=${row.team_id}" style="color:inherit;text-decoration:none;font-weight:${idx === 0 ? '700' : '500'};display:inline-flex;align-items:center">${crestImg(row.team_id)}${teamName(row.team_id)}</a></td>
+                <td style="text-align:left"><a href="team.html?id=${row.team_id}" style="color:inherit;text-decoration:none;font-weight:${idx === 0 ? '700' : '500'};display:inline-flex;align-items:center">${crestImg(row.team_id, 18)}${teamName(row.team_id)}</a></td>
+                <td>${row.won}</td>
+                <td>${row.draw}</td>
+                <td>${row.lost}</td>
                 <td style="font-weight:600">${row.points}</td>
               </tr>
             `).join('')}
           </tbody>
-        </table>
-      `;
-
+        </table>`;
       container.appendChild(div);
     }
   } catch (e) {
@@ -422,23 +657,105 @@ async function loadStartStandings() {
   }
 }
 
-// Teams zuerst laden, dann News + Standings parallel
-(async () => {
-  const seasons = await fetch(`${API}/api/seasons`).then(r => r.json());
-  const activeSeason = seasons.find(s => s.status === 'active') || seasons[0];
-  if (activeSeason) {
-    await Promise.all([loadTeams(activeSeason.id), loadCrests()]);
+function renderMiniBracket() {
+  const container = document.getElementById('sidebar-content');
+  if (!koBrackets) {
+    container.innerHTML = '<p style="color:var(--muted);font-size:.85rem">KO-Bracket nicht verfügbar</p>';
+    return;
   }
+
+  cacheKOTeamNames();
+
+  const bracketLabels = { meister: 'Meister-Bracket', lucky_loser: 'Lucky Loser', loser: 'Trostpflaster' };
+  let html = '';
+
+  for (const [bracketType, bracket] of Object.entries(koBrackets)) {
+    if (!bracket || !bracket.rounds) continue;
+
+    const roundKeys = Object.keys(bracket.rounds).sort();
+    const allEmpty = roundKeys.every(key => bracket.rounds[key].filter(m => !m.is_bye).length === 0);
+    if (allEmpty) continue;
+
+    html += `<div class="bracket-label">${bracketLabels[bracketType] || bracketType}</div>`;
+    html += '<div class="mini-bracket">';
+
+    roundKeys.forEach((roundKey, idx) => {
+      const roundMatches = bracket.rounds[roundKey].filter(m => !m.is_bye);
+      if (roundMatches.length === 0) return;
+
+      if (idx > 0) html += '<div class="mini-connector">→</div>';
+      html += '<div>';
+      roundMatches.forEach(m => {
+        const homeScore = m.status === 'played' ? m.home_goals : '-';
+        const awayScore = m.status === 'played' ? m.away_goals : '-';
+        const homeName = m.home_team ? m.home_team.name : '???';
+        const awayName = m.away_team ? m.away_team.name : '???';
+        const homeId = m.home_team ? m.home_team.id : null;
+        const awayId = m.away_team ? m.away_team.id : null;
+        const winnerClass = (id) => m.winner_id && m.winner_id === id ? ' winner' : '';
+
+        html += `
+          <div class="mini-match-card">
+            <div class="mini-team-row${winnerClass(homeId)}">${homeName} <span>${homeScore}</span></div>
+            <div class="mini-team-row${winnerClass(awayId)}">${awayName} <span>${awayScore}</span></div>
+          </div>`;
+      });
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+
+  html += '<a class="bracket-link" href="ko.html">Zum vollständigen Bracket →</a>';
+  container.innerHTML = html || '<p style="color:var(--muted);font-size:.85rem">Noch keine KO-Daten</p>';
+}
+
+// --- Initialization ---
+
+(async () => {
+  try {
+    activeSeason = await resolveActiveSeason();
+  } catch (e) {
+    document.getElementById('hero-season').textContent = 'Fehler beim Laden';
+    document.getElementById('panel-ergebnisse').innerHTML = '<p style="color:var(--danger)">Fehler beim Laden</p>';
+    document.getElementById('sidebar-content').innerHTML = '<p style="color:var(--danger)">Fehler beim Laden</p>';
+    return;
+  }
+
+  if (!activeSeason) {
+    renderHero();
+    document.getElementById('panel-ergebnisse').innerHTML = '<p style="color:var(--muted)">Keine aktive Saison.</p>';
+    document.getElementById('panel-news').innerHTML = '<p style="color:var(--muted)">Keine News.</p>';
+    document.getElementById('sidebar-content').innerHTML = '<p style="color:var(--muted)">Keine Daten verfügbar.</p>';
+    initTabs();
+    return;
+  }
+
+  await Promise.all([
+    loadGroupsAndTeams(activeSeason.id),
+    loadCrests(),
+    detectKOPhase(activeSeason.id).then(result => { isKOPhase = result; })
+  ]);
+
+  renderHero();
+  initTabs();
+
+  if (isKOPhase) {
+    renderKOErgebnisse();
+    renderMiniBracket();
+  } else {
+    renderGroupErgebnisse();
+    renderGroupStandings();
+  }
+
   loadNews();
-  loadStartStandings();
 })();
 
-// Check if user is logged in (show admin link)
+// --- UI: Admin link ---
 if (localStorage.getItem('biw_token')) {
   document.getElementById('admin-link').style.display = 'block';
 }
 
-// Burger Menu Toggle
+// --- UI: Burger Menu ---
 const burgerBtn = document.getElementById('burger-btn');
 const navMenu = document.getElementById('nav-menu');
 const menuOverlay = document.getElementById('menu-overlay');
@@ -451,40 +768,31 @@ function toggleMenu() {
 
 burgerBtn.addEventListener('click', toggleMenu);
 menuOverlay.addEventListener('click', toggleMenu);
-
-// Close menu on navigation
 navMenu.querySelectorAll('a').forEach(link => {
   link.addEventListener('click', () => {
-    if (navMenu.classList.contains('open')) {
-      toggleMenu();
-    }
+    if (navMenu.classList.contains('open')) toggleMenu();
   });
 });
 
-// Backend Status Monitor
+// --- UI: Backend Status ---
 function updateBackendStatus() {
   const statusDot = document.getElementById('backend-status-dot');
   const statusText = document.getElementById('backend-status-text');
-
   if (!statusDot || !statusText) return;
 
   fetch(`${API}/api/seasons`).then(r => {
     if (r.ok) {
       statusDot.className = 'status-dot online';
       statusText.textContent = 'Backend verbunden';
-    } else {
-      throw new Error('API Error');
-    }
+    } else { throw new Error('API Error'); }
   }).catch(() => {
     statusDot.className = 'status-dot offline';
     statusText.textContent = 'Backend getrennt';
   });
 }
 
-// Check Backend Status initially and every 30 seconds
 updateBackendStatus();
 setInterval(updateBackendStatus, 30000);
-
 </script>
 
 <footer>
