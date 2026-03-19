@@ -116,10 +116,10 @@ Header, Navigation und Footer sind in jeder Datei manuell kopiert:
 **Ziel:** Shared-Funktionen in ein Modul auslagern, das jede Seite importiert.
 
 **Scope:**
-- [ ] `js/shared-ui.js` erstellen (ES Module) mit: `initBurgerMenu()`, `initAdminLink()`, `initBackendStatus()`, `initThemeAndDarkMode()`
-- [ ] `js/team-utils.js` erstellen mit: `loadCrests()`, `crestImg()`, `teamName()`, `teamCache`
-- [ ] Alle Seiten: Boilerplate durch `import { initSharedUI } from './js/shared-ui.js'` ersetzen
-- [ ] Backend-Status-Script (separater `<script type="module">` Block am Ende jeder Seite) eliminieren
+- [x] `js/shared-ui.js` erstellen (ES Module) mit: `initBurgerMenu()`, `initAdminLink()`, `initBackendStatus()` → Theme bleibt separat in themes.js
+- [x] `js/team-utils.js` erstellen mit: `loadCrests()`, `crestImg()`, `teamName()`, `registerTeams()`, `registerTeam()`
+- [x] Alle Seiten: Boilerplate durch ES Module Imports ersetzen → 10 Seiten migriert
+- [x] Backend-Status-Script (separater `<script type="module">` Block am Ende jeder Seite) eliminieren → in shared-ui.js konsolidiert
 
 **Geschätzter Effekt:** ~250+ Zeilen JS-Duplication eliminiert.
 
@@ -181,3 +181,4 @@ Header, Navigation und Footer sind in jeder Datei manuell kopiert:
 - **2026-03-19: Bereich A (CSS konsolidieren) abgeschlossen** — `css/shared.css` erstellt, 10 Seiten migriert, ~490 Zeilen Duplication eliminiert. Preconnect-Hints (Bereich E) gleich mit erledigt.
 - **2026-03-19: Bereich D (Visuelle Konsistenz) abgeschlossen** — Header-Subtitel `/ Start` auf index.html, `.season-item` und `.btn` in shared.css vereinheitlicht, archiv.html KO-API auf `/ko-brackets` migriert (mit v1-Fallback).
 - **2026-03-19: Bereich F (Mobile & UX) abgeschlossen** — Nav overflow-y, Tabellen overflow-x Wrapper, KO-Bracket scroll-hint Gradient, Burger touch-target 44px.
+- **2026-03-19: Bereich B (JS-Boilerplate konsolidieren) abgeschlossen** — `shared-ui.js` (Burger, Admin-Link, Backend-Status) und `team-utils.js` (Crests, Team-Cache) erstellt. 10 Seiten auf ES Module Imports migriert, ~250 Zeilen Duplication eliminiert.
