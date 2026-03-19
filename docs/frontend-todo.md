@@ -154,10 +154,10 @@ Header, Navigation und Footer sind in jeder Datei manuell kopiert:
 ### Bereich F: Mobile & UX
 
 **Scope:**
-- [ ] Nav: `overflow-y: auto; max-height: 100vh` hinzufügen
-- [ ] Tabellen: `overflow-x: auto` Wrapper für mobile Scrollbarkeit
-- [ ] KO-Bracket: Scroll-Indicator oder Touch-Hint
-- [ ] Allgemein: Touch-Targets prüfen (min. 44px)
+- [x] Nav: `overflow-y: auto; max-height: 100vh` hinzufügen → overflow-y auf nav in shared.css
+- [x] Tabellen: `overflow-x: auto` Wrapper für mobile Scrollbarkeit → JS-Wrapper in turnier, ewige-tabelle, archiv
+- [x] KO-Bracket: Scroll-Indicator oder Touch-Hint → CSS-Gradient scroll-hint mit Wrapper-Div
+- [x] Allgemein: Touch-Targets prüfen (min. 44px) → Burger-Button auf 44x44 min-size
 
 ---
 
@@ -180,3 +180,4 @@ Header, Navigation und Footer sind in jeder Datei manuell kopiert:
 
 - **2026-03-19: Bereich A (CSS konsolidieren) abgeschlossen** — `css/shared.css` erstellt, 10 Seiten migriert, ~490 Zeilen Duplication eliminiert. Preconnect-Hints (Bereich E) gleich mit erledigt.
 - **2026-03-19: Bereich D (Visuelle Konsistenz) abgeschlossen** — Header-Subtitel `/ Start` auf index.html, `.season-item` und `.btn` in shared.css vereinheitlicht, archiv.html KO-API auf `/ko-brackets` migriert (mit v1-Fallback).
+- **2026-03-19: Bereich F (Mobile & UX) abgeschlossen** — Nav overflow-y, Tabellen overflow-x Wrapper, KO-Bracket scroll-hint Gradient, Burger touch-target 44px.
