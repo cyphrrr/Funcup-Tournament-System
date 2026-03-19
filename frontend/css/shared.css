@@ -92,6 +92,10 @@ header p {
   flex-direction: column;
   gap: 4px;
   z-index: 100;
+  min-height: 44px;
+  min-width: 44px;
+  align-items: center;
+  justify-content: center;
 }
 
 .burger-btn span {
@@ -193,6 +197,7 @@ nav {
   transition: right .3s;
   padding: 5rem 2rem 2rem;
   box-shadow: -4px 0 24px rgba(0, 0, 0, .1);
+  overflow-y: auto;
 }
 
 nav.open {
