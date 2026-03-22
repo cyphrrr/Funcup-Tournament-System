@@ -62,6 +62,8 @@
 
     /* Content Grid */
     .content-grid{display:grid;grid-template-columns:2fr 1fr;gap:1.5rem;align-items:start}
+    .content-grid.no-sidebar{grid-template-columns:1fr}
+    .content-grid.no-sidebar #sidebar{display:none}
     @media(max-width:768px){.content-grid{grid-template-columns:1fr}}
 
     /* Compact Standings */
@@ -456,6 +458,9 @@ function renderKOErgebnisse() {
     });
   }
 
+  if (html) {
+    html += '<a href="ko.html" style="display:block;text-align:center;margin-top:1.5rem;font-size:.9rem;color:var(--primary);text-decoration:none;font-weight:600">→ Zum vollständigen Bracket</a>';
+  }
   panel.innerHTML = html || '<p style="color:var(--muted)">Noch keine KO-Spiele.</p>';
 }
 
@@ -691,9 +696,9 @@ function renderMiniBracket() {
   }
 
   if (results[0].status === 'fulfilled') {
-    if (isKOPhase) {
+    if (isKOPhase || isTournamentCompleted) {
+      document.querySelector('.content-grid').classList.add('no-sidebar');
       renderKOErgebnisse();
-      renderMiniBracket();
     } else {
       renderGroupErgebnisse();
       renderGroupStandings();
