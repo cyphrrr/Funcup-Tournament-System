@@ -60,7 +60,7 @@ def update_season(season_id: int, update: schemas.SeasonUpdate, db: Session = De
         valid_transitions = {
             "planned": ["active"],
             "active": ["archived"],
-            "archived": []
+            "archived": ["active"]  # Korrektur-Möglichkeit
         }
         allowed = valid_transitions.get(season.status, [])
         if update.status not in allowed:
@@ -71,7 +71,8 @@ def update_season(season_id: int, update: schemas.SeasonUpdate, db: Session = De
         season.status = update.status
 
     if update.name is not None:
-        if season.status == "archived":
+        # Name-Änderung erlauben wenn Status gleichzeitig wechselt (z.B. archived → active)
+        if season.status == "archived" and (update.status is None or update.status == "archived"):
             raise HTTPException(status_code=400, detail="Archivierte Saisons können nicht bearbeitet werden")
         season.name = update.name
 

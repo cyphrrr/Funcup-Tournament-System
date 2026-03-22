@@ -74,11 +74,16 @@ async function saveSeasonEdit() {
   }
 
   try {
-    await authFetch(`${API_URL}/api/seasons/${seasonId}`, {
+    const res = await authFetch(`${API_URL}/api/seasons/${seasonId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, status })
     });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }));
+      throw new Error(err.detail || `HTTP ${res.status}`);
+    }
 
     toast('Saison aktualisiert!');
     closeEditSeasonModal();
