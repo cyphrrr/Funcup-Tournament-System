@@ -27,7 +27,12 @@
     .phase-badge{display:inline-block;font-size:.7rem;font-weight:700;padding:2px 8px;border-radius:4px;text-transform:uppercase;letter-spacing:0.04em}
     .phase-badge.group{background:color-mix(in srgb,var(--success) 15%,transparent);color:var(--success);border:1px solid var(--success)}
     .phase-badge.ko{background:color-mix(in srgb,var(--danger) 15%,transparent);color:var(--danger);border:1px solid var(--danger)}
+    .phase-badge.completed{background:color-mix(in srgb,#f59e0b 15%,transparent);color:#f59e0b;border:1px solid #f59e0b}
     @media(max-width:768px){.hero-bar-inner{display:grid;grid-template-columns:1fr 1fr;gap:.5rem}.hero-stat-divider{display:none}}
+
+    /* Completed Banner */
+    .completed-banner{background:color-mix(in srgb,#f59e0b 10%,var(--card));border:1px solid color-mix(in srgb,#f59e0b 30%,var(--border));border-radius:8px;padding:.75rem 1rem;margin-bottom:1rem;font-size:.9rem;text-align:center;color:var(--text)}
+    .completed-banner a{color:#f59e0b;font-weight:600}
 
     /* Tabs */
     .tab-bar{display:flex;gap:4px;margin-bottom:0}
@@ -140,17 +145,30 @@ let allMatches = [];
 let koBrackets = null;
 let activeSeason = null;
 let isKOPhase = false;
+let isTournamentCompleted = false;
 
 // --- Data Loading ---
 
 async function resolveActiveSeason() {
   const seasons = await fetch(`${API}/api/seasons`).then(r => r.json());
+
+  // 1. Aktive Saison suchen
   const activeSeasons = seasons.filter(s => s.status === 'active');
   if (activeSeasons.length > 0) {
     activeSeasons.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
     return activeSeasons[0];
   }
-  return seasons[0] || null;
+
+  // 2. Keine aktive → jüngste archivierte Saison als "abgeschlossen" anzeigen
+  const archivedSeasons = seasons.filter(s => s.status === 'archived');
+  if (archivedSeasons.length > 0) {
+    archivedSeasons.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    isTournamentCompleted = true;
+    return archivedSeasons[0];
+  }
+
+  // 3. Gar keine Saison
+  return null;
 }
 
 async function loadGroupsAndTeams(seasonId) {
@@ -225,6 +243,18 @@ function deriveKORoundInfo() {
   return { roundName, teamsRemaining: teamIds.size };
 }
 
+// --- Tournament Winner ---
+
+function deriveTournamentWinner() {
+  if (!koBrackets || !koBrackets.meister || !koBrackets.meister.rounds) return null;
+  const allMatches = Object.values(koBrackets.meister.rounds).flat();
+  const finale = allMatches.find(m => m.round === 'Finale' && m.status === 'played');
+  if (!finale || !finale.winner_id) return null;
+  const winnerTeam = finale.home_team && finale.winner_id === finale.home_team.id
+    ? finale.home_team : finale.away_team;
+  return winnerTeam ? winnerTeam.name : null;
+}
+
 // --- Hero Bar ---
 
 function renderHero() {
@@ -234,6 +264,20 @@ function renderHero() {
     document.getElementById('hero-phase').innerHTML = '<span class="phase-badge group">—</span>';
     document.getElementById('hero-matchday').textContent = '—';
     document.getElementById('hero-teams').textContent = '—';
+    return;
+  }
+
+  if (isTournamentCompleted) {
+    document.getElementById('hero-phase').innerHTML = '<span class="phase-badge completed">Abgeschlossen</span>';
+
+    const winnerName = deriveTournamentWinner();
+    document.getElementById('hero-matchday-label').textContent = 'Pokalsieger';
+    document.getElementById('hero-matchday').innerHTML = winnerName
+      ? `🏆 ${winnerName}`
+      : 'Ergebnisse im Archiv';
+
+    document.getElementById('hero-teams-label').textContent = 'Archiv';
+    document.getElementById('hero-teams').innerHTML = '<a href="archiv.html" style="color:var(--primary);text-decoration:none;font-weight:600">→ Zum Archiv</a>';
     return;
   }
 
@@ -637,6 +681,14 @@ function renderMiniBracket() {
 
   renderHero();
   initTabs();
+
+  if (isTournamentCompleted) {
+    const panel = document.getElementById('panel-ergebnisse');
+    const banner = document.createElement('div');
+    banner.className = 'completed-banner';
+    banner.innerHTML = '🏆 Das Turnier ist abgeschlossen! Alle Ergebnisse findest du im <a href="archiv.html">Archiv</a>.';
+    panel.prepend(banner);
+  }
 
   if (results[0].status === 'fulfilled') {
     if (isKOPhase) {
