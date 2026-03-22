@@ -394,9 +394,18 @@ async function loadSeasons() {
     // Sort by ID descending (newest first)
     seasons.sort((a, b) => b.id - a.id);
 
-    // Fetch all group data in parallel
-    const groupResults = await Promise.all(
-      seasons.map(s => fetch(`${API}/api/seasons/${s.id}/groups-with-teams`).then(r => r.json()))
+    // Fetch group data in batches to avoid rate limiting
+    async function fetchBatched(urls, batchSize = 5) {
+      const results = [];
+      for (let i = 0; i < urls.length; i += batchSize) {
+        const batch = urls.slice(i, i + batchSize);
+        const batchResults = await Promise.all(batch.map(url => fetch(url).then(r => r.json())));
+        results.push(...batchResults);
+      }
+      return results;
+    }
+    const groupResults = await fetchBatched(
+      seasons.map(s => `${API}/api/seasons/${s.id}/groups-with-teams`)
     );
 
     let html = '';
