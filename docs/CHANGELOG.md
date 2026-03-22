@@ -1,4 +1,4 @@
-# FUNCUP TOURNAMENT SYSTEM — Changelog (v2)
+# FUNCUP TOURNAMENT SYSTEM — Changelog
 
 Änderungen seit Einführung des 3-Bracket-Systems (KO-Logik v2).
 

@@ -230,6 +230,7 @@ Fachliche und technische Details siehe:
 - `docs/LOGIC.md` - Fachliche Logik (Turnierphasen, Automatismen, Weiterkommen)
 - `docs/ARCHITECTURE.md` - System-Architektur (Schichten, Schnittstellen, Verantwortungen)
 - `docs/DATA_MODEL.md` - Logisches Datenmodell (Tabellen, Beziehungen, Constraints)
+- `docs/CHANGELOG.md` - Änderungsprotokoll (wird bei jeder Änderung aktualisiert)
 
 Diese Dokumente sind **technologie-agnostisch** und Single Source of Truth für alle Implementierungen.
 
