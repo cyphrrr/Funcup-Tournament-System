@@ -53,16 +53,9 @@ python -m http.server 5500
 
 ### Environment
 
-Die Backend-Konfiguration liegt in `backend/.env`:
+Die Backend-Konfiguration liegt in `backend/.env` (siehe `.env.example` im Projekt-Root für alle Variablen).
 
-```
-ADMIN_USER=admin
-ADMIN_PASSWORD=biw2026!
-API_KEY=biw-n8n-secret-key-change-me
-JWT_SECRET=super-secret-jwt-key-change-in-production
-```
-
-**Wichtig**: Diese Werte müssen vor Production geändert werden!
+**Wichtig**: Alle Credentials (Passwörter, API-Keys, JWT-Secret) müssen vor Production geändert werden!
 
 ## Architektur-Highlights
 
@@ -257,7 +250,7 @@ cd backend && uvicorn app.main:app --reload
 # → http://127.0.0.1:5500/admin.html
 
 # 3. Neue Saison anlegen
-# → Login mit admin/biw2026!
+# → Login mit den Credentials aus backend/.env
 # → "Neue Saison" → Teilnehmerzahl eingeben
 # → Gruppen werden automatisch erstellt
 
@@ -278,7 +271,7 @@ cd backend && uvicorn app.main:app --reload
 
 n8n-Flows liegen unter `n8n-flows/` (versioniert).
 
-n8n authentifiziert sich via `X-API-Key: biw-n8n-secret-key-change-me` Header.
+n8n authentifiziert sich via `X-API-Key` Header (Key aus `backend/.env`).
 
 Typische n8n-Workflows:
 - Ergebnis-Import von onlineliga.de
