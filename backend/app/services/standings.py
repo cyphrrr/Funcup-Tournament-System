@@ -16,7 +16,7 @@ def get_all_time_standings(db: Session = Depends(get_db)):
     all_matches = db.query(models.Match).filter(models.Match.status == "played").all()
     all_ko = db.query(models.KOMatch).filter(
         models.KOMatch.status == "played",
-        models.KOMatch.is_bye == False
+        models.KOMatch.is_bye == 0
     ).all()
 
     teams = {t.id: t.name for t in db.query(models.Team).all()}
