@@ -73,7 +73,7 @@ uvicorn app.main:app --reload --port 8000 &
 # JWT holen:
 TOKEN=$(curl -s -X POST http://localhost:8000/api/login \
   -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"biw2026!"}' | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
+  -d '{"username":"$ADMIN_USER","password":"$ADMIN_PASSWORD"}' | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
 # Endpoint testen:
 curl -s -H "Authorization: Bearer $TOKEN" http://localhost:8000/api/admin/anmeldungen | python3 -m json.tool | head -40
 ```

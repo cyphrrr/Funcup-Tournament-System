@@ -160,7 +160,7 @@ cd backend
 ```bash
 curl -X POST http://localhost:8000/api/discord/users/register \
   -H "Content-Type: application/json" \
-  -H "X-API-Key: biw-n8n-secret-key-change-me" \
+  -H "X-API-Key: $API_KEY" \
   -d '{
     "discord_id": "123456789012345678",
     "discord_username": "TestUser#1234",
