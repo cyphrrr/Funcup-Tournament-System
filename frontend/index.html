@@ -250,7 +250,7 @@ function deriveKORoundInfo() {
 function deriveTournamentWinner() {
   if (!koBrackets || !koBrackets.meister || !koBrackets.meister.rounds) return null;
   const allMatches = Object.values(koBrackets.meister.rounds).flat();
-  const finale = allMatches.find(m => m.round === 'Finale' && m.status === 'played');
+  const finale = allMatches.find(m => m.round.toLowerCase() === 'finale' && m.status === 'played');
   if (!finale || !finale.winner_id) return null;
   const winnerTeam = finale.home_team && finale.winner_id === finale.home_team.id
     ? finale.home_team : finale.away_team;
@@ -274,11 +274,13 @@ function renderHero() {
 
     const winnerName = deriveTournamentWinner();
     document.getElementById('hero-matchday-label').textContent = 'Pokalsieger';
-    document.getElementById('hero-matchday').innerHTML = winnerName
-      ? `🏆 ${winnerName}`
-      : 'Ergebnisse im Archiv';
+    if (winnerName) {
+      document.getElementById('hero-matchday').innerHTML = `🏆 ${winnerName}`;
+    } else {
+      document.getElementById('hero-matchday').innerHTML = '—';
+    }
 
-    document.getElementById('hero-teams-label').textContent = 'Archiv';
+    document.getElementById('hero-teams-label').textContent = 'Ergebnisse';
     document.getElementById('hero-teams').innerHTML = '<a href="archiv.html" style="color:var(--primary);text-decoration:none;font-weight:600">→ Zum Archiv</a>';
     return;
   }
