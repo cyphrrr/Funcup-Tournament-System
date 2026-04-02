@@ -13,12 +13,29 @@ router = APIRouter()
 @router.get("/teams")
 def list_all_teams(
     search: Optional[str] = None,
+    participating: Optional[bool] = None,
     db: Session = Depends(get_db)
 ):
-    """Alle Teams mit Saison-Teilnahmen und Discord-Verknüpfung."""
+    """Alle Teams mit Saison-Teilnahmen und Discord-Verknüpfung.
+
+    participating=true: Nur Teams die als 'Dabei' markiert sind
+    (Team.participating_next OR UserProfile.participating_next).
+    """
     query = db.query(models.Team)
     if search and len(search.strip()) >= 2:
         query = query.filter(models.Team.name.ilike(f"%{search}%"))
+
+    if participating is True:
+        # Teams mit participating_next=True auf Team-Ebene ODER UserProfile-Ebene
+        participating_profile_team_ids = db.query(models.UserProfile.team_id).filter(
+            models.UserProfile.team_id.isnot(None),
+            models.UserProfile.participating_next == True
+        ).subquery()
+        query = query.filter(
+            (models.Team.participating_next == True) |
+            (models.Team.id.in_(db.query(participating_profile_team_ids)))
+        )
+
     query = query.order_by(models.Team.name)
     teams = query.all()
 
@@ -54,12 +71,14 @@ def list_all_teams(
     result = []
     for t in teams:
         profile = profile_map.get(t.id)
+        # Dabei = Team-Level OR UserProfile-Level
+        is_participating = t.participating_next or (profile.participating_next if profile else False)
         result.append({
             "id": t.id,
             "name": t.name,
             "logo_url": t.logo_url,
             "onlineliga_url": t.onlineliga_url,
-            "participating_next": profile.participating_next if profile else False,
+            "participating_next": is_participating,
             "discord_user": {
                 "discord_id": profile.discord_id,
                 "discord_username": profile.discord_username,
@@ -68,6 +87,42 @@ def list_all_teams(
         })
 
     return result
+
+
+@router.post("/teams/bulk-register", response_model=schemas.BulkRegisterResponse)
+def bulk_register_teams(
+    payload: schemas.BulkRegisterPayload,
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_user)
+):
+    """
+    Bulk-Registrierung: Teamnamen-Liste → existierende Teams als 'Dabei' markieren,
+    neue Teams anlegen mit participating_next=True.
+    """
+    created = 0
+    updated = 0
+
+    for name in payload.teams:
+        name = name.strip()
+        if not name:
+            continue
+
+        existing = db.query(models.Team).filter(models.Team.name == name).first()
+        if existing:
+            if not existing.participating_next:
+                existing.participating_next = True
+                updated += 1
+        else:
+            team = models.Team(name=name, participating_next=True)
+            db.add(team)
+            created += 1
+
+    db.commit()
+    return schemas.BulkRegisterResponse(
+        created=created,
+        updated=updated,
+        total=created + updated
+    )
 
 
 # WICHTIG: /teams/search und /teams/crests MÜSSEN vor /teams/{team_id} registriert werden!
@@ -251,6 +306,8 @@ def update_team(team_id: int, update: schemas.TeamUpdate, db: Session = Depends(
         team.logo_url = update.logo_url
     if update.onlineliga_url is not None:
         team.onlineliga_url = update.onlineliga_url
+    if update.participating_next is not None:
+        team.participating_next = update.participating_next
 
     db.commit()
     db.refresh(team)

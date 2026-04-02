@@ -48,24 +48,26 @@ async function loadParticipants() {
   tbody.innerHTML = '<tr><td colspan="5" style="text-align:center">Lade...</td></tr>';
 
   try {
-    const res = await fetch(`${API_URL}/api/teams`);
+    // Nur Dabei-Teams laden
+    const res = await fetch(`${API_URL}/api/teams?participating=true`);
     allParticipantTeams = await res.json();
 
-    // Vorauswahl: Teams mit participating_next ODER in geplanter Saison
+    // Alle geladenen Teams vorauswählen (sind ja alle "Dabei")
     const selectedIds = new Set(setupState.participants.map(p => p.team_id));
     if (selectedIds.size === 0) {
       allParticipantTeams.forEach(t => {
-        const inPlanned = (t.seasons || []).some(s => s.status === 'planned');
-        if (t.participating_next || inPlanned) {
-          selectedIds.add(t.id);
-        }
+        selectedIds.add(t.id);
+        setupState.participants.push({ team_id: t.id, team_name: t.name });
       });
-      // setupState synchron befüllen
-      allParticipantTeams.forEach(t => {
-        if (selectedIds.has(t.id)) {
-          setupState.participants.push({ team_id: t.id, team_name: t.name });
-        }
-      });
+    }
+
+    if (!allParticipantTeams.length) {
+      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:2rem 1rem">
+        Keine Teams als "Dabei" markiert.<br>
+        <span style="font-size:.85rem">Nutze <strong>📥 Bulk-Import</strong> um Teams hinzuzufügen oder <strong>👥 Teams verwalten</strong> um bestehende Teams zu markieren.</span>
+      </td></tr>`;
+      countEl.textContent = '0 Teams';
+      return;
     }
 
     renderParticipantsList(allParticipantTeams, selectedIds);
@@ -317,6 +319,151 @@ async function finalizeTeams() {
 
   } catch (e) {
     toast(`Fehler: ${e.message}`, 'error');
+  }
+}
+
+
+// ---- Bulk-Import Modal ----
+
+function openBulkImportModal() {
+  document.getElementById('bulk-import-textarea').value = '';
+  document.getElementById('bulk-import-result').style.display = 'none';
+  document.getElementById('bulk-import-btn').disabled = false;
+  document.getElementById('bulk-import-modal').style.display = 'flex';
+  setTimeout(() => document.getElementById('bulk-import-textarea').focus(), 100);
+}
+
+function closeBulkImportModal() {
+  document.getElementById('bulk-import-modal').style.display = 'none';
+}
+
+async function submitBulkImport() {
+  const textarea = document.getElementById('bulk-import-textarea');
+  const resultEl = document.getElementById('bulk-import-result');
+  const btn = document.getElementById('bulk-import-btn');
+
+  const lines = textarea.value.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+  if (!lines.length) {
+    toast('Bitte mindestens einen Teamnamen eingeben', 'error');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = '⏳ Importiere...';
+
+  try {
+    const res = await authFetch(`${API_URL}/api/teams/bulk-register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ teams: lines })
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || 'Import fehlgeschlagen');
+    }
+
+    const data = await res.json();
+    resultEl.style.display = 'block';
+    resultEl.innerHTML = `<div style="padding:.75rem;background:var(--bg-elevated);border-radius:6px;font-size:.9rem">
+      ✅ <strong>${data.created}</strong> neue Teams angelegt,
+      <strong>${data.updated}</strong> bestehende als "Dabei" markiert.
+      <br>Gesamt: <strong>${data.total}</strong> Teams verarbeitet.
+    </div>`;
+
+    toast(`Bulk-Import: ${data.created} neu, ${data.updated} aktualisiert`);
+
+    // Teilnehmer-Liste neu laden
+    setupState.participants = [];
+    await loadParticipants();
+
+  } catch (e) {
+    resultEl.style.display = 'block';
+    resultEl.innerHTML = `<div style="color:var(--danger);font-size:.9rem">❌ ${e.message}</div>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '📥 Importieren';
+  }
+}
+
+
+// ---- Teams verwalten Modal ----
+
+let allManageTeams = [];
+
+function openManageTeamsModal() {
+  document.getElementById('manage-teams-search').value = '';
+  document.getElementById('manage-teams-modal').style.display = 'flex';
+  loadManageTeams();
+}
+
+function closeManageTeamsModal() {
+  document.getElementById('manage-teams-modal').style.display = 'none';
+  // Teilnehmer-Liste neu laden nach Änderungen
+  setupState.participants = [];
+  loadParticipants();
+}
+
+async function loadManageTeams() {
+  const tbody = document.getElementById('manage-teams-list');
+  tbody.innerHTML = '<tr><td colspan="3" style="text-align:center">Lade...</td></tr>';
+
+  try {
+    const res = await fetch(`${API_URL}/api/teams`);
+    allManageTeams = await res.json();
+    renderManageTeamsList(allManageTeams);
+  } catch (e) {
+    tbody.innerHTML = `<tr><td colspan="3" style="color:var(--danger)">Fehler: ${e.message}</td></tr>`;
+  }
+}
+
+function renderManageTeamsList(teams) {
+  const tbody = document.getElementById('manage-teams-list');
+  if (!teams.length) {
+    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--text-muted)">Keine Teams gefunden</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = teams.map(t => {
+    const discord = t.discord_user
+      ? (t.discord_user.discord_username || t.discord_user.discord_id)
+      : '<span style="color:var(--text-muted)">–</span>';
+
+    return `<tr>
+      <td style="text-align:center"><input type="checkbox" ${t.participating_next ? 'checked' : ''} onchange="toggleTeamParticipation(${t.id}, this.checked)"></td>
+      <td>${escapeHtml(t.name)}</td>
+      <td>${discord}</td>
+    </tr>`;
+  }).join('');
+}
+
+function filterManageTeamsList() {
+  const q = (document.getElementById('manage-teams-search').value || '').toLowerCase().trim();
+  const filtered = q ? allManageTeams.filter(t => t.name.toLowerCase().includes(q)) : allManageTeams;
+  renderManageTeamsList(filtered);
+}
+
+async function toggleTeamParticipation(teamId, value) {
+  try {
+    const res = await authFetch(`${API_URL}/api/teams/${teamId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ participating_next: value })
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || 'Fehler beim Aktualisieren');
+    }
+
+    // Lokalen State aktualisieren
+    const team = allManageTeams.find(t => t.id === teamId);
+    if (team) team.participating_next = value;
+
+  } catch (e) {
+    toast(`Fehler: ${e.message}`, 'error');
+    // Checkbox zurücksetzen
+    loadManageTeams();
   }
 }
 

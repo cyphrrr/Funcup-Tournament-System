@@ -55,10 +55,21 @@ class TeamUpdate(BaseModel):
     name: str | None = None
     logo_url: str | None = None
     onlineliga_url: str | None = None
+    participating_next: bool | None = None
 
 
 class BulkTeamCreate(BaseModel):
     teams: list[str]
+
+
+class BulkRegisterPayload(BaseModel):
+    teams: list[str]
+
+
+class BulkRegisterResponse(BaseModel):
+    created: int
+    updated: int
+    total: int
 
 
 class TeamRead(BaseModel):

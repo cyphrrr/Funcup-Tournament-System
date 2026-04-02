@@ -27,6 +27,7 @@ class Team(Base):
     name = Column(String, nullable=False)
     logo_url = Column(String, nullable=True)  # Wappen/Logo
     onlineliga_url = Column(String, nullable=True)  # Link zu onlineliga.de
+    participating_next = Column(Boolean, default=False)  # Dabei am nächsten Pokal (Team-Level)
 
 class SeasonTeam(Base):
     __tablename__ = "season_teams"
