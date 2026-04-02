@@ -104,6 +104,11 @@ def update_participation(
         )
 
     user.participating_next = update.participating
+    # Sync to Team level
+    if user.team_id:
+        team = db.query(models.Team).filter(models.Team.id == user.team_id).first()
+        if team:
+            team.participating_next = update.participating
     db.commit()
     db.refresh(user)
 

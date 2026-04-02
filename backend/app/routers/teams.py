@@ -89,6 +89,31 @@ def list_all_teams(
     return result
 
 
+@router.post("/teams/sync-participation")
+def sync_participation(
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_user)
+):
+    """
+    Einmaliger Sync: Für alle UserProfiles mit participating_next=True und team_id
+    → Team.participating_next = True setzen.
+    """
+    profiles = db.query(models.UserProfile).filter(
+        models.UserProfile.participating_next == True,
+        models.UserProfile.team_id.isnot(None)
+    ).all()
+
+    updated = 0
+    for profile in profiles:
+        team = db.query(models.Team).filter(models.Team.id == profile.team_id).first()
+        if team and not team.participating_next:
+            team.participating_next = True
+            updated += 1
+
+    db.commit()
+    return {"updated": updated, "total_profiles": len(profiles)}
+
+
 @router.post("/teams/bulk-register", response_model=schemas.BulkRegisterResponse)
 def bulk_register_teams(
     payload: schemas.BulkRegisterPayload,
