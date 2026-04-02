@@ -288,6 +288,16 @@ class BackendAPIClient:
         result = await self._request('GET', f'/api/seasons/{season_id}/ko-brackets/status')
         return result if result else {}
 
+    async def get_participation_report(self) -> Optional[Dict[str, Any]]:
+        """
+        Holt den Teilnahme-Report (Admin-Endpoint, benötigt API-Key).
+
+        Returns:
+            Dict mit participating_count, participating (Liste), etc.
+            None bei Fehler.
+        """
+        return await self._request('GET', '/api/discord/participation-report')
+
     # --- Health Check ---
 
     async def health_check(self) -> bool:
