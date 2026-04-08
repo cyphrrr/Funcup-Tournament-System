@@ -1,0 +1,987 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <link rel="icon" type="image/png" href="../img/logo_comic.png">
+  <title>Gruppenphase &mdash; BIW Pokal v2</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=Lexend:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <script>
+    (function() {
+      var stored = localStorage.getItem('biw_v2_mode');
+      var theme = stored || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+  </script>
+  <style>
+    /* === Design Tokens === */
+    :root,
+    [data-theme="dark"] {
+      --bg: #06090f;
+      --bg-elevated: #0c1018;
+      --surface: #111822;
+      --surface-hover: #172030;
+      --border: #1e2a3a;
+      --border-glow: #2dd4bf33;
+      --text: #e8edf4;
+      --text-secondary: #7b8fa8;
+      --accent: #0d9488;
+      --accent-dim: #0d948822;
+      --accent-glow: #0d948844;
+      --accent-text: #2dd4bf;
+      --gold: #fbbf24;
+      --silver: #94a3b8;
+      --bronze: #d97706;
+      --danger: #f87171;
+      --success: #34d399;
+      --shadow-alpha: 0.3;
+      --header-bg: rgba(6, 9, 15, 0.85);
+      --noise-opacity: 0.04;
+      --font-display: 'Chakra Petch', sans-serif;
+      --font-body: 'Lexend', sans-serif;
+    }
+    [data-theme="light"] {
+      --bg: #f0f2f5;
+      --bg-elevated: #e8eaef;
+      --surface: #ffffff;
+      --surface-hover: #f5f7fa;
+      --border: #d1d5de;
+      --border-glow: #0d948833;
+      --text: #111827;
+      --text-secondary: #5b6577;
+      --accent: #0d9488;
+      --accent-dim: #0d948815;
+      --accent-glow: #0d948830;
+      --accent-text: #0d9488;
+      --gold: #b8860b;
+      --silver: #64748b;
+      --bronze: #a0630a;
+      --danger: #dc2626;
+      --success: #059669;
+      --shadow-alpha: 0.08;
+      --header-bg: rgba(240, 242, 245, 0.88);
+      --noise-opacity: 0.025;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: var(--font-body);
+      color: var(--text);
+      background: var(--bg);
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 0;
+      opacity: var(--noise-opacity);
+      transition: opacity 0.4s;
+    }
+    a { color: var(--accent-text); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* === Animations === */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(24px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes shimmer {
+      0%   { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
+    }
+    @keyframes scaleIn {
+      from { opacity: 0; transform: scale(0.95); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+
+    .reveal { opacity: 0; }
+    .reveal.visible { animation: fadeUp 0.5s ease-out forwards; }
+
+    /* === Header === */
+    .site-header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--header-bg);
+      backdrop-filter: blur(20px) saturate(1.8);
+      -webkit-backdrop-filter: blur(20px) saturate(1.8);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .header-brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      text-decoration: none;
+    }
+    .header-brand img { height: 36px; }
+    .header-brand-text {
+      font-family: var(--font-display);
+      font-size: 1.2rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: var(--text);
+    }
+    .header-brand-text span { color: var(--accent-text); }
+    .header-nav {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+    .header-nav a {
+      font-family: var(--font-display);
+      font-size: 0.78rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-secondary);
+      padding: 0.5rem 0.75rem;
+      border-radius: 6px;
+      transition: all 0.2s;
+      text-decoration: none;
+    }
+    .header-nav a:hover,
+    .header-nav a.active { color: var(--accent-text); background: var(--accent-dim); }
+    .header-right { display: flex; align-items: center; gap: 0.5rem; }
+    .burger-btn {
+      display: none;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0.5rem;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .burger-btn span {
+      display: block;
+      width: 22px;
+      height: 2px;
+      background: var(--text);
+      border-radius: 2px;
+      transition: all 0.3s;
+    }
+    @media (max-width: 768px) {
+      .header-nav { display: none; }
+      .burger-btn { display: flex; }
+      .header-nav.open {
+        display: flex;
+        flex-direction: column;
+        position: fixed;
+        top: 60px;
+        right: 0;
+        background: var(--bg-elevated);
+        border: 1px solid var(--border);
+        border-radius: 0 0 12px 12px;
+        padding: 1rem;
+        z-index: 200;
+        gap: 0.25rem;
+      }
+    }
+    .mode-toggle {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      cursor: pointer;
+      padding: 0.4rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      font-size: 1rem;
+      transition: all 0.25s;
+      flex-shrink: 0;
+      line-height: 1;
+    }
+    .mode-toggle:hover { background: var(--surface-hover); border-color: var(--accent-glow); }
+    .mode-toggle .icon-sun,
+    .mode-toggle .icon-moon { display: none; }
+    [data-theme="dark"] .mode-toggle .icon-sun { display: block; }
+    [data-theme="light"] .mode-toggle .icon-moon { display: block; }
+
+    /* === Page Hero (compact) === */
+    .page-hero {
+      position: relative;
+      padding: 2.5rem 2rem 2rem;
+      text-align: center;
+      overflow: hidden;
+    }
+    .page-hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse 80% 60% at 50% 0%, var(--accent-dim) 0%, transparent 60%);
+      z-index: 0;
+    }
+    .page-hero-content {
+      position: relative;
+      z-index: 1;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    .page-hero h1 {
+      font-family: var(--font-display);
+      font-size: clamp(1.8rem, 4vw, 2.8rem);
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      margin-bottom: 0.4rem;
+      animation: fadeUp 0.6s ease-out;
+    }
+    .page-hero p {
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+      font-weight: 300;
+      animation: fadeUp 0.6s ease-out 0.1s both;
+    }
+
+    /* === Content === */
+    .content-wrap {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 2rem 4rem;
+    }
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 1.25rem;
+      padding-top: 2rem;
+    }
+    .section-header h2 {
+      font-family: var(--font-display);
+      font-size: 1.3rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+    .section-line {
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(to right, var(--border), transparent);
+    }
+    .section-tag {
+      font-family: var(--font-display);
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--accent-text);
+      font-weight: 600;
+      background: var(--accent-dim);
+      padding: 0.25rem 0.75rem;
+      border-radius: 4px;
+    }
+
+    /* === Season Selector === */
+    .season-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+    }
+    .season-pill {
+      font-family: var(--font-display);
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      padding: 0.5rem 1.25rem;
+      border-radius: 100px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.25s;
+      white-space: nowrap;
+    }
+    .season-pill:hover {
+      border-color: var(--accent-glow);
+      color: var(--text);
+      background: var(--surface-hover);
+      transform: translateY(-1px);
+    }
+    .season-pill.active {
+      border-color: var(--accent);
+      background: var(--accent-dim);
+      color: var(--accent-text);
+      box-shadow: 0 0 12px var(--accent-dim);
+    }
+    .season-hint {
+      font-size: 0.78rem;
+      color: var(--text-secondary);
+      margin-top: 0.5rem;
+    }
+    .season-hint a { color: var(--accent-text); }
+
+    /* === Group Card === */
+    .group-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+      margin-bottom: 1.5rem;
+      transition: all 0.25s;
+      animation: scaleIn 0.4s ease-out both;
+    }
+    .group-card:hover {
+      border-color: var(--accent-glow);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, var(--shadow-alpha));
+    }
+    [data-theme="light"] .group-card {
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+    }
+
+    .group-card-header {
+      padding: 1rem 1.25rem;
+      background: linear-gradient(135deg, var(--surface) 0%, var(--surface-hover) 100%);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .group-card-title {
+      font-family: var(--font-display);
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+    }
+    .group-card-sub {
+      font-size: 0.72rem;
+      color: var(--text-secondary);
+      max-width: 60%;
+      text-align: right;
+      line-height: 1.4;
+    }
+
+    /* === Standings Table === */
+    .standings-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+    }
+    .standings-table th {
+      font-family: var(--font-display);
+      font-size: 0.6rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-secondary);
+      padding: 0.55rem 0.6rem;
+      text-align: center;
+      font-weight: 600;
+      border-bottom: 1px solid var(--border);
+    }
+    .standings-table th:nth-child(2) { text-align: left; }
+    .standings-table td {
+      padding: 0.55rem 0.6rem;
+      text-align: center;
+      border-bottom: 1px solid rgba(30, 42, 58, 0.4);
+    }
+    [data-theme="light"] .standings-table td {
+      border-bottom-color: rgba(209, 213, 222, 0.6);
+    }
+    .standings-table td:nth-child(2) { text-align: left; font-weight: 500; }
+    .standings-table tbody tr { transition: background 0.15s; }
+    .standings-table tbody tr:hover { background: var(--surface-hover); }
+    [data-theme="light"] .standings-table tbody tr:hover { background: rgba(13, 148, 136, 0.04); }
+    .standings-table tbody tr:last-child td { border-bottom: none; }
+
+    .pos-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px; height: 22px;
+      border-radius: 6px;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 0.7rem;
+    }
+    .pos-1 { background: rgba(251, 191, 36, 0.15); color: var(--gold); font-weight: 800; }
+    .pos-2 { background: rgba(148, 163, 184, 0.12); color: var(--silver); }
+    .pos-3 { background: rgba(217, 119, 6, 0.12); color: var(--bronze); }
+    .pos-4 { color: var(--text-secondary); }
+    [data-theme="light"] .pos-1 { background: rgba(184, 134, 11, 0.12); }
+    [data-theme="light"] .pos-2 { background: rgba(100, 116, 139, 0.1); }
+    [data-theme="light"] .pos-3 { background: rgba(160, 99, 10, 0.1); }
+
+    .points-cell {
+      font-family: var(--font-display);
+      font-weight: 700;
+      color: var(--accent-text);
+    }
+    .team-name-cell {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .team-name-cell img { width: 18px; height: 18px; object-fit: contain; border-radius: 2px; }
+
+    .table-scroll { overflow-x: auto; }
+
+    /* === Matches Section === */
+    .matches-section {
+      border-top: 1px solid var(--border);
+      padding: 1rem 1.25rem 1.25rem;
+    }
+    .matches-section-title {
+      font-family: var(--font-display);
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-secondary);
+      margin-bottom: 0.75rem;
+    }
+
+    .matchday-label {
+      font-family: var(--font-display);
+      font-size: 0.65rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-secondary);
+      padding: 0.75rem 0 0.4rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .matchday-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+    .matchday-label:first-child { padding-top: 0; }
+
+    /* Match Row */
+    .match-row {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.45rem 0.6rem;
+      border-radius: 6px;
+      margin-bottom: 2px;
+      transition: background 0.15s;
+      font-size: 0.82rem;
+    }
+    .match-row:hover { background: var(--surface-hover); }
+    [data-theme="light"] .match-row:hover { background: rgba(13, 148, 136, 0.04); }
+
+    .mr-home {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 0.4rem;
+      text-align: right;
+      font-weight: 500;
+    }
+    .mr-away {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      text-align: left;
+      font-weight: 500;
+    }
+    .mr-home img, .mr-away img { width: 18px; height: 18px; object-fit: contain; border-radius: 2px; flex-shrink: 0; }
+
+    .mr-score {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 0.9rem;
+      min-width: 50px;
+      text-align: center;
+      letter-spacing: 0.05em;
+    }
+    .mr-score.played { color: var(--accent-text); }
+    .mr-score.scheduled { color: var(--text-secondary); opacity: 0.5; }
+
+    .match-row-info { grid-template-columns: 1fr auto 1fr auto; }
+    .mr-info {
+      font-size: 0.68rem;
+      color: var(--text-secondary);
+      text-align: right;
+      white-space: nowrap;
+      font-family: var(--font-display);
+      letter-spacing: 0.04em;
+    }
+
+    /* === Loading / Empty / Error === */
+    .loading-skeleton {
+      background: linear-gradient(90deg, var(--surface) 25%, var(--surface-hover) 50%, var(--surface) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s ease-in-out infinite;
+      border-radius: 8px;
+      height: 60px;
+      margin-bottom: 0.75rem;
+    }
+    .empty-state {
+      text-align: center;
+      padding: 2.5rem 2rem;
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+    }
+    .error-box {
+      background: rgba(248, 113, 113, 0.08);
+      border: 1px solid rgba(248, 113, 113, 0.2);
+      border-radius: 10px;
+      padding: 1rem 1.25rem;
+      color: var(--danger);
+      font-size: 0.85rem;
+      text-align: center;
+    }
+
+    /* === Footer === */
+    .site-footer {
+      border-top: 1px solid var(--border);
+      padding: 1.5rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      max-width: 1200px;
+      margin: 0 auto;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    .footer-status { display: flex; align-items: center; gap: 0.5rem; }
+    .status-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--success);
+      box-shadow: 0 0 6px var(--success);
+    }
+    .status-dot.offline { background: var(--danger); box-shadow: 0 0 6px var(--danger); }
+    [data-theme="light"] .status-dot { box-shadow: none; }
+    .footer-links a { color: var(--text-secondary); margin-left: 1rem; }
+    .footer-links a:hover { color: var(--accent-text); }
+    @media (max-width: 768px) {
+      .site-footer { flex-direction: column; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="site-header">
+    <a href="index.html" class="header-brand">
+      <img src="../img/logo_comic.png" alt="BIW Pokal">
+      <div class="header-brand-text">BIW<span>Pokal</span></div>
+    </a>
+    <nav class="header-nav" id="header-nav">
+      <a href="index.html">Start</a>
+      <a href="turnier.html" class="active">Gruppen</a>
+      <a href="ko.html">KO-Phase</a>
+      <a href="ewige-tabelle.html">Ewige Tabelle</a>
+      <a href="archiv.html">Archiv</a>
+      <a href="regeln.html">Regeln</a>
+      <a href="dashboard.html">Profil</a>
+    </nav>
+    <div class="header-right">
+      <button class="mode-toggle" id="mode-toggle" aria-label="Light/Dark Mode">
+        <span class="icon-sun">&#9728;&#65039;</span>
+        <span class="icon-moon">&#9790;&#65039;</span>
+      </button>
+      <button class="burger-btn" id="burger-btn" aria-label="Menue">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Page Hero -->
+  <section class="page-hero">
+    <div class="page-hero-content">
+      <h1>Gruppenphase</h1>
+      <p>Tabellen, Ergebnisse &amp; Spielpl&auml;ne</p>
+    </div>
+  </section>
+
+  <!-- Content -->
+  <div class="content-wrap">
+    <div class="section-header">
+      <h2>Saison</h2>
+      <div class="section-line"></div>
+      <span class="section-tag" id="active-season-tag">&mdash;</span>
+    </div>
+    <div class="season-pills" id="seasons"></div>
+    <p class="season-hint">Alle vergangenen Turniere im <a href="archiv.html">Archiv</a>.</p>
+
+    <div class="section-header" style="padding-top:2.5rem">
+      <h2>Gruppen &amp; Tabellen</h2>
+      <div class="section-line"></div>
+      <span class="section-tag" id="group-count-tag">&mdash;</span>
+    </div>
+    <div id="groups">
+      <div class="loading-skeleton" style="height:200px"></div>
+      <div class="loading-skeleton" style="height:200px"></div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <div class="footer-status">
+      <span class="status-dot" id="backend-dot"></span>
+      <span id="backend-text">Verbinde...</span>
+    </div>
+    <div>&copy; 2026 BIW Pokal &middot; <a href="impressum.html">Impressum</a> &middot; <a href="datenschutz.html">Datenschutz</a></div>
+    <div class="footer-links">
+      <span id="app-version" style="opacity:0.5"></span>
+    </div>
+  </footer>
+
+<script type="module">
+import { API_URL } from '../js/config.js';
+import { loadCrests, crestImg, teamName, registerTeams } from '../js/team-utils.js';
+var API = API_URL;
+
+var seasonsContainer = document.getElementById('seasons');
+var groupsDiv = document.getElementById('groups');
+var activeSeasonTag = document.getElementById('active-season-tag');
+var groupCountTag = document.getElementById('group-count-tag');
+var openedSeasonId = null;
+
+// --- UI ---
+document.getElementById('burger-btn').addEventListener('click', function() {
+  document.getElementById('header-nav').classList.toggle('open');
+});
+document.getElementById('mode-toggle').addEventListener('click', function() {
+  var current = document.documentElement.getAttribute('data-theme') || 'dark';
+  var next = current === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('biw_v2_mode', next);
+});
+
+// --- Scroll Reveal ---
+var observer = new IntersectionObserver(function(entries) {
+  entries.forEach(function(entry) {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+      observer.unobserve(entry.target);
+    }
+  });
+}, { threshold: 0.1 });
+
+// --- Backend Status ---
+async function checkBackend() {
+  try {
+    var res = await fetch(API + '/api/version');
+    var data = await res.json();
+    document.getElementById('backend-dot').classList.remove('offline');
+    document.getElementById('backend-text').textContent = 'Backend online';
+    document.getElementById('app-version').textContent = 'v' + data.version;
+    return true;
+  } catch (e) {
+    document.getElementById('backend-dot').classList.add('offline');
+    document.getElementById('backend-text').textContent = 'Backend offline';
+    return false;
+  }
+}
+
+// --- Page Tracking ---
+fetch(API + '/api/track', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ path: window.location.pathname })
+}).catch(function() {});
+
+// --- Load Teams ---
+async function loadTeamsForSeason(seasonId) {
+  var groups = await fetch(API + '/api/seasons/' + seasonId + '/groups-with-teams').then(function(r) { return r.json(); });
+  registerTeams(groups);
+}
+
+// --- Build Standings Table ---
+function buildStandingsTable(standings, parentEl) {
+  var scrollWrap = document.createElement('div');
+  scrollWrap.className = 'table-scroll';
+  var table = document.createElement('table');
+  table.className = 'standings-table';
+
+  // Header
+  var thead = document.createElement('thead');
+  var headerRow = document.createElement('tr');
+  ['#', 'Team', 'Sp', 'S', 'U', 'N', 'T+', 'T-', 'Diff', 'Pkt'].forEach(function(h) {
+    var th = document.createElement('th');
+    th.textContent = h;
+    headerRow.appendChild(th);
+  });
+  thead.appendChild(headerRow);
+  table.appendChild(thead);
+
+  // Body
+  var tbody = document.createElement('tbody');
+  standings.forEach(function(row, idx) {
+    var pos = idx + 1;
+    var diff = row.goals_for - row.goals_against;
+    var diffStr = diff > 0 ? '+' + diff : '' + diff;
+    var diffColor = diff > 0 ? 'var(--success)' : diff < 0 ? 'var(--danger)' : 'var(--text-secondary)';
+
+    var tr = document.createElement('tr');
+
+    // Position
+    var tdPos = document.createElement('td');
+    var badge = document.createElement('span');
+    badge.className = 'pos-badge pos-' + pos;
+    badge.textContent = pos;
+    tdPos.appendChild(badge);
+    tr.appendChild(tdPos);
+
+    // Team name
+    var tdTeam = document.createElement('td');
+    var link = document.createElement('a');
+    link.href = 'team.html?id=' + row.team_id;
+    link.style.color = 'inherit';
+    link.style.textDecoration = 'none';
+    var nameSpan = document.createElement('span');
+    nameSpan.className = 'team-name-cell';
+    // crestImg returns an HTML string — use a temp container
+    var tmp = document.createElement('span');
+    tmp.innerHTML = crestImg(row.team_id, 18);
+    while (tmp.firstChild) nameSpan.appendChild(tmp.firstChild);
+    nameSpan.appendChild(document.createTextNode(teamName(row.team_id)));
+    link.appendChild(nameSpan);
+    tdTeam.appendChild(link);
+    tr.appendChild(tdTeam);
+
+    // Stats
+    [row.played, row.won, row.draw, row.lost, row.goals_for, row.goals_against].forEach(function(val) {
+      var td = document.createElement('td');
+      td.textContent = val;
+      tr.appendChild(td);
+    });
+
+    // Diff
+    var tdDiff = document.createElement('td');
+    tdDiff.textContent = diffStr;
+    tdDiff.style.color = diffColor;
+    tr.appendChild(tdDiff);
+
+    // Points
+    var tdPts = document.createElement('td');
+    tdPts.className = 'points-cell';
+    tdPts.textContent = row.points;
+    tr.appendChild(tdPts);
+
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+  scrollWrap.appendChild(table);
+  parentEl.appendChild(scrollWrap);
+}
+
+// --- Build Match Rows ---
+function buildMatchRows(matches, parentEl) {
+  if (!matches || matches.length === 0) return;
+
+  var section = document.createElement('div');
+  section.className = 'matches-section';
+
+  var title = document.createElement('div');
+  title.className = 'matches-section-title';
+  title.textContent = 'Spielplan';
+  section.appendChild(title);
+
+  // Group by matchday
+  var byDay = {};
+  matches.forEach(function(m) {
+    var day = m.matchday || 0;
+    if (!byDay[day]) byDay[day] = [];
+    byDay[day].push(m);
+  });
+
+  var days = Object.keys(byDay).sort(function(a, b) { return a - b; });
+  days.forEach(function(day) {
+    var label = document.createElement('div');
+    label.className = 'matchday-label';
+    label.textContent = 'Spieltag ' + day;
+    section.appendChild(label);
+
+    byDay[day].forEach(function(m) {
+      var isPlayed = m.status === 'played' && m.home_goals !== null && m.away_goals !== null;
+      var hasInfo = m.matchday && m.ingame_week;
+
+      var row = document.createElement('div');
+      row.className = hasInfo ? 'match-row match-row-info' : 'match-row';
+
+      // Home
+      var homeDiv = document.createElement('div');
+      homeDiv.className = 'mr-home';
+      homeDiv.appendChild(document.createTextNode(teamName(m.home_team_id)));
+      homeDiv.appendChild(document.createTextNode('\u00a0'));
+      var tmpH = document.createElement('span');
+      tmpH.innerHTML = crestImg(m.home_team_id, 18);
+      while (tmpH.firstChild) homeDiv.appendChild(tmpH.firstChild);
+      row.appendChild(homeDiv);
+
+      // Score
+      var scoreDiv = document.createElement('div');
+      scoreDiv.className = 'mr-score ' + (isPlayed ? 'played' : 'scheduled');
+      scoreDiv.textContent = isPlayed ? m.home_goals + ':' + m.away_goals : '-:-';
+      row.appendChild(scoreDiv);
+
+      // Away
+      var awayDiv = document.createElement('div');
+      awayDiv.className = 'mr-away';
+      var tmpA = document.createElement('span');
+      tmpA.innerHTML = crestImg(m.away_team_id, 18);
+      while (tmpA.firstChild) awayDiv.appendChild(tmpA.firstChild);
+      awayDiv.appendChild(document.createTextNode('\u00a0'));
+      awayDiv.appendChild(document.createTextNode(teamName(m.away_team_id)));
+      row.appendChild(awayDiv);
+
+      // Info
+      if (hasInfo) {
+        var infoDiv = document.createElement('div');
+        infoDiv.className = 'mr-info';
+        infoDiv.textContent = 'W' + m.ingame_week;
+        row.appendChild(infoDiv);
+      }
+
+      section.appendChild(row);
+    });
+  });
+
+  parentEl.appendChild(section);
+}
+
+// --- Load Season ---
+async function loadSeason(season, clickedElement) {
+  if (openedSeasonId === season.id) {
+    openedSeasonId = null;
+    groupsDiv.textContent = '';
+    var emptyMsg = document.createElement('div');
+    emptyMsg.className = 'empty-state';
+    emptyMsg.textContent = 'W\u00e4hle eine Saison';
+    groupsDiv.appendChild(emptyMsg);
+    activeSeasonTag.textContent = '\u2014';
+    groupCountTag.textContent = '\u2014';
+    seasonsContainer.querySelectorAll('.season-pill').forEach(function(el) { el.classList.remove('active'); });
+    return;
+  }
+
+  openedSeasonId = season.id;
+  activeSeasonTag.textContent = season.name;
+
+  // Loading state
+  groupsDiv.textContent = '';
+  for (var s = 0; s < 2; s++) {
+    var skel = document.createElement('div');
+    skel.className = 'loading-skeleton';
+    skel.style.height = '200px';
+    groupsDiv.appendChild(skel);
+  }
+
+  // Active state
+  seasonsContainer.querySelectorAll('.season-pill').forEach(function(el) { el.classList.remove('active'); });
+  if (clickedElement) {
+    clickedElement.classList.add('active');
+  } else {
+    var el = seasonsContainer.querySelector('[data-season-id="' + season.id + '"]');
+    if (el) el.classList.add('active');
+  }
+
+  // Load data
+  await Promise.all([loadTeamsForSeason(season.id), loadCrests()]);
+
+  var groups = await fetch(API + '/api/seasons/' + season.id + '/groups-with-teams').then(function(r) { return r.json(); });
+  groupCountTag.textContent = groups.length + ' Gruppen';
+  groupsDiv.textContent = '';
+
+  for (var i = 0; i < groups.length; i++) {
+    var g = groups[i];
+    var card = document.createElement('div');
+    card.className = 'group-card reveal';
+    card.style.animationDelay = (i * 0.08) + 's';
+
+    // Header
+    var header = document.createElement('div');
+    header.className = 'group-card-header';
+    var titleDiv = document.createElement('div');
+    titleDiv.className = 'group-card-title';
+    titleDiv.textContent = 'Gruppe ' + g.group.name;
+    var subDiv = document.createElement('div');
+    subDiv.className = 'group-card-sub';
+    subDiv.textContent = g.teams.map(function(t) { return t.name; }).join(', ') || '\u2014';
+    header.appendChild(titleDiv);
+    header.appendChild(subDiv);
+    card.appendChild(header);
+
+    // Standings
+    var standings = await fetch(API + '/api/groups/' + g.group.id + '/standings').then(function(r) { return r.json(); });
+    if (standings.length > 0) {
+      var standingsWrap = document.createElement('div');
+      standingsWrap.style.padding = '0.75rem 1.25rem';
+      buildStandingsTable(standings, standingsWrap);
+      card.appendChild(standingsWrap);
+    }
+
+    // Matches
+    buildMatchRows(g.matches, card);
+
+    groupsDiv.appendChild(card);
+    observer.observe(card);
+  }
+}
+
+// --- Init ---
+(async function() {
+  var online = await checkBackend();
+  if (!online) {
+    groupsDiv.textContent = '';
+    var errDiv = document.createElement('div');
+    errDiv.className = 'error-box';
+    errDiv.textContent = 'Backend nicht erreichbar.';
+    groupsDiv.appendChild(errDiv);
+    return;
+  }
+
+  try {
+    var seasons = await fetch(API + '/api/seasons').then(function(r) { return r.json(); });
+    seasonsContainer.textContent = '';
+
+    seasons.sort(function(a, b) { return b.id - a.id; });
+    var recent = seasons.slice(0, 3);
+
+    recent.forEach(function(s) {
+      var pill = document.createElement('button');
+      pill.textContent = s.name;
+      pill.className = 'season-pill';
+      pill.dataset.seasonId = s.id;
+      pill.addEventListener('click', function(e) { loadSeason(s, e.target); });
+      seasonsContainer.appendChild(pill);
+    });
+
+    var defaultSeason =
+      recent.find(function(s) { return s.status === 'planned'; }) ||
+      recent.find(function(s) { return s.status === 'active'; }) ||
+      recent[0];
+
+    if (defaultSeason) {
+      loadSeason(defaultSeason);
+    } else {
+      groupsDiv.textContent = '';
+      var emptyDiv = document.createElement('div');
+      emptyDiv.className = 'empty-state';
+      emptyDiv.textContent = 'Keine Saisons vorhanden.';
+      groupsDiv.appendChild(emptyDiv);
+    }
+  } catch (e) {
+    seasonsContainer.textContent = '';
+    var errDiv2 = document.createElement('div');
+    errDiv2.className = 'error-box';
+    errDiv2.textContent = 'Fehler beim Laden.';
+    seasonsContainer.appendChild(errDiv2);
+  }
+})();
+</script>
+</body>
+</html>
