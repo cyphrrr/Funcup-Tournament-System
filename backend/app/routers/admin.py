@@ -179,6 +179,7 @@ def _fetch_sheet_participants(db: Session, season_id: int | None = None) -> dict
             detail=f"Google Sheet nicht erreichbar: {str(e)}"
         )
 
+    response.encoding = "utf-8"
     lines = response.text.splitlines()
     reader = csv.reader(lines)
     next(reader, None)  # Header überspringen
