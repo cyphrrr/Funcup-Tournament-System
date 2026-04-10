@@ -18,11 +18,13 @@ class SeasonCreate(BaseModel):
     name: str
     participant_count: int
     group_count: Optional[int] = None  # Optional: Admin bestimmt Gruppenanzahl manuell
+    sheet_tab_gid: Optional[str] = None  # Google Sheet Tab-GID für Teilnehmerliste
 
 
 class SeasonUpdate(BaseModel):
     name: str | None = None
     status: str | None = None
+    sheet_tab_gid: str | None = None
 
 
 class SeasonRead(BaseModel):
@@ -30,6 +32,7 @@ class SeasonRead(BaseModel):
     name: str
     participant_count: int
     status: str
+    sheet_tab_gid: str | None = None
     created_at: datetime
 
     class Config:

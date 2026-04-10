@@ -142,19 +142,28 @@ def remove_from_season(
 
 def _fetch_sheet_participants(db: Session) -> dict:
     """Interne Hilfsfunktion: Sheet-Teilnehmerliste mit Cache holen."""
-    tab_name = get_active_tab_name(db)
-    cache_key = f"sheet_participants_{tab_name}"
+    season = db.query(models.Season).filter(
+        models.Season.status.in_(["active", "planned"])
+    ).order_by(models.Season.id.desc()).first()
+
+    if not season:
+        raise HTTPException(status_code=404, detail="Keine aktive Saison gefunden")
+
+    if not season.sheet_tab_gid:
+        raise HTTPException(
+            status_code=400,
+            detail="Keine Google Sheet Tab-GID in der aktiven Saison hinterlegt. Bitte im Saison-Setup unter 'Saisons' → Bearbeiten eintragen."
+        )
+
+    cache_key = f"sheet_participants_gid_{season.sheet_tab_gid}"
 
     if cache_key in _sheet_cache:
         cached = _sheet_cache[cache_key]
         age = (datetime.utcnow() - cached["timestamp"]).total_seconds()
         if age < 600:
-            return {"tab_name": tab_name, "participants": cached["data"]}
+            return {"season_name": season.name, "sheet_tab_gid": season.sheet_tab_gid, "participants": cached["data"]}
 
-    url = (
-        f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export"
-        f"?format=csv&sheet={_requests.utils.quote(tab_name)}"
-    )
+    url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid={season.sheet_tab_gid}"
 
     try:
         response = _requests.get(url, timeout=15)
@@ -184,7 +193,7 @@ def _fetch_sheet_participants(db: Session) -> dict:
         "data": participants,
         "timestamp": datetime.utcnow(),
     }
-    return {"tab_name": tab_name, "participants": participants}
+    return {"season_name": season.name, "sheet_tab_gid": season.sheet_tab_gid, "participants": participants}
 
 
 @router.get("/admin/sheet-participants")

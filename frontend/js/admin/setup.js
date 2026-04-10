@@ -51,16 +51,21 @@ function renderSetupSeasonsList(seasons) {
   const statusLabel = { planned: 'Geplant', active: 'Aktiv', archived: 'Archiviert' };
   const statusColor = { planned: 'var(--warning)', active: 'var(--success)', archived: 'var(--text-muted)' };
 
-  tbody.innerHTML = seasons.map(s => `<tr>
+  tbody.innerHTML = seasons.map(s => {
+    const gidBadge = s.sheet_tab_gid ? '📋' : '⚠️';
+    const gidColor = s.sheet_tab_gid ? '#4caf50' : '#ff9800';
+    const gidTitle = s.sheet_tab_gid ? 'Sheet-GID hinterlegt' : 'Keine Sheet-GID';
+    return `<tr>
     <td style="color:var(--text-muted)">${s.id}</td>
-    <td><strong>${escapeHtml(s.name)}</strong></td>
+    <td><strong>${escapeHtml(s.name)}</strong> <span style="color:${gidColor};font-size:.75rem;margin-left:.5rem" title="${gidTitle}">${gidBadge}</span></td>
     <td style="text-align:center;color:var(--text-muted)">${s.participant_count ?? '–'}</td>
     <td><span style="color:${statusColor[s.status] || 'inherit'};font-weight:600">${statusLabel[s.status] || s.status}</span></td>
     <td style="text-align:right">
       <button class="btn btn-small btn-secondary" onclick="editSetupSeason(${s.id})">✏️ Bearbeiten</button>
       <button class="btn btn-small btn-danger" onclick="deleteSetupSeason(${s.id})" style="margin-left:.25rem">🗑️</button>
     </td>
-  </tr>`).join('');
+  </tr>`;
+  }).join('');
 }
 
 function editSetupSeason(id) {
@@ -69,6 +74,7 @@ function editSetupSeason(id) {
   document.getElementById('setup-edit-season-id').value = s.id;
   document.getElementById('setup-edit-season-name').value = s.name;
   document.getElementById('setup-edit-season-status').value = s.status;
+  document.getElementById('setup-edit-season-gid').value = s.sheet_tab_gid || '';
   document.getElementById('setup-edit-season-modal').style.display = 'flex';
 }
 
@@ -80,6 +86,7 @@ async function saveSetupSeasonEdit() {
   const id = document.getElementById('setup-edit-season-id').value;
   const name = document.getElementById('setup-edit-season-name').value.trim();
   const status = document.getElementById('setup-edit-season-status').value;
+  const gid = document.getElementById('setup-edit-season-gid').value.trim() || null;
 
   if (!name) { toast('Bitte einen Namen eingeben', 'error'); return; }
 
@@ -87,7 +94,7 @@ async function saveSetupSeasonEdit() {
     const res = await authFetch(`${API_URL}/api/seasons/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, status }),
+      body: JSON.stringify({ name, status, sheet_tab_gid: gid }),
     });
     if (!res.ok) {
       const err = await res.json();
@@ -321,7 +328,7 @@ async function syncWithSheet() {
     document.getElementById('sync-stat-only-discord').textContent = `⚠️ ${data.only_discord.length} Nur Discord`;
     document.getElementById('sync-stat-only-sheet').textContent = `📋 ${data.only_sheet.length} Nur Sheet`;
     document.getElementById('sync-stat-created').textContent = `➕ ${data.created} neu angelegt`;
-    document.getElementById('sync-stat-tab').textContent = `Tab: ${data.tab_name}`;
+    document.getElementById('sync-stat-tab').textContent = `Saison: ${data.season_name}`;
 
     // Quellen-Map aufbauen
     lastSyncSourceMap = {};

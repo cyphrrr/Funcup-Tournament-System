@@ -9,6 +9,7 @@ class Season(Base):
     name = Column(String, nullable=False)
     participant_count = Column(Integer, nullable=False)
     status = Column(String, default="planned")
+    sheet_tab_gid = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Relationships

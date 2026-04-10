@@ -562,6 +562,11 @@ tr.row-inactive td:first-child   { border-left:3px solid #d1d5db; }
                   <option value="archived">Archiviert</option>
                 </select>
               </div>
+              <div class="form-group" style="margin-bottom:1rem">
+                <label>Google Sheet Tab-GID</label>
+                <input type="text" id="setup-edit-season-gid" placeholder="z.B. 426603324">
+                <small style="color:var(--text-muted);display:block;margin-top:.25rem">Öffne das Google Sheet → navigiere zum Tab → kopiere die Zahl nach #gid= aus der URL</small>
+              </div>
               <div style="display:flex;gap:.5rem;justify-content:flex-end">
                 <button class="btn btn-secondary" onclick="closeSetupEditSeasonModal()">Abbrechen</button>
                 <button class="btn btn-success" onclick="saveSetupSeasonEdit()">💾 Speichern</button>

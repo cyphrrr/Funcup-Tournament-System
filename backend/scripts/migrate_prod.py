@@ -117,7 +117,7 @@ REQUIRED_MIGRATIONS = [
 
 EXPECTED_COLUMNS: dict[str, list[str]] = {
     "seasons": [
-        "id", "name", "participant_count", "status", "created_at",
+        "id", "name", "participant_count", "status", "created_at", "sheet_tab_gid",
     ],
     "groups": [
         "id", "season_id", "name", "sort_order", "completed",
