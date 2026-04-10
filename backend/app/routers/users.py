@@ -283,12 +283,6 @@ def claim_team(
             detail=f"User mit Discord ID {discord_id} nicht gefunden"
         )
 
-    if not user.profile_url or user.profile_url.strip() == "":
-        raise HTTPException(
-            status_code=403,
-            detail="PROFILE_URL_REQUIRED"
-        )
-
     team = db.query(models.Team).filter(models.Team.id == team_id).first()
     if not team:
         raise HTTPException(status_code=404, detail="Team nicht gefunden")
