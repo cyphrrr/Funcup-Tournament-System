@@ -144,6 +144,9 @@ tr.row-inactive td:first-child   { border-left:3px solid #d1d5db; }
     .ko-promoted-badge{background:#ff9800;color:#fff;font-size:.7rem;font-weight:600;padding:.2rem .4rem;border-radius:12px;display:inline-block}
     .ko-preview-pairings{font-size:.85rem;color:var(--text-muted)}
     .ko-preview-pairings div{padding:.4rem;border-bottom:1px solid var(--border-dark)}
+    @media (max-width: 768px) {
+      .dashboard-grid { grid-template-columns: 1fr !important; }
+    }
   </style>
 </head>
 <body>
@@ -197,13 +200,8 @@ tr.row-inactive td:first-child   { border-left:3px solid #d1d5db; }
       <!-- Dashboard -->
       <div id="dashboard" class="section active">
         <h1>Dashboard</h1>
-        <div class="stats" id="stats">
-          <div class="stat"><div class="stat-value" id="stat-seasons">-</div><div class="stat-label">Saisons</div></div>
-          <div class="stat"><div class="stat-value" id="stat-teams">-</div><div class="stat-label">Teams</div></div>
-          <div class="stat"><div class="stat-value" id="stat-matches">-</div><div class="stat-label">Matches gespielt</div></div>
-          <div class="stat"><div class="stat-value" id="stat-pending">-</div><div class="stat-label">Ausstehend</div></div>
-        </div>
-        <!-- Traffic Stats Widget -->
+
+        <!-- Traffic Widget (volle Breite) -->
         <div class="card" id="traffic-widget">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
             <h2 style="margin:0;background:none;padding:0">📈 Traffic</h2>
@@ -212,24 +210,36 @@ tr.row-inactive td:first-child   { border-left:3px solid #d1d5db; }
               <button class="btn btn-sm btn-secondary stats-period" data-days="30" onclick="loadTrafficStats(30)">30 Tage</button>
             </div>
           </div>
-          <div style="display:flex;gap:2rem;margin-bottom:1rem">
+          <div style="display:flex;gap:2rem;margin-bottom:1rem;flex-wrap:wrap">
             <div><span id="traffic-visitors" style="font-size:1.8rem;font-weight:700;color:#7c7cff">--</span><div style="font-size:.75rem;color:var(--text-muted)">Besucher</div></div>
             <div><span id="traffic-views" style="font-size:1.8rem;font-weight:700;color:#10b981">--</span><div style="font-size:.75rem;color:var(--text-muted)">Aufrufe</div></div>
           </div>
-          <div style="position:relative;height:200px"><canvas id="traffic-chart"></canvas></div>
-          <table style="margin-top:1rem">
+          <div style="position:relative;height:220px"><canvas id="traffic-chart"></canvas></div>
+          <table style="margin-top:1rem;width:100%">
             <thead><tr><th></th><th>Besucher</th><th>Aufrufe</th></tr></thead>
             <tbody id="traffic-table"></tbody>
           </table>
         </div>
 
-        <div class="card">
-          <h2>🚀 Schnellaktionen</h2>
-          <div style="display:flex;gap:1rem;flex-wrap:wrap">
-            <button class="btn btn-primary" onclick="showSection('matches')">Ergebnis eintragen</button>
-            <button class="btn btn-secondary" onclick="showSection('teams')">Team hinzufügen</button>
-            <button class="btn btn-secondary" onclick="showSection('news')">News schreiben</button>
+        <!-- Zwei-Spalten-Layout -->
+        <div class="dashboard-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:1rem">
+
+          <!-- Aktive Saison -->
+          <div class="card" id="dashboard-season-card">
+            <h2 style="margin:0 0 1rem;background:none;padding:0">⚔️ Aktive Saison</h2>
+            <div id="dashboard-season-content">
+              <div style="color:var(--text-muted);font-size:.9rem">Lade…</div>
+            </div>
           </div>
+
+          <!-- Anmeldungen -->
+          <div class="card" id="dashboard-anmeldungen-card">
+            <h2 style="margin:0 0 1rem;background:none;padding:0">👥 Anmeldungen</h2>
+            <div id="dashboard-anmeldungen-content">
+              <div style="color:var(--text-muted);font-size:.9rem">Lade…</div>
+            </div>
+          </div>
+
         </div>
       </div>
       
