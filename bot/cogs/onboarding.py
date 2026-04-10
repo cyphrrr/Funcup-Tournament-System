@@ -38,7 +38,7 @@ class OnboardingSession:
         self.discord_id = discord_id
         self.user_data = user_data
         self.api = api
-        self.participating = user_data.get('participating_next', False)
+        self.participating = user_data.get('team_participating_next', False)
         self.team_claimed = user_data.get('team_id') is not None
         self.team_name = user_data.get('team_name')
         self.profile_url_set = bool(user_data.get('profile_url'))

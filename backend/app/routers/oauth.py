@@ -92,7 +92,6 @@ async def discord_callback(
             discord_id=discord_id,
             discord_username=f"{discord_user['username']}#{discord_user['discriminator']}",
             discord_avatar_url=discord_user.get("avatar"),
-            participating_next=True
         )
         db.add(user)
     else:
@@ -109,10 +108,12 @@ async def discord_callback(
     jwt_token = create_jwt_token(discord_id)
 
     team_name = None
+    team_participating_next = False
     if user.team_id:
         team = db.query(models.Team).filter(models.Team.id == user.team_id).first()
         if team:
             team_name = team.name
+            team_participating_next = team.participating_next
 
     user_response = schemas.UserProfileResponse(
         id=user.id,
@@ -122,7 +123,8 @@ async def discord_callback(
         team_id=user.team_id,
         team_name=team_name,
         profile_url=user.profile_url,
-        participating_next=user.participating_next,
+        is_active=user.is_active,
+        team_participating_next=team_participating_next,
         crest_url=user.crest_url,
         created_at=user.created_at,
         updated_at=user.updated_at

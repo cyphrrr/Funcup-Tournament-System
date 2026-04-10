@@ -123,7 +123,7 @@ EXPECTED_COLUMNS: dict[str, list[str]] = {
         "id", "season_id", "name", "sort_order", "completed",
     ],
     "teams": [
-        "id", "name", "logo_url", "onlineliga_url",
+        "id", "name", "logo_url", "onlineliga_url", "participating_next", "is_active",
     ],
     "season_teams": [
         "id", "season_id", "team_id", "group_id",
@@ -146,7 +146,7 @@ EXPECTED_COLUMNS: dict[str, list[str]] = {
     ],
     "user_profiles": [
         "id", "discord_id", "discord_username", "discord_avatar_url",
-        "team_id", "profile_url", "participating_next", "crest_url",
+        "team_id", "profile_url", "is_active", "crest_url",
         "access_token", "refresh_token", "token_expires_at",
         "created_at", "updated_at",
     ],

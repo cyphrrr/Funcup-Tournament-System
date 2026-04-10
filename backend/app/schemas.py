@@ -56,6 +56,7 @@ class TeamUpdate(BaseModel):
     logo_url: str | None = None
     onlineliga_url: str | None = None
     participating_next: bool | None = None
+    is_active: bool | None = None
 
 
 class BulkTeamCreate(BaseModel):
@@ -77,6 +78,7 @@ class TeamRead(BaseModel):
     name: str
     logo_url: str | None = None
     onlineliga_url: str | None = None
+    is_active: bool = True
 
     class Config:
         from_attributes = True
@@ -101,6 +103,7 @@ class TeamDetail(BaseModel):
     name: str
     logo_url: str | None
     onlineliga_url: str | None
+    is_active: bool = True
     discord_claimed: bool  # Ob das Team via Discord geclaimt wurde
     recent_matches: list[TeamDetailMatch]
     stats: dict  # Gesamt-Statistiken
@@ -227,7 +230,6 @@ class UserProfileBase(BaseModel):
     discord_id: Optional[str] = None
     discord_username: Optional[str] = None
     profile_url: Optional[HttpUrl] = None
-    participating_next: bool = True
 
 
 class UserProfileCreate(UserProfileBase):
@@ -238,7 +240,6 @@ class UserProfileCreate(UserProfileBase):
 class UserProfileUpdate(BaseModel):
     """Schema für User-Updates (partielle Updates)"""
     profile_url: Optional[HttpUrl] = None
-    participating_next: Optional[bool] = None
     team_id: Optional[int] = None
 
 
@@ -247,8 +248,8 @@ class UserProfileAdminUpdate(BaseModel):
     discord_username: Optional[str] = None
     team_id: Optional[int] = None
     profile_url: Optional[str] = None
-    participating_next: Optional[bool] = None
     crest_url: Optional[str] = None
+    is_active: Optional[bool] = None
 
 
 class UserProfileResponse(BaseModel):
@@ -260,7 +261,8 @@ class UserProfileResponse(BaseModel):
     team_id: Optional[int] = None
     team_name: Optional[str] = None  # Joined aus Team
     profile_url: Optional[str] = None
-    participating_next: bool
+    is_active: bool = True
+    team_participating_next: bool = False  # Vom Team gelesen
     crest_url: Optional[str] = None
     created_at: datetime
     updated_at: datetime
@@ -280,12 +282,12 @@ class ProfileUrlUpdate(BaseModel):
 
 
 class ParticipationReport(BaseModel):
-    """Admin-Report über Teilnahme-Status"""
-    total_users: int
+    """Admin-Report über Teilnahme-Status (Team-basiert)"""
+    total_teams: int
     participating: int
     not_participating: int
     participation_rate: float  # Prozent
-    users: list[UserProfileResponse]
+    teams: list[dict]  # team_id, team_name, discord_user (optional)
 
 
 class TeamClaimRequest(BaseModel):

@@ -92,14 +92,14 @@ class Teilnahme(commands.Cog):
             await ctx.followup.send(embed=embed, ephemeral=True)
             logger.info(f'✅ Teilnahme gespeichert für {ctx.author.name}: {status}')
         else:
-            # Fehler-Embed
+            # Prüfe ob es ein "kein Team"-Fehler war
             embed = discord.Embed(
-                title="❌ Fehler",
-                description='Teilnahme konnte nicht gespeichert werden. Bitte versuche es später erneut.',
-                color=discord.Color.red()
+                title="⚠️ Kein Team verknüpft",
+                description='Du musst zuerst ein Team verknüpfen!\n\nNutze `/claim <teamname>` um dein Team zu claimen.',
+                color=discord.Color.orange()
             )
             await ctx.followup.send(embed=embed, ephemeral=True)
-            logger.error(f'❌ Teilnahme-Speicherung fehlgeschlagen für {ctx.author.name}')
+            logger.warning(f'⚠️ Teilnahme fehlgeschlagen für {ctx.author.name} (kein Team?)')
 
     @discord.slash_command(
         name="status",
@@ -143,7 +143,7 @@ class Teilnahme(commands.Cog):
             )
 
         # Teilnahme-Status
-        participating = user_data.get('participating_next', False)
+        participating = user_data.get('team_participating_next', False)
         status_text = "✅ Dabei" if participating else "❌ Nicht dabei"
         embed.add_field(
             name="📅 Nächster Pokal",

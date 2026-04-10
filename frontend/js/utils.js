@@ -35,8 +35,7 @@ function showSection(name) {
 
   if (name === 'matches') loadMatchSeasons();
   if (name === 'teams') loadAllTeams();
-  if (name === 'seasons') loadSeasons();
-  if (name === 'anmeldungen') loadAnmeldungen();
+  if (name === 'discord-users') loadDiscordUsersList();
   if (name === 'news') {
     loadNews();
     loadMatchInserterSeasons();

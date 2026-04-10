@@ -21,6 +21,7 @@
     .sidebar nav a{display:block;padding:.6rem .8rem;color:#d1d5db;text-decoration:none;border-radius:6px;margin-bottom:.25rem;font-size:.9rem}
     .sidebar nav a:hover{background:rgba(255,255,255,.1)}
     .sidebar nav a.active{background:var(--primary);color:#fff}
+    .sidebar-group-label{font-size:.65rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.35);padding:.75rem 1rem .25rem;margin-top:.25rem}
     .main{margin-left:220px;flex:1;padding:2rem;background-color:var(--bg-page)}
 
     /* Components */
@@ -106,26 +107,14 @@
     .ko-admin-third-place{border-left:2px dashed var(--border-dark);padding-left:1rem}
     .ko-admin-third-place .ko-admin-round-header{color:var(--text-primary);font-style:italic;background:color-mix(in srgb,var(--primary) 10%,var(--bg-section));border-radius:4px;padding:.2rem .5rem;display:inline-block}
 
-/* Anmeldungen Section */
-.anmeldungen-stats { display:flex; gap:12px; margin-bottom:16px; flex-wrap:wrap; }
-.stat-badge { padding:6px 16px; border-radius:20px; font-size:.85rem; font-weight:700; display:inline-flex; align-items:center; gap:6px; box-shadow:0 2px 6px rgba(0,0,0,.4); border:1px solid rgba(255,255,255,.1); }
-.stat-total { background:#2d2d44; color:#e0e0e0; }
-.stat-dabei { background:#1a4a1a; color:#6fcf6f; border-color:#4caf50; }
-.stat-incomplete { background:#4a2e00; color:#ffb74d; border-color:#ff9800; }
-
-.anm-tab-bar { display:flex; gap:4px; margin-bottom:16px; background:#12121e; border-bottom:1px solid #3a3a5c; padding:8px 8px 0 8px; border-radius:6px 6px 0 0; }
-.anm-tab-btn { padding:8px 18px; border:none; border-bottom:2px solid transparent; background:#1e1e2e; color:#888; cursor:pointer; border-radius:4px 4px 0 0; font-size:.9rem; transition:background 0.15s, color 0.15s; }
-.anm-tab-btn:hover:not(.active) { background:#2a2a3d; color:#ccc; }
-.anm-tab-btn.active { background:#3a3a5c; color:#fff; border-bottom:2px solid #7c7cff; }
-
-.anm-filter-bar { display:flex; gap:8px; margin-bottom:12px; }
-.anm-filter-btn { padding:5px 12px; border-radius:4px; border:1px solid var(--border-dark); background:var(--bg-elevated); color:var(--text-muted); cursor:pointer; font-size:.85rem; }
-.anm-filter-btn.active { background:var(--primary,#3b82f6); color:#fff; border-color:var(--primary,#3b82f6); }
-
 .badge-ready { color:#4caf50; font-weight:600; }
 .badge-warn  { color:#ff9800; font-weight:600; }
 .badge-inactive { color:var(--text-muted); font-weight:600; }
 .missing     { color:var(--text-muted); font-style:italic; }
+
+/* Toggle-Button für Dabei-Status */
+.toggle-participation-btn { padding:.2rem .6rem; border-radius:4px; border:1px solid var(--border-dark); background:var(--bg-elevated); color:var(--text-muted); cursor:pointer; font-size:.85rem; white-space:nowrap; }
+.toggle-participation-btn.is-dabei { background:#1a4a1a; color:#6fcf6f; border-color:#4caf50; }
 
 tr.row-incomplete td:first-child { border-left:3px solid #ff9800; }
 tr.row-complete td:first-child   { border-left:3px solid #4caf50; }
@@ -181,14 +170,21 @@ tr.row-inactive td:first-child   { border-left:3px solid #d1d5db; }
       <p>Turnierverwaltung</p>
       <nav>
         <a href="#dashboard" class="active" data-section="dashboard">📊 Dashboard</a>
-        <a href="#anmeldungen" data-section="anmeldungen">📋 Anmeldungen</a>
-        <a href="#matches" data-section="matches">🎮 Ergebnisse</a>
-        <a href="#ko-phase" data-section="ko-phase">🏆 KO-Phase</a>
-        <a href="#teams" data-section="teams">👥 Teams</a>
-        <a href="#seasons" data-section="seasons">📅 Saisons</a>
-        <a href="#news" data-section="news">📰 News</a>
-        <a href="#design" data-section="design" style="margin-top:.75rem;border-top:1px solid rgba(255,255,255,.1);padding-top:.75rem">🎨 Design</a>
+
+        <div class="sidebar-group-label">TURNIER</div>
         <a href="#saison-setup" data-section="saison-setup">🏆 Saison-Setup</a>
+        <a href="#matches" data-section="matches">🎮 Ergebnisse</a>
+        <a href="#ko-phase" data-section="ko-phase">⚔️ KO-Phase</a>
+
+        <div class="sidebar-group-label">STAMMDATEN</div>
+        <a href="#teams" data-section="teams">👥 Teams</a>
+        <a href="#discord-users" data-section="discord-users">👤 Discord User</a>
+
+        <div class="sidebar-group-label">CONTENT</div>
+        <a href="#news" data-section="news">📰 News</a>
+
+        <div class="sidebar-group-label">DESIGN</div>
+        <a href="#design" data-section="design">🎨 Design</a>
       </nav>
       <div style="position:absolute;bottom:1rem;left:1rem;right:1rem;font-size:.7rem;color:var(--text-muted);opacity:.5" id="admin-version"></div>
       <div style="position:absolute;bottom:1rem;left:1rem;right:1rem">
@@ -286,14 +282,25 @@ tr.row-inactive td:first-child   { border-left:3px solid #d1d5db; }
         <h1>Teams verwalten</h1>
         <div class="card">
           <h2>📋 Alle Teams</h2>
-          <div style="margin-bottom:1rem">
-            <input type="text" id="teams-search" placeholder="Team suchen..." oninput="filterTeamsList()" style="max-width:300px">
+          <div style="display:flex;gap:.75rem;margin-bottom:1rem;align-items:center;flex-wrap:wrap">
+            <input type="text" id="teams-search" placeholder="Team suchen..." oninput="filterTeamsList()" style="max-width:250px">
+            <select id="teams-filter-status" onchange="filterTeamsList()" style="max-width:160px">
+              <option value="active">Aktive Teams</option>
+              <option value="inactive">Inaktive Teams</option>
+              <option value="all">Alle Teams</option>
+            </select>
+            <select id="teams-filter-dabei" onchange="filterTeamsList()" style="max-width:160px">
+              <option value="all">Alle (Dabei-Status)</option>
+              <option value="dabei">Nur Dabei</option>
+              <option value="nicht-dabei">Nicht Dabei</option>
+            </select>
+            <span id="teams-count" style="color:var(--text-muted);font-size:.85rem"></span>
           </div>
           <div style="overflow-x:auto">
             <table>
-              <thead><tr><th>Team</th><th>Discord User</th><th>Saisons</th><th>Aktionen</th></tr></thead>
+              <thead><tr><th>Team</th><th>Discord User</th><th>Onlineliga</th><th>Dabei</th><th>Status</th><th>Saisons</th><th style="text-align:right">Aktionen</th></tr></thead>
               <tbody id="teams-list">
-                <tr><td colspan="4" style="text-align:center;color:var(--text-muted)">Lade...</td></tr>
+                <tr><td colspan="7" style="text-align:center;color:var(--text-muted)">Lade...</td></tr>
               </tbody>
             </table>
           </div>
@@ -316,52 +323,18 @@ tr.row-inactive td:first-child   { border-left:3px solid #d1d5db; }
               <label>Onlineliga-Link</label>
               <input type="text" id="edit-team-onlineliga" placeholder="https://onlineliga.de/team/...">
             </div>
+            <div class="form-group" style="margin-bottom:1rem">
+              <label>Verknüpfter Discord-User</label>
+              <div id="edit-team-discord-info" style="display:flex;align-items:center;gap:.5rem;padding:.5rem;background:var(--bg-elevated);border-radius:6px;font-size:.9rem">
+                <span id="edit-team-discord-name" style="color:var(--text-muted)">—</span>
+                <button class="btn btn-sm btn-danger" id="edit-team-unlink-btn" onclick="unlinkDiscordFromTeam()" style="display:none;margin-left:auto" title="Verknüpfung lösen">🔗✂️ Lösen</button>
+              </div>
+            </div>
             <div style="display:flex;gap:.5rem;justify-content:flex-end">
               <button class="btn btn-secondary" onclick="closeEditTeamModal()">Abbrechen</button>
               <button class="btn btn-success" onclick="saveTeamEdit()">💾 Speichern</button>
             </div>
           </div>
-        </div>
-      </div>
-      
-      <!-- Seasons -->
-      <div id="seasons" class="section">
-        <h1>Saisons verwalten</h1>
-        <div class="card" style="background:var(--bg-elevated);border:1px dashed var(--border-dark)">
-          <p style="margin:0;font-size:.9rem;color:var(--text-muted)">Neue Saison erstellen? Nutze den <a href="#" onclick="showSection('saison-setup');return false" style="color:var(--primary);font-weight:600">Saison-Setup Wizard</a> — dort kannst du Teams auswählen, auslosen und den Spielplan generieren.</p>
-        </div>
-        
-        <div class="card">
-          <h2>📅 Alle Saisons</h2>
-
-          <!-- Edit Modal (hidden) -->
-          <div id="edit-season-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center" onclick="if(event.target===this) closeEditSeasonModal()">
-            <div style="background:var(--bg-section);border:1px solid var(--border-dark);border-radius:12px;padding:1.5rem;width:400px;max-width:90%" onclick="event.stopPropagation()">
-              <h3 style="margin:0 0 1rem">Saison bearbeiten</h3>
-              <input type="hidden" id="edit-season-id">
-              <div class="form-group" style="margin-bottom:1rem">
-                <label>Name</label>
-                <input type="text" id="edit-season-name" placeholder="z.B. Saison 2026">
-              </div>
-              <div class="form-group" style="margin-bottom:1rem">
-                <label>Status</label>
-                <select id="edit-season-status">
-                  <option value="planned">Geplant</option>
-                  <option value="active">Aktiv</option>
-                  <option value="archived">Archiviert</option>
-                </select>
-              </div>
-              <div style="display:flex;gap:.5rem;justify-content:flex-end">
-                <button class="btn btn-secondary" onclick="closeEditSeasonModal()">Abbrechen</button>
-                <button class="btn btn-success" onclick="saveSeasonEdit()">💾 Speichern</button>
-              </div>
-            </div>
-          </div>
-
-          <table>
-            <thead><tr><th>ID</th><th>Name</th><th>Teams</th><th>Status</th><th>Aktionen</th></tr></thead>
-            <tbody id="seasons-list"></tbody>
-          </table>
         </div>
       </div>
       
@@ -454,145 +427,76 @@ tr.row-inactive td:first-child   { border-left:3px solid #d1d5db; }
         </div>
       </div>
 
-      <!-- Anmeldungen -->
-      <div id="anmeldungen" class="section">
-        <h1>📋 Anmeldungen</h1>
+      <!-- Discord User -->
+      <div id="discord-users" class="section">
+        <h1>👤 Discord User</h1>
 
-        <!-- Statistik-Banner -->
-        <div class="anmeldungen-stats">
-          <div class="stat-badge stat-total">Gesamt: <span id="anm-stat-total">–</span></div>
-          <div class="stat-badge stat-dabei">Dabei: <span id="anm-stat-dabei">–</span></div>
-          <div class="stat-badge stat-incomplete">Unvollständig: <span id="anm-stat-incomplete">–</span></div>
-        </div>
-
-        <!-- Tab-Bar -->
-        <div class="anm-tab-bar">
-          <button class="anm-tab-btn active" data-tab="aktive-saison">🏆 Aktive Saison</button>
-          <button class="anm-tab-btn" data-tab="alle-user">👤 Alle Discord User</button>
-          <button class="anm-tab-btn" data-tab="registrieren">➕ Registrieren</button>
-        </div>
-
-        <!-- Tab: Aktive Saison -->
-        <div id="anm-tab-aktive-saison" class="anm-tab-content">
-          <div class="anm-filter-bar">
-            <button class="anm-filter-btn active" data-filter="all">Alle</button>
-            <button class="anm-filter-btn" data-filter="ready">✅ Ready</button>
-            <button class="anm-filter-btn" data-filter="incomplete">⚠️ Unvollständig</button>
+        <div class="card">
+          <div style="display:flex;gap:.75rem;margin-bottom:1rem;align-items:center;flex-wrap:wrap">
+            <input type="text" id="discord-users-search" placeholder="Username oder Team suchen..." oninput="debounceDiscordUserSearch()" style="max-width:300px">
+            <select id="discord-users-filter-status" onchange="loadDiscordUsersList()" style="max-width:160px">
+              <option value="active">Aktive User</option>
+              <option value="inactive">Inaktive User</option>
+              <option value="all">Alle User</option>
+            </select>
+            <select id="discord-users-filter-team" onchange="loadDiscordUsersList()" style="max-width:160px">
+              <option value="all">Alle (Team-Status)</option>
+              <option value="with-team">Mit Team</option>
+              <option value="without-team">Ohne Team</option>
+            </select>
+            <span id="discord-users-count" style="color:var(--text-muted);font-size:.85rem"></span>
           </div>
-          <div class="card" style="padding:0">
-            <div style="overflow-x:auto">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Discord</th>
-                    <th>Team</th>
-                    <th>Profil</th>
-                    <th>Dabei</th>
-                    <th>Status</th>
-                    <th style="text-align:right">Aktionen</th>
-                  </tr>
-                </thead>
-                <tbody id="anm-aktive-saison-tbody">
-                  <tr><td colspan="6" style="text-align:center;color:var(--text-muted)">Lade...</td></tr>
-                </tbody>
-              </table>
+          <div style="overflow-x:auto">
+            <table>
+              <thead>
+                <tr>
+                  <th>Discord-Name</th>
+                  <th>Team</th>
+                  <th>Profil-URL</th>
+                  <th>Status</th>
+                  <th>Erstellt</th>
+                  <th style="text-align:right">Aktionen</th>
+                </tr>
+              </thead>
+              <tbody id="discord-users-tbody">
+                <tr><td colspan="6" style="text-align:center;color:var(--text-muted)">Lade...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Edit Modal -->
+        <div id="edit-discord-user-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center" onclick="if(event.target===this) closeEditDiscordUserModal()">
+          <div style="background:var(--bg-section);border:1px solid var(--border-dark);border-radius:12px;padding:1.5rem;width:500px;max-width:90%" onclick="event.stopPropagation()">
+            <h3 style="margin:0 0 1rem">Discord User bearbeiten</h3>
+            <input type="hidden" id="edit-du-discord-id">
+
+            <div class="form-group" style="margin-bottom:1rem">
+              <label>Discord-ID <span style="color:var(--text-muted);font-size:.8rem">(readonly)</span></label>
+              <input type="text" id="edit-du-id-display" readonly style="opacity:.6;cursor:not-allowed">
             </div>
-          </div>
-        </div>
 
-        <!-- Tab: Alle Discord User -->
-        <div id="anm-tab-alle-user" class="anm-tab-content" style="display:none">
-          <div class="card">
-            <div class="form-row">
-              <div class="form-group">
-                <label>Suche nach Username</label>
-                <input type="text" id="anm-user-search" placeholder="Discord oder Teamname suchen…" oninput="debounceAnmUserSearch()">
-              </div>
-              <div class="form-group" style="display:flex;align-items:flex-end">
-                <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;padding:.5rem 0">
-                  <input type="checkbox" id="anm-filter-no-team" onchange="debounceAnmUserSearch()">
-                  <span>Nur ohne Team</span>
-                </label>
-              </div>
-              <div class="form-group" style="flex:0">
-                <button class="btn btn-primary" onclick="loadAlleDiscordUser()">🔄 Neu laden</button>
+            <div class="form-group" style="margin-bottom:1rem">
+              <label>Discord-Username</label>
+              <input type="text" id="edit-du-username" placeholder="z.B. cyphrrr">
+            </div>
+
+            <div class="form-group" style="margin-bottom:1rem">
+              <label>Profil-URL</label>
+              <input type="url" id="edit-du-profile-url" placeholder="https://www.onlineliga.de/...">
+            </div>
+
+            <div class="form-group" style="margin-bottom:1rem">
+              <label>Verknüpftes Team</label>
+              <div style="display:flex;align-items:center;gap:.5rem;padding:.5rem;background:var(--bg-elevated);border-radius:6px;font-size:.9rem">
+                <span id="edit-du-team-name" style="color:var(--text-muted)">—</span>
+                <button class="btn btn-sm btn-danger" id="edit-du-unlink-team-btn" onclick="unlinkTeamFromUser()" style="display:none;margin-left:auto">🔗✂️ Lösen</button>
               </div>
             </div>
-          </div>
-          <div class="card" style="padding:0">
-            <div style="overflow-x:auto">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Discord Username</th>
-                    <th>Team</th>
-                    <th>Profil URL</th>
-                    <th>Teilnahme</th>
-                    <th>Registriert</th>
-                    <th style="text-align:right">Aktionen</th>
-                  </tr>
-                </thead>
-                <tbody id="anm-alle-user-tbody">
-                  <tr><td colspan="6" style="text-align:center;color:var(--text-muted)">Lade...</td></tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
 
-        <!-- Tab: Registrieren -->
-        <div id="anm-tab-registrieren" class="anm-tab-content" style="display:none">
-          <div class="card">
-            <h2>➕ Teilnehmer registrieren</h2>
-            <form id="register-form" style="display:contents">
-              <div class="form-group">
-                <label>Team <span style="color:red">*</span></label>
-                <input type="text" id="reg-team-search" placeholder="Teamname suchen…" autocomplete="off" oninput="searchRegTeams()">
-                <input type="hidden" id="reg-team-id">
-                <div id="reg-team-suggestions" style="max-height:150px;overflow-y:auto;margin-top:4px"></div>
-              </div>
-
-              <div class="form-group">
-                <label>Discord Username <span style="color:var(--text-muted)">(optional)</span></label>
-                <input type="text" id="reg-discord-username" placeholder="z.B. cyphrrr">
-              </div>
-
-              <div class="form-group">
-                <label>Discord ID <span style="color:var(--text-muted)">(optional)</span></label>
-                <input type="text" id="reg-discord-id" placeholder="18-stellige ID, z.B. 272170332125659137">
-                <small style="color:var(--text-muted)">Nur nötig wenn der User auch den Discord Bot nutzen soll.</small>
-              </div>
-
-              <div class="form-group">
-                <label>Profil-URL <span style="color:var(--text-muted)">(optional)</span></label>
-                <input type="url" id="reg-profile-url" placeholder="https://www.onlineliga.de/...">
-              </div>
-
-              <div class="form-group">
-                <label>
-                  <input type="checkbox" id="reg-participating" checked>
-                  Für aktive Saison anmelden
-                </label>
-              </div>
-
-              <button type="button" onclick="submitRegistration()" class="btn btn-primary" style="margin-top:12px">Teilnehmer registrieren</button>
-            </form>
-            <div id="register-result" style="margin-top:12px"></div>
-          </div>
-        </div>
-
-        <!-- Team-Assign Modal -->
-        <div id="team-assign-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1000;align-items:center;justify-content:center">
-          <div class="card" style="width:400px;max-width:90vw">
-            <h3>Team zuweisen</h3>
-            <input type="hidden" id="team-assign-discord-id">
-            <div class="form-group">
-              <label>Team suchen</label>
-              <input type="text" id="team-assign-search" placeholder="Teamname..." oninput="searchTeamsForAssign()">
-            </div>
-            <div id="team-assign-results" style="max-height:200px;overflow-y:auto;margin-top:.5rem"></div>
-            <div style="display:flex;gap:.5rem;margin-top:1rem;justify-content:flex-end">
-              <button class="btn" onclick="closeTeamAssignModal()">Abbrechen</button>
+            <div style="display:flex;gap:.5rem;justify-content:flex-end">
+              <button class="btn btn-secondary" onclick="closeEditDiscordUserModal()">Abbrechen</button>
+              <button class="btn btn-success" onclick="saveDiscordUserEdit()">💾 Speichern</button>
             </div>
           </div>
         </div>
@@ -622,114 +526,88 @@ tr.row-inactive td:first-child   { border-left:3px solid #d1d5db; }
 
         <!-- Tab Navigation -->
         <div class="tabs" style="margin-bottom:1.5rem">
-          <button class="tab active" data-tab="tab-participants" onclick="showSetupTab('tab-participants')">👥 Teilnehmer</button>
-          <button class="tab" data-tab="tab-draw" onclick="showSetupTab('tab-draw')">🚧 Auslosung</button>
+          <button class="tab active" data-tab="tab-seasons" onclick="showSetupTab('tab-seasons')">📅 Saisons</button>
+          <button class="tab" data-tab="tab-participants" onclick="showSetupTab('tab-participants')">👥 Teilnehmer</button>
           <button class="tab" data-tab="tab-schedule" onclick="showSetupTab('tab-schedule')">📋 Spielplan</button>
-          <button class="tab" data-tab="tab-import" onclick="showSetupTab('tab-import')">📥 Ergebnis-Import</button>
-          <button class="tab" data-tab="tab-register" onclick="showSetupTab('tab-register')">➕ Registrieren</button>
         </div>
 
-        <!-- Tab 1: Teilnehmer -->
-        <div id="tab-participants" class="setup-tab">
+        <!-- Tab: Saisons -->
+        <div id="tab-seasons" class="setup-tab">
+          <div class="card">
+            <h2>📅 Alle Saisons</h2>
+            <div style="overflow-x:auto">
+              <table>
+                <thead><tr><th>ID</th><th>Name</th><th>Teams</th><th>Status</th><th style="text-align:right">Aktionen</th></tr></thead>
+                <tbody id="setup-seasons-list">
+                  <tr><td colspan="5" style="text-align:center;color:var(--text-muted)">Lade...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Season Edit Modal -->
+          <div id="setup-edit-season-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center" onclick="if(event.target===this) closeSetupEditSeasonModal()">
+            <div style="background:var(--bg-section);border:1px solid var(--border-dark);border-radius:12px;padding:1.5rem;width:400px;max-width:90%" onclick="event.stopPropagation()">
+              <h3 style="margin:0 0 1rem">Saison bearbeiten</h3>
+              <input type="hidden" id="setup-edit-season-id">
+              <div class="form-group" style="margin-bottom:1rem">
+                <label>Name</label>
+                <input type="text" id="setup-edit-season-name" placeholder="z.B. Saison 52">
+              </div>
+              <div class="form-group" style="margin-bottom:1rem">
+                <label>Status</label>
+                <select id="setup-edit-season-status">
+                  <option value="planned">Geplant</option>
+                  <option value="active">Aktiv</option>
+                  <option value="archived">Archiviert</option>
+                </select>
+              </div>
+              <div style="display:flex;gap:.5rem;justify-content:flex-end">
+                <button class="btn btn-secondary" onclick="closeSetupEditSeasonModal()">Abbrechen</button>
+                <button class="btn btn-success" onclick="saveSetupSeasonEdit()">💾 Speichern</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab: Teilnehmer -->
+        <div id="tab-participants" class="setup-tab" style="display:none">
           <div class="card">
             <h2>👥 Teilnehmer auswählen</h2>
-            <p style="color:var(--text-muted);font-size:.9rem;margin-top:0">Zeigt Teams die als "Dabei" markiert sind. Nutze Bulk-Import oder Teams verwalten um die Teilnehmerliste zu pflegen.</p>
+            <p style="color:var(--text-muted);font-size:.9rem;margin-top:0">Lädt Teams aus dem Google Sheet (Spalte C + P) und gleicht sie mit den Discord-Anmeldungen ab.</p>
             <div style="display:flex;gap:.75rem;margin-bottom:1rem;align-items:center;flex-wrap:wrap">
-              <button class="btn btn-primary" onclick="loadParticipants()">🔄 Teams laden</button>
-              <button class="btn btn-secondary" onclick="openBulkImportModal()">📥 Bulk-Import</button>
+              <button class="btn btn-primary" onclick="syncWithSheet()">🔄 Teams laden &amp; Sheet abgleichen</button>
               <button class="btn btn-secondary" onclick="openManageTeamsModal()">👥 Teams verwalten</button>
               <button class="btn btn-success" onclick="showSeasonNameModal()">🏆 Saison anlegen</button>
               <input type="text" id="participants-search" placeholder="Filter..." oninput="filterParticipantsList()" style="max-width:200px">
               <span id="participant-count" style="color:var(--text-muted);font-size:.9rem"></span>
             </div>
+
+            <!-- Sheet Sync Ergebnis-Banner -->
+            <div id="sheet-sync-result" style="display:none;margin-bottom:1rem">
+              <div style="padding:.75rem 1rem;background:var(--bg-elevated);border:1px solid var(--border-dark);border-radius:8px">
+                <div style="display:flex;gap:1rem;flex-wrap:wrap;font-size:.9rem">
+                  <span id="sync-stat-matched" style="color:#4caf50">✅ 0 Match</span>
+                  <span id="sync-stat-only-discord" style="color:#ff9800">⚠️ 0 Nur Discord</span>
+                  <span id="sync-stat-only-sheet" style="color:#2196f3">📋 0 Nur Sheet</span>
+                  <span id="sync-stat-created" style="color:var(--text-muted)">➕ 0 neu angelegt</span>
+                  <span id="sync-stat-tab" style="color:var(--text-muted);margin-left:auto;font-size:.8rem"></span>
+                </div>
+              </div>
+            </div>
+
             <div style="overflow-x:auto">
               <table>
-                <thead><tr><th style="width:40px"><input type="checkbox" id="participants-select-all" onchange="toggleAllParticipants(this.checked)"></th><th>Team</th><th>Setzplatz</th><th>Discord User</th><th>Status</th></tr></thead>
+                <thead><tr><th style="width:40px"><input type="checkbox" id="participants-select-all" onchange="toggleAllParticipants(this.checked)"></th><th>Team</th><th>Quelle</th><th>Setzplatz</th><th>Discord User</th><th>Status</th></tr></thead>
                 <tbody id="participants-list">
-                  <tr><td colspan="4" style="text-align:center;color:var(--text-muted)">Noch nicht geladen</td></tr>
+                  <tr><td colspan="6" style="text-align:center;color:var(--text-muted)">Noch nicht geladen — "Teams laden &amp; Sheet abgleichen" klicken</td></tr>
                 </tbody>
               </table>
             </div>
           </div>
         </div>
 
-        <!-- Tab: Registrieren (im Setup) -->
-        <div id="tab-register" class="setup-tab" style="display:none">
-          <div class="card">
-            <h2>➕ Teilnehmer registrieren</h2>
-            <form id="setup-register-form" style="display:contents">
-              <div class="form-group">
-                <label>Team <span style="color:red">*</span></label>
-                <input type="text" id="setup-reg-team-search" placeholder="Teamname suchen…" autocomplete="off" oninput="searchSetupRegTeams()">
-                <input type="hidden" id="setup-reg-team-id">
-                <div id="setup-reg-team-suggestions" style="max-height:150px;overflow-y:auto;margin-top:4px"></div>
-              </div>
-
-              <div class="form-group">
-                <label>Discord Username <span style="color:var(--text-muted)">(optional)</span></label>
-                <input type="text" id="setup-reg-discord-username" placeholder="z.B. cyphrrr">
-              </div>
-
-              <div class="form-group">
-                <label>Discord ID <span style="color:var(--text-muted)">(optional)</span></label>
-                <input type="text" id="setup-reg-discord-id" placeholder="18-stellige ID, z.B. 272170332125659137">
-                <small style="color:var(--text-muted)">Nur nötig wenn der User auch den Discord Bot nutzen soll.</small>
-              </div>
-
-              <div class="form-group">
-                <label>Profil-URL <span style="color:var(--text-muted)">(optional)</span></label>
-                <input type="url" id="setup-reg-profile-url" placeholder="https://www.onlineliga.de/...">
-              </div>
-
-              <div class="form-group">
-                <label>
-                  <input type="checkbox" id="setup-reg-participating" checked>
-                  Für aktive Saison anmelden
-                </label>
-              </div>
-
-              <button type="button" onclick="submitSetupRegistration()" class="btn btn-primary" style="margin-top:12px">Teilnehmer registrieren</button>
-            </form>
-            <div id="setup-register-result" style="margin-top:12px"></div>
-          </div>
-        </div>
-
-        <!-- Tab 2: Auslosung -->
-        <div id="tab-draw" class="setup-tab" style="display:none">
-          <div class="card">
-            <h2>⚙️ Gruppenphase konfigurieren</h2>
-            <div class="form-row">
-              <div class="form-group">
-                <label>Saison-Name</label>
-                <input type="text" id="draw-season-name" placeholder="z.B. Saison 51">
-              </div>
-              <div class="form-group">
-                <label>Anzahl Gruppen</label>
-                <input type="number" id="draw-group-count" value="10" min="1" max="16" oninput="updateDrawPreview()">
-              </div>
-              <div class="form-group">
-                <label>Teams pro Gruppe</label>
-                <input type="number" id="draw-teams-per-group" value="4" min="3" max="6" oninput="updateDrawPreview()">
-              </div>
-            </div>
-            <div id="draw-preview" style="padding:.75rem;background:var(--bg-elevated);border-radius:6px;font-size:.9rem;margin-bottom:1rem">
-              Konfiguriere Gruppen und Teams/Gruppe für eine Vorschau.
-            </div>
-            <div style="display:flex;gap:.75rem">
-              <button class="btn btn-primary" onclick="previewDraw()">👁️ Auslosung vorab anzeigen</button>
-              <button class="btn btn-success" onclick="executeDraw()">🚧 Auslosung & Saison erstellen</button>
-            </div>
-          </div>
-
-          <div id="draw-result" style="display:none">
-            <div class="card">
-              <h2>🚧 Auslosungsergebnis</h2>
-              <div id="draw-result-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1rem"></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Tab 3: Spielplan -->
+        <!-- Tab: Spielplan -->
         <div id="tab-schedule" class="setup-tab" style="display:none">
           <div class="card">
             <h2>📋 Spielplan einer Saison</h2>
@@ -746,52 +624,6 @@ tr.row-inactive td:first-child   { border-left:3px solid #d1d5db; }
             </div>
           </div>
           <div id="schedule-groups-list"></div>
-        </div>
-
-        <!-- Tab 4: Ergebnis-Import -->
-        <div id="tab-import" class="setup-tab" style="display:none">
-          <div class="card">
-            <h2>📥 n8n JSON-Import</h2>
-            <p style="color:var(--text-muted);font-size:.9rem;margin-top:0">
-              Füge den Output deines n8n-Workflows hier ein. Das System matched Heim/Gast-Teamnamen gegen bestehende Matches und trägt die Ergebnisse ein.
-            </p>
-            <div class="form-row">
-              <div class="form-group">
-                <label>Saison</label>
-                <select id="import-season-select">
-                  <option value="">Wählen...</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>Spieltag</label>
-                <select id="import-matchday-select">
-                  <option value="SP1">SP1</option>
-                  <option value="SP2">SP2</option>
-                  <option value="SP3">SP3</option>
-                  <option value="SP4">SP4</option>
-                  <option value="SP5">SP5</option>
-                  <option value="SP6">SP6</option>
-                  <option value="SP7">SP7</option>
-                </select>
-              </div>
-            </div>
-            <div class="form-group" style="margin-bottom:1rem">
-              <label>JSON-Daten (Output aus n8n)</label>
-              <textarea id="import-json-input" style="min-height:200px;font-family:monospace;font-size:.8rem" placeholder='[&#10;  {"Heim": "FC Beispiel", "Gast": "VfB Test", "Heimtore": "2", "Gasttore": "1", "Saison": "51", "Spieltag": "SP1"}&#10;]'></textarea>
-            </div>
-            <div style="display:flex;gap:.75rem">
-              <button class="btn btn-secondary" onclick="validateImportJson()">🔍 Validieren</button>
-              <button class="btn btn-success" onclick="executeImport()">📥 Ergebnisse importieren</button>
-            </div>
-            <div id="import-validation-result" style="margin-top:1rem"></div>
-          </div>
-
-          <div id="import-result-card" style="display:none">
-            <div class="card">
-              <h2>📊 Import-Ergebnis</h2>
-              <div id="import-result-detail"></div>
-            </div>
-          </div>
         </div>
       </div>
       <!-- Saison-Name Modal -->
@@ -889,10 +721,9 @@ const API_URL = (() => {
 <script src="js/admin/setup.js"></script>
 <script src="js/admin/ergebnisse.js"></script>
 <script src="js/admin/teams.js"></script>
-<script src="js/admin/saisons.js"></script>
 <script src="js/admin/news.js"></script>
 <script src="js/admin/ko-phase.js"></script>
-<script src="js/admin/anmeldungen.js"></script>
+<script src="js/admin/discord-users.js"></script>
 <script src="js/admin/discord.js"></script>
 <script src="js/admin/design.js"></script>
 <script src="js/init.js"></script>

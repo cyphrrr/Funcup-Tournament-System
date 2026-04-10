@@ -14,27 +14,24 @@ router = APIRouter()
 def list_all_teams(
     search: Optional[str] = None,
     participating: Optional[bool] = None,
+    include_inactive: bool = False,
     db: Session = Depends(get_db)
 ):
     """Alle Teams mit Saison-Teilnahmen und Discord-Verknüpfung.
 
-    participating=true: Nur Teams die als 'Dabei' markiert sind
-    (Team.participating_next OR UserProfile.participating_next).
+    participating=true: Nur Teams die als 'Dabei' markiert sind (Team.participating_next).
+    include_inactive=true: Auch inaktive Teams anzeigen.
     """
     query = db.query(models.Team)
+
+    if not include_inactive:
+        query = query.filter(models.Team.is_active == True)
+
     if search and len(search.strip()) >= 2:
         query = query.filter(models.Team.name.ilike(f"%{search}%"))
 
     if participating is True:
-        # Teams mit participating_next=True auf Team-Ebene ODER UserProfile-Ebene
-        participating_profile_team_ids = db.query(models.UserProfile.team_id).filter(
-            models.UserProfile.team_id.isnot(None),
-            models.UserProfile.participating_next == True
-        ).subquery()
-        query = query.filter(
-            (models.Team.participating_next == True) |
-            (models.Team.id.in_(db.query(participating_profile_team_ids)))
-        )
+        query = query.filter(models.Team.participating_next == True)
 
     query = query.order_by(models.Team.name)
     teams = query.all()
@@ -71,14 +68,13 @@ def list_all_teams(
     result = []
     for t in teams:
         profile = profile_map.get(t.id)
-        # Dabei = Team-Level OR UserProfile-Level
-        is_participating = t.participating_next or (profile.participating_next if profile else False)
         result.append({
             "id": t.id,
             "name": t.name,
             "logo_url": t.logo_url,
             "onlineliga_url": t.onlineliga_url,
-            "participating_next": is_participating,
+            "participating_next": t.participating_next,
+            "is_active": t.is_active,
             "discord_user": {
                 "discord_id": profile.discord_id,
                 "discord_username": profile.discord_username,
@@ -87,31 +83,6 @@ def list_all_teams(
         })
 
     return result
-
-
-@router.post("/teams/sync-participation")
-def sync_participation(
-    db: Session = Depends(get_db),
-    _: str = Depends(get_current_user)
-):
-    """
-    Einmaliger Sync: Für alle UserProfiles mit participating_next=True und team_id
-    → Team.participating_next = True setzen.
-    """
-    profiles = db.query(models.UserProfile).filter(
-        models.UserProfile.participating_next == True,
-        models.UserProfile.team_id.isnot(None)
-    ).all()
-
-    updated = 0
-    for profile in profiles:
-        team = db.query(models.Team).filter(models.Team.id == profile.team_id).first()
-        if team and not team.participating_next:
-            team.participating_next = True
-            updated += 1
-
-    db.commit()
-    return {"updated": updated, "total_profiles": len(profiles)}
 
 
 @router.post("/teams/bulk-register", response_model=schemas.BulkRegisterResponse)
@@ -307,6 +278,7 @@ def get_team_detail(team_id: int, db: Session = Depends(get_db)):
         name=team.name,
         logo_url=team.logo_url,
         onlineliga_url=team.onlineliga_url,
+        is_active=team.is_active,
         discord_claimed=discord_claimed,
         recent_matches=recent_matches,
         stats={
@@ -333,6 +305,10 @@ def update_team(team_id: int, update: schemas.TeamUpdate, db: Session = Depends(
         team.onlineliga_url = update.onlineliga_url
     if update.participating_next is not None:
         team.participating_next = update.participating_next
+    if update.is_active is not None:
+        team.is_active = update.is_active
+        if not update.is_active:
+            team.participating_next = False
 
     db.commit()
     db.refresh(team)

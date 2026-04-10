@@ -1,9 +1,8 @@
-// admin/setup.js — Saison-Setup Wizard (Tabs 1-4)
+// admin/setup.js — Saison-Setup Wizard (3 Tabs: Saisons / Teilnehmer / Spielplan)
 
 const setupState = {
   participants: [],
   manualTeamSelected: null,
-  drawGroups: null,
   createdSeasonId: null,
   seededTeams: { A: null, B: null, C: null },
   seasonName: '',
@@ -16,43 +15,137 @@ function showSetupTab(tabId) {
   document.querySelector(`.tab[data-tab="${tabId}"]`).classList.add('active');
 }
 
+let allSetupSeasons = [];
+
 async function initSaisonSetup() {
   try {
     const seasons = await authFetch(`${API_URL}/api/seasons`).then(r => r.json());
-    const activePlanned = seasons.filter(s => s.status !== 'archived').sort((a, b) => b.id - a.id);
+    allSetupSeasons = seasons;
 
-    ['schedule-season-select', 'import-season-select'].forEach(id => {
-      const sel = document.getElementById(id);
+    renderSetupSeasonsList(seasons);
+
+    const activePlanned = seasons.filter(s => s.status !== 'archived').sort((a, b) => b.id - a.id);
+    const sel = document.getElementById('schedule-season-select');
+    if (sel) {
       sel.innerHTML = '<option value="">Wählen...</option>';
       activePlanned.forEach(s => {
-        sel.innerHTML += `<option value="${s.id}">${s.name} (${s.status})</option>`;
+        sel.innerHTML += `<option value="${s.id}">${escapeHtml(s.name)} (${s.status})</option>`;
       });
-    });
-    // Saison-Name in Auslosung-Tab synchronisieren
-    if (setupState.seasonName) {
-      const drawNameEl = document.getElementById('draw-season-name');
-      if (drawNameEl) drawNameEl.value = setupState.seasonName;
     }
+
+    showSetupTab('tab-seasons');
   } catch (e) {
     console.error('Fehler beim Laden der Saisons:', e);
   }
 }
 
-// ---- Tab 1: Teilnehmer ----
+// ---- Tab: Saisons ----
+
+function renderSetupSeasonsList(seasons) {
+  const tbody = document.getElementById('setup-seasons-list');
+  if (!seasons.length) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted)">Keine Saisons vorhanden</td></tr>';
+    return;
+  }
+
+  const statusLabel = { planned: 'Geplant', active: 'Aktiv', archived: 'Archiviert' };
+  const statusColor = { planned: 'var(--warning)', active: 'var(--success)', archived: 'var(--text-muted)' };
+
+  tbody.innerHTML = seasons.map(s => `<tr>
+    <td style="color:var(--text-muted)">${s.id}</td>
+    <td><strong>${escapeHtml(s.name)}</strong></td>
+    <td style="text-align:center;color:var(--text-muted)">${s.participant_count ?? '–'}</td>
+    <td><span style="color:${statusColor[s.status] || 'inherit'};font-weight:600">${statusLabel[s.status] || s.status}</span></td>
+    <td style="text-align:right">
+      <button class="btn btn-small btn-secondary" onclick="editSetupSeason(${s.id})">✏️ Bearbeiten</button>
+      <button class="btn btn-small btn-danger" onclick="deleteSetupSeason(${s.id})" style="margin-left:.25rem">🗑️</button>
+    </td>
+  </tr>`).join('');
+}
+
+function editSetupSeason(id) {
+  const s = allSetupSeasons.find(x => x.id === id);
+  if (!s) return;
+  document.getElementById('setup-edit-season-id').value = s.id;
+  document.getElementById('setup-edit-season-name').value = s.name;
+  document.getElementById('setup-edit-season-status').value = s.status;
+  document.getElementById('setup-edit-season-modal').style.display = 'flex';
+}
+
+function closeSetupEditSeasonModal() {
+  document.getElementById('setup-edit-season-modal').style.display = 'none';
+}
+
+async function saveSetupSeasonEdit() {
+  const id = document.getElementById('setup-edit-season-id').value;
+  const name = document.getElementById('setup-edit-season-name').value.trim();
+  const status = document.getElementById('setup-edit-season-status').value;
+
+  if (!name) { toast('Bitte einen Namen eingeben', 'error'); return; }
+
+  try {
+    const res = await authFetch(`${API_URL}/api/seasons/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, status }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || 'Speichern fehlgeschlagen');
+    }
+    toast('Saison gespeichert');
+    closeSetupEditSeasonModal();
+    const seasons = await authFetch(`${API_URL}/api/seasons`).then(r => r.json());
+    allSetupSeasons = seasons;
+    renderSetupSeasonsList(seasons);
+
+    const activePlanned = seasons.filter(s => s.status !== 'archived').sort((a, b) => b.id - a.id);
+    const sel = document.getElementById('schedule-season-select');
+    if (sel) {
+      sel.innerHTML = '<option value="">Wählen...</option>';
+      activePlanned.forEach(s => {
+        sel.innerHTML += `<option value="${s.id}">${escapeHtml(s.name)} (${s.status})</option>`;
+      });
+    }
+  } catch (e) {
+    toast(`Fehler: ${e.message}`, 'error');
+  }
+}
+
+async function deleteSetupSeason(id) {
+  const s = allSetupSeasons.find(x => x.id === id);
+  if (!s) return;
+  if (!confirm(`Saison "${s.name}" wirklich löschen? Alle zugehörigen Daten gehen verloren.`)) return;
+
+  try {
+    const res = await authFetch(`${API_URL}/api/seasons/${id}`, { method: 'DELETE' });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || 'Löschen fehlgeschlagen');
+    }
+    toast(`Saison "${s.name}" gelöscht`);
+    const seasons = await authFetch(`${API_URL}/api/seasons`).then(r => r.json());
+    allSetupSeasons = seasons;
+    renderSetupSeasonsList(seasons);
+  } catch (e) {
+    toast(`Fehler: ${e.message}`, 'error');
+  }
+}
+
+// ---- Tab: Teilnehmer ----
 
 let allParticipantTeams = [];
+let lastSyncSourceMap = null;
 
 async function loadParticipants() {
   const tbody = document.getElementById('participants-list');
   const countEl = document.getElementById('participant-count');
-  tbody.innerHTML = '<tr><td colspan="5" style="text-align:center">Lade...</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="6" style="text-align:center">Lade...</td></tr>';
 
   try {
-    // Nur Dabei-Teams laden
     const res = await fetch(`${API_URL}/api/teams?participating=true`);
     allParticipantTeams = await res.json();
 
-    // Alle geladenen Teams vorauswählen (sind ja alle "Dabei")
     const selectedIds = new Set(setupState.participants.map(p => p.team_id));
     if (selectedIds.size === 0) {
       allParticipantTeams.forEach(t => {
@@ -62,17 +155,17 @@ async function loadParticipants() {
     }
 
     if (!allParticipantTeams.length) {
-      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:2rem 1rem">
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:2rem 1rem">
         Keine Teams als "Dabei" markiert.<br>
-        <span style="font-size:.85rem">Nutze <strong>📥 Bulk-Import</strong> um Teams hinzuzufügen oder <strong>👥 Teams verwalten</strong> um bestehende Teams zu markieren.</span>
+        <span style="font-size:.85rem">Nutze <strong>🔄 Teams laden &amp; Sheet abgleichen</strong> oder <strong>👥 Teams verwalten</strong>.</span>
       </td></tr>`;
-      countEl.textContent = '0 Teams';
+      if (countEl) countEl.textContent = '0 Teams';
       return;
     }
 
     renderParticipantsList(allParticipantTeams, selectedIds);
   } catch (e) {
-    tbody.innerHTML = `<tr><td colspan="5" style="color:var(--danger)">Fehler: ${e.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" style="color:var(--danger)">Fehler: ${e.message}</td></tr>`;
   }
 }
 
@@ -85,14 +178,13 @@ function renderParticipantsList(teams, selectedIds) {
   }
 
   const selected = teams.filter(t => selectedIds.has(t.id)).length;
-  countEl.textContent = `${selected} von ${teams.length} Teams ausgewählt`;
+  if (countEl) countEl.textContent = `${selected} von ${teams.length} Teams ausgewählt`;
 
   if (!teams.length) {
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted)">Keine Teams gefunden</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted)">Keine Teams gefunden</td></tr>';
     return;
   }
 
-  // Bestimme welche Setzplätze vergeben sind
   const seededValues = Object.entries(setupState.seededTeams)
     .filter(([, tid]) => tid !== null)
     .map(([key, tid]) => ({ key, tid }));
@@ -115,6 +207,15 @@ function renderParticipantsList(teams, selectedIds) {
       statusStyle = 'color:var(--text-muted)';
     }
 
+    // Quelle badge
+    let sourceLabel = '<span style="color:var(--text-muted)">–</span>';
+    if (lastSyncSourceMap) {
+      const src = lastSyncSourceMap[t.id];
+      if (src === 'both') sourceLabel = '<span style="background:#dcfce7;color:#166534;padding:.15rem .5rem;border-radius:4px;font-size:.8rem">Beide</span>';
+      else if (src === 'discord') sourceLabel = '<span style="background:#fff3cd;color:#856404;padding:.15rem .5rem;border-radius:4px;font-size:.8rem">Nur Discord</span>';
+      else if (src === 'sheet') sourceLabel = '<span style="background:#dbeafe;color:#1e40af;padding:.15rem .5rem;border-radius:4px;font-size:.8rem">Sheet</span>';
+    }
+
     // Setzplatz-Dropdown
     const currentSeed = Object.entries(setupState.seededTeams).find(([, tid]) => tid === t.id);
     const currentSeedKey = currentSeed ? currentSeed[0] : '';
@@ -135,6 +236,7 @@ function renderParticipantsList(teams, selectedIds) {
     return `<tr>
       <td><input type="checkbox" class="participant-check" data-team-id="${t.id}" data-team-name="${escapeHtml(t.name)}" ${checked} onchange="updateParticipantSelection()"></td>
       <td><strong>${escapeHtml(t.name)}</strong></td>
+      <td>${sourceLabel}</td>
       <td>${seedSelect}</td>
       <td>${discord}</td>
       <td><span style="${statusStyle}">${status}</span></td>
@@ -167,7 +269,6 @@ function updateParticipantSelection() {
     });
   });
 
-  // Setzplätze für abgewählte Teams entfernen
   for (const key of Object.keys(setupState.seededTeams)) {
     if (setupState.seededTeams[key] !== null && !selectedIds.has(setupState.seededTeams[key])) {
       setupState.seededTeams[key] = null;
@@ -175,16 +276,13 @@ function updateParticipantSelection() {
   }
 
   const countEl = document.getElementById('participant-count');
-  countEl.textContent = `${selectedIds.size} von ${allParticipantTeams.length} Teams ausgewählt`;
+  if (countEl) countEl.textContent = `${selectedIds.size} von ${allParticipantTeams.length} Teams ausgewählt`;
 
-  // Seed-Dropdowns aktualisieren (disabled-Status)
   renderParticipantsList(allParticipantTeams, selectedIds);
 }
 
 function toggleAllParticipants(checked) {
-  document.querySelectorAll('.participant-check').forEach(cb => {
-    cb.checked = checked;
-  });
+  document.querySelectorAll('.participant-check').forEach(cb => { cb.checked = checked; });
   updateParticipantSelection();
 }
 
@@ -192,36 +290,68 @@ function updateSeedSelection(selectEl) {
   const teamId = parseInt(selectEl.dataset.teamId);
   const value = selectEl.value;
 
-  // Alten Setzplatz für dieses Team entfernen
   for (const key of Object.keys(setupState.seededTeams)) {
-    if (setupState.seededTeams[key] === teamId) {
-      setupState.seededTeams[key] = null;
-    }
+    if (setupState.seededTeams[key] === teamId) setupState.seededTeams[key] = null;
   }
-
-  // Neuen Setzplatz setzen
   if (value && ['A', 'B', 'C'].includes(value)) {
     setupState.seededTeams[value] = teamId;
   }
 
-  // Dropdowns neu rendern um disabled-Status zu aktualisieren
   const selectedIds = getSelectedParticipantIds();
   renderParticipantsList(allParticipantTeams, selectedIds);
 }
 
+// ---- Google Sheet Sync ----
+
+async function syncWithSheet() {
+  const btn = document.querySelector('button[onclick="syncWithSheet()"]');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Sync läuft...'; }
+
+  try {
+    const res = await authFetch(`${API_URL}/api/admin/sheet-sync`, { method: 'POST' });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || 'Sheet-Sync fehlgeschlagen');
+    }
+    const data = await res.json();
+
+    // Banner anzeigen
+    document.getElementById('sheet-sync-result').style.display = 'block';
+    document.getElementById('sync-stat-matched').textContent = `✅ ${data.matched.length} Match`;
+    document.getElementById('sync-stat-only-discord').textContent = `⚠️ ${data.only_discord.length} Nur Discord`;
+    document.getElementById('sync-stat-only-sheet').textContent = `📋 ${data.only_sheet.length} Nur Sheet`;
+    document.getElementById('sync-stat-created').textContent = `➕ ${data.created} neu angelegt`;
+    document.getElementById('sync-stat-tab').textContent = `Tab: ${data.tab_name}`;
+
+    // Quellen-Map aufbauen
+    lastSyncSourceMap = {};
+    data.matched.forEach(t => { lastSyncSourceMap[t.team_id] = 'both'; });
+    data.only_discord.forEach(t => { lastSyncSourceMap[t.team_id] = 'discord'; });
+    data.only_sheet.forEach(t => { lastSyncSourceMap[t.team_id] = 'sheet'; });
+
+    setupState.participants = [];
+    await loadParticipants();
+
+    toast(`Sheet-Sync: ${data.matched.length} Match, ${data.only_discord.length} Nur Discord, ${data.only_sheet.length} Sheet-only`);
+  } catch (e) {
+    toast(`Fehler: ${e.message}`, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '🔄 Teams laden & Sheet abgleichen'; }
+  }
+}
+
+// ---- Saison anlegen ----
 
 function showSeasonNameModal() {
   if (!setupState.participants.length) {
     toast('Bitte zuerst Teams laden und auswählen', 'error');
     return;
   }
-
   const count = setupState.participants.length;
   document.getElementById('season-name-modal-info').textContent =
     `${count} Teams ausgewählt. Gib der neuen Saison einen Namen.`;
   document.getElementById('season-name-input').value = '';
   document.getElementById('season-name-modal').style.display = 'flex';
-
   setTimeout(() => document.getElementById('season-name-input').focus(), 100);
 }
 
@@ -236,7 +366,6 @@ async function confirmSeasonCreation() {
     document.getElementById('season-name-input').focus();
     return;
   }
-
   closeSeasonNameModal();
   setupState.seasonName = name;
   await finalizeTeams();
@@ -244,24 +373,18 @@ async function confirmSeasonCreation() {
 
 async function finalizeTeams() {
   if (!setupState.participants.length) {
-    toast('Bitte zuerst Teams laden und auswählen (Tab 1)', 'error');
+    toast('Bitte zuerst Teams laden und auswählen (Tab Teilnehmer)', 'error');
     return;
   }
 
   try {
-    // 1. Geplante Saison suchen
     const seasonsRes = await authFetch(`${API_URL}/api/seasons`);
     const seasons = await seasonsRes.json();
     let season = seasons.find(s => s.status === 'planned');
 
-    // 2. Falls keine planned-Saison: neue erstellen
     if (!season) {
       const name = setupState.seasonName;
-      if (!name) {
-        // Sollte nicht passieren wenn über Modal aufgerufen, aber Fallback
-        showSeasonNameModal();
-        return;
-      }
+      if (!name) { showSeasonNameModal(); return; }
 
       const createRes = await authFetch(`${API_URL}/api/seasons`, {
         method: 'POST',
@@ -269,8 +392,8 @@ async function finalizeTeams() {
         body: JSON.stringify({
           name,
           participant_count: setupState.participants.length,
-          group_count: Math.ceil(setupState.participants.length / 4)
-        })
+          group_count: Math.ceil(setupState.participants.length / 4),
+        }),
       });
       if (!createRes.ok) {
         const err = await createRes.json();
@@ -279,27 +402,19 @@ async function finalizeTeams() {
       season = await createRes.json();
     }
 
-    // 3. Confirm
     const teamCount = setupState.participants.length;
     if (!confirm(`${teamCount} Teams in Saison "${season.name}" synchronisieren und Spielplan generieren?`)) return;
 
-    // 4. Sync aufrufen
     const teamIds = setupState.participants.map(p => p.team_id);
     const seededTeams = {};
     for (const [key, tid] of Object.entries(setupState.seededTeams)) {
-      if (tid !== null && teamIds.includes(tid)) {
-        seededTeams[key] = tid;
-      }
+      if (tid !== null && teamIds.includes(tid)) seededTeams[key] = tid;
     }
 
     const syncRes = await authFetch(`${API_URL}/api/seasons/${season.id}/teams/sync`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        team_ids: teamIds,
-        seeded_teams: seededTeams,
-        generate_schedule: true
-      })
+      body: JSON.stringify({ team_ids: teamIds, seeded_teams: seededTeams, generate_schedule: true }),
     });
 
     if (!syncRes.ok) {
@@ -310,18 +425,15 @@ async function finalizeTeams() {
     const result = await syncRes.json();
     toast(`Saison "${season.name}" — ${result.groups.length} Gruppen, +${result.added} / -${result.removed} Teams`);
 
-    // 5. Wechsel zu Tab 3
     setupState.createdSeasonId = season.id;
     await initSaisonSetup();
     showSetupTab('tab-schedule');
     document.getElementById('schedule-season-select').value = season.id;
     loadScheduleForSeason();
-
   } catch (e) {
     toast(`Fehler: ${e.message}`, 'error');
   }
 }
-
 
 // ---- Bulk-Import Modal ----
 
@@ -343,10 +455,7 @@ async function submitBulkImport() {
   const btn = document.getElementById('bulk-import-btn');
 
   const lines = textarea.value.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-  if (!lines.length) {
-    toast('Bitte mindestens einen Teamnamen eingeben', 'error');
-    return;
-  }
+  if (!lines.length) { toast('Bitte mindestens einen Teamnamen eingeben', 'error'); return; }
 
   btn.disabled = true;
   btn.textContent = '⏳ Importiere...';
@@ -355,14 +464,12 @@ async function submitBulkImport() {
     const res = await authFetch(`${API_URL}/api/teams/bulk-register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ teams: lines })
+      body: JSON.stringify({ teams: lines }),
     });
-
     if (!res.ok) {
       const err = await res.json();
       throw new Error(err.detail || 'Import fehlgeschlagen');
     }
-
     const data = await res.json();
     resultEl.style.display = 'block';
     resultEl.innerHTML = `<div style="padding:.75rem;background:var(--bg-elevated);border-radius:6px;font-size:.9rem">
@@ -370,13 +477,9 @@ async function submitBulkImport() {
       <strong>${data.updated}</strong> bestehende als "Dabei" markiert.
       <br>Gesamt: <strong>${data.total}</strong> Teams verarbeitet.
     </div>`;
-
     toast(`Bulk-Import: ${data.created} neu, ${data.updated} aktualisiert`);
-
-    // Teilnehmer-Liste neu laden
     setupState.participants = [];
     await loadParticipants();
-
   } catch (e) {
     resultEl.style.display = 'block';
     resultEl.innerHTML = `<div style="color:var(--danger);font-size:.9rem">❌ ${e.message}</div>`;
@@ -385,7 +488,6 @@ async function submitBulkImport() {
     btn.textContent = '📥 Importieren';
   }
 }
-
 
 // ---- Teams verwalten Modal ----
 
@@ -399,7 +501,6 @@ function openManageTeamsModal() {
 
 function closeManageTeamsModal() {
   document.getElementById('manage-teams-modal').style.display = 'none';
-  // Teilnehmer-Liste neu laden nach Änderungen
   setupState.participants = [];
   loadParticipants();
 }
@@ -423,12 +524,10 @@ function renderManageTeamsList(teams) {
     tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--text-muted)">Keine Teams gefunden</td></tr>';
     return;
   }
-
   tbody.innerHTML = teams.map(t => {
     const discord = t.discord_user
       ? (t.discord_user.discord_username || t.discord_user.discord_id)
       : '<span style="color:var(--text-muted)">–</span>';
-
     return `<tr>
       <td style="text-align:center"><input type="checkbox" ${t.participating_next ? 'checked' : ''} onchange="toggleTeamParticipation(${t.id}, this.checked)"></td>
       <td>${escapeHtml(t.name)}</td>
@@ -448,161 +547,21 @@ async function toggleTeamParticipation(teamId, value) {
     const res = await authFetch(`${API_URL}/api/teams/${teamId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ participating_next: value })
+      body: JSON.stringify({ participating_next: value }),
     });
-
     if (!res.ok) {
       const err = await res.json();
       throw new Error(err.detail || 'Fehler beim Aktualisieren');
     }
-
-    // Lokalen State aktualisieren
     const team = allManageTeams.find(t => t.id === teamId);
     if (team) team.participating_next = value;
-
   } catch (e) {
     toast(`Fehler: ${e.message}`, 'error');
-    // Checkbox zurücksetzen
     loadManageTeams();
   }
 }
 
-
-// ---- Tab 2: Auslosung ----
-
-function updateDrawPreview() {
-  const groups = parseInt(document.getElementById('draw-group-count').value) || 0;
-  const tpg = parseInt(document.getElementById('draw-teams-per-group').value) || 0;
-  const total = groups * tpg;
-  const participants = setupState.participants.filter(p => p.team_id);
-  const previewEl = document.getElementById('draw-preview');
-
-  previewEl.innerHTML = `
-    <strong>Konfiguration:</strong> ${groups} Gruppen × ${tpg} Teams = <strong>${total} Plätze</strong><br>
-    <strong>Teilnehmer mit Team:</strong> ${participants.length}<br>
-    ${participants.length > total ? `<span style="color:var(--danger)">⚠️ Zu viele Teilnehmer für diese Konfiguration!</span>` : ''}
-    ${participants.length < total ? `<span style="color:var(--warning)">ℹ️ ${total - participants.length} Platz/Plätze bleiben leer</span>` : ''}
-    ${participants.length === total ? `<span style="color:var(--success)">✅ Passt genau!</span>` : ''}
-  `;
-}
-
-function previewDraw() {
-  const groups = parseInt(document.getElementById('draw-group-count').value);
-  const tpg = parseInt(document.getElementById('draw-teams-per-group').value);
-  const participants = setupState.participants.filter(p => p.team_id);
-
-  if (!participants.length) {
-    toast('Bitte zuerst Teilnehmer laden (Tab 1)', 'error');
-    return;
-  }
-
-  const shuffled = [...participants].sort(() => Math.random() - 0.5);
-  const groupNames = 'ABCDEFGHIJKLMNOP'.split('');
-
-  setupState.drawGroups = Array.from({ length: groups }, (_, i) => ({
-    name: groupNames[i],
-    teams: shuffled.slice(i * tpg, (i + 1) * tpg),
-  }));
-
-  renderDrawResult();
-  document.getElementById('draw-result').style.display = 'block';
-}
-
-function renderDrawResult() {
-  const grid = document.getElementById('draw-result-grid');
-  grid.innerHTML = setupState.drawGroups.map(g => `
-    <div style="background:var(--bg-elevated);border-radius:8px;padding:.75rem;border:1px solid var(--border-dark)">
-      <strong style="font-size:1rem;color:var(--primary)">Gruppe ${g.name}</strong>
-      <div style="margin-top:.5rem">
-        ${g.teams.map(t => `<div style="padding:.25rem 0;font-size:.85rem;border-bottom:1px solid var(--border-dark)">${t.team_name}</div>`).join('')}
-        ${g.teams.length === 0 ? '<em style="color:var(--text-muted);font-size:.8rem">Leer</em>' : ''}
-      </div>
-    </div>
-  `).join('');
-}
-
-async function executeDraw() {
-  const name = document.getElementById('draw-season-name').value.trim() || setupState.seasonName;
-  if (!name) { toast('Bitte Saison-Name eingeben', 'error'); return; }
-
-  if (!setupState.drawGroups) {
-    previewDraw();
-    if (!setupState.drawGroups) return;
-  }
-
-  if (!confirm(`Saison "${name}" mit ${setupState.drawGroups.length} Gruppen erstellen und Spielplan generieren?`)) return;
-
-  try {
-    const totalTeams = setupState.drawGroups.reduce((acc, g) => acc + g.teams.length, 0);
-    const seasonRes = await authFetch(`${API_URL}/api/seasons`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name,
-        participant_count: totalTeams,
-        status: 'planned',
-        group_count: setupState.drawGroups.length,
-      })
-    });
-
-    if (!seasonRes.ok) {
-      const err = await seasonRes.json();
-      throw new Error(err.detail || 'Saison konnte nicht erstellt werden');
-    }
-
-    const season = await seasonRes.json();
-    setupState.createdSeasonId = season.id;
-
-    const groupsRes = await authFetch(`${API_URL}/api/seasons/${season.id}/groups`);
-    const groups = await groupsRes.json();
-
-    const groupMap = {};
-    groups.forEach(g => { groupMap[g.name] = g.id; });
-
-    let assignErrors = 0;
-    for (const drawGroup of setupState.drawGroups) {
-      const groupId = groupMap[drawGroup.name];
-      if (!groupId) { console.warn(`Gruppe ${drawGroup.name} nicht gefunden`); continue; }
-
-      for (const participant of drawGroup.teams) {
-        const assignRes = await authFetch(`${API_URL}/api/seasons/${season.id}/teams`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            team_id: participant.team_id,
-            group_id: groupId,
-          })
-        });
-        if (!assignRes.ok) {
-          console.warn(`Team ${participant.team_name} konnte nicht zugewiesen werden`);
-          assignErrors++;
-        }
-      }
-
-      await authFetch(`${API_URL}/api/groups/${groupId}/generate-schedule`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({})
-      });
-    }
-
-    if (assignErrors > 0) {
-      toast(`Saison erstellt, aber ${assignErrors} Teams konnten nicht zugewiesen werden`, 'error');
-    } else {
-      toast(`✅ Saison "${name}" erfolgreich erstellt!`);
-    }
-
-    await initSaisonSetup();
-    showSetupTab('tab-schedule');
-    document.getElementById('schedule-season-select').value = season.id;
-    loadScheduleForSeason();
-
-  } catch (e) {
-    toast(`Fehler: ${e.message}`, 'error');
-  }
-}
-
-// ---- Tab 3: Spielplan ----
+// ---- Tab: Spielplan ----
 
 async function loadScheduleForSeason() {
   const seasonId = document.getElementById('schedule-season-select').value;
@@ -647,7 +606,6 @@ async function loadScheduleForSeason() {
           </table>
         </div>`;
     }).join('');
-
   } catch (e) {
     container.innerHTML = `<div style="color:var(--danger);padding:1rem">Fehler: ${e.message}</div>`;
   }
@@ -667,126 +625,13 @@ async function generateScheduleForSeason() {
       const r = await authFetch(`${API_URL}/api/groups/${g.id}/generate-schedule`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({})
+        body: JSON.stringify({}),
       });
       r.ok ? ok++ : fail++;
     }
 
     toast(`Spielplan generiert: ${ok} Gruppen OK, ${fail} Fehler`);
     loadScheduleForSeason();
-  } catch (e) {
-    toast(`Fehler: ${e.message}`, 'error');
-  }
-}
-
-// ---- Tab 4: Ergebnis-Import ----
-
-function validateImportJson() {
-  const input = document.getElementById('import-json-input').value.trim();
-  const resultEl = document.getElementById('import-validation-result');
-
-  try {
-    const data = JSON.parse(input);
-    if (!Array.isArray(data)) throw new Error('Muss ein JSON-Array sein');
-    if (!data.length) throw new Error('Array ist leer');
-
-    const required = ['Heim', 'Gast', 'Heimtore', 'Gasttore'];
-    const missing = required.filter(k => !(k in data[0]));
-    if (missing.length) throw new Error(`Fehlende Felder: ${missing.join(', ')}`);
-
-    resultEl.innerHTML = `
-      <div style="background:#dcfce7;padding:.75rem;border-radius:6px;color:#166534">
-        ✅ JSON valide – <strong>${data.length} Spiele</strong> gefunden<br>
-        Saison: ${data[0].Saison || 'nicht angegeben'} | Spieltag: ${data[0].Spieltag || 'nicht angegeben'}
-      </div>`;
-    return data;
-  } catch (e) {
-    resultEl.innerHTML = `<div style="background:#fee2e2;padding:.75rem;border-radius:6px;color:#991b1b">❌ ${e.message}</div>`;
-    return null;
-  }
-}
-
-async function executeImport() {
-  const seasonId = document.getElementById('import-season-select').value;
-  const matchday = document.getElementById('import-matchday-select').value;
-
-  if (!seasonId) { toast('Bitte Saison wählen', 'error'); return; }
-
-  const data = validateImportJson();
-  if (!data) return;
-
-  const resultCard = document.getElementById('import-result-card');
-  const resultDetail = document.getElementById('import-result-detail');
-  resultCard.style.display = 'none';
-
-  try {
-    const groupsRes = await authFetch(`${API_URL}/api/seasons/${seasonId}/groups-with-teams`);
-    const groups = await groupsRes.json();
-
-    const matchIndex = {};
-    for (const g of groups) {
-      for (const m of (g.matches || [])) {
-        const home = (m.home_team_name || '').toLowerCase().trim();
-        const away = (m.away_team_name || '').toLowerCase().trim();
-        if (home && away) {
-          matchIndex[`${home}|${away}`] = m.id;
-          matchIndex[`${away}|${home}`] = { id: m.id, swapped: true };
-        }
-      }
-    }
-
-    let ok = 0, notFound = [];
-
-    for (const spiel of data) {
-      const heimNorm = (spiel.Heim || '').toLowerCase().trim();
-      const gastNorm = (spiel.Gast || '').toLowerCase().trim();
-      const heimTore = parseInt(spiel.Heimtore);
-      const gastTore = parseInt(spiel.Gasttore);
-
-      const key = `${heimNorm}|${gastNorm}`;
-      const match = matchIndex[key];
-
-      if (!match) {
-        notFound.push(`${spiel.Heim} vs ${spiel.Gast}`);
-        continue;
-      }
-
-      const matchId = typeof match === 'object' ? match.id : match;
-      const swapped = typeof match === 'object' && match.swapped;
-
-      const payload = swapped
-        ? { home_goals: gastTore, away_goals: heimTore }
-        : { home_goals: heimTore, away_goals: gastTore };
-
-      const res = await authFetch(`${API_URL}/api/matches/${matchId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...payload, status: 'played' })
-      });
-
-      if (res.ok) ok++;
-      else notFound.push(`${spiel.Heim} vs ${spiel.Gast} (API-Fehler)`);
-    }
-
-    resultCard.style.display = 'block';
-    resultDetail.innerHTML = `
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1rem">
-        <div class="stat"><div class="stat-value" style="color:var(--success)">${ok}</div><div class="stat-label">Importiert</div></div>
-        <div class="stat"><div class="stat-value" style="color:var(--danger)">${notFound.length}</div><div class="stat-label">Nicht gefunden</div></div>
-        <div class="stat"><div class="stat-value">${data.length}</div><div class="stat-label">Gesamt</div></div>
-      </div>
-      ${notFound.length ? `
-        <div style="background:#fee2e2;border-radius:6px;padding:.75rem">
-          <strong style="color:#991b1b">Nicht gefundene Spiele:</strong>
-          <ul style="margin:.5rem 0 0;padding-left:1.25rem;font-size:.85rem">
-            ${notFound.map(n => `<li>${n}</li>`).join('')}
-          </ul>
-        </div>` : ''}
-    `;
-
-    toast(`Import: ${ok}/${data.length} Ergebnisse eingetragen`);
-    loadScheduleForSeason();
-
   } catch (e) {
     toast(`Fehler: ${e.message}`, 'error');
   }

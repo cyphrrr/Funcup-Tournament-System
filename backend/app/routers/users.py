@@ -11,12 +11,14 @@ router = APIRouter()
 
 
 def _build_user_response(user, db: Session) -> schemas.UserProfileResponse:
-    """Helper: Baut UserProfileResponse mit team_name."""
+    """Helper: Baut UserProfileResponse mit team_name und team_participating_next."""
     team_name = None
+    team_participating_next = False
     if user.team_id:
         team = db.query(models.Team).filter(models.Team.id == user.team_id).first()
         if team:
             team_name = team.name
+            team_participating_next = team.participating_next
 
     return schemas.UserProfileResponse(
         id=user.id,
@@ -26,7 +28,8 @@ def _build_user_response(user, db: Session) -> schemas.UserProfileResponse:
         team_id=user.team_id,
         team_name=team_name,
         profile_url=user.profile_url,
-        participating_next=user.participating_next,
+        is_active=user.is_active,
+        team_participating_next=team_participating_next,
         crest_url=user.crest_url,
         created_at=user.created_at,
         updated_at=user.updated_at
@@ -57,7 +60,6 @@ def ensure_user(
             discord_id=user_data.discord_id,
             discord_username=user_data.discord_username,
             discord_avatar_url=user_data.discord_avatar_url,
-            participating_next=True
         )
         db.add(user)
         db.commit()
@@ -103,12 +105,20 @@ def update_participation(
             detail=f"Kein User mit Discord ID {discord_id} gefunden"
         )
 
-    user.participating_next = update.participating
-    # Sync to Team level
-    if user.team_id:
-        team = db.query(models.Team).filter(models.Team.id == user.team_id).first()
-        if team:
-            team.participating_next = update.participating
+    # participating_next wird ausschließlich am Team gesetzt
+    if not user.team_id:
+        raise HTTPException(status_code=400, detail="KEIN_TEAM_VERKNUEPFT")
+
+    team = db.query(models.Team).filter(models.Team.id == user.team_id).first()
+    if not team:
+        raise HTTPException(status_code=404, detail="Team nicht gefunden")
+
+    team.participating_next = update.participating
+
+    # Auto-Reaktivierung: Wenn User sich anmeldet und Team inaktiv ist
+    if update.participating and not team.is_active:
+        team.is_active = True
+
     db.commit()
     db.refresh(user)
 
@@ -200,7 +210,6 @@ def assign_team_to_user(
         "discord_username": user.discord_username,
         "team_id": user.team_id,
         "profile_url": user.profile_url,
-        "participating_next": user.participating_next,
     }
 
 
@@ -227,14 +236,13 @@ def register_discord_user(
         discord_username=user_data.discord_username,
         profile_url=str(user_data.profile_url) if user_data.profile_url else None,
         team_id=user_data.team_id,
-        participating_next=user_data.participating_next
     )
 
     db.add(user)
     db.commit()
     db.refresh(user)
 
-    if user_data.participating_next and user_data.team_id:
+    if user_data.team_id:
         season = db.query(models.Season).filter(models.Season.status == "active").first()
         if season:
             existing_st = db.query(models.SeasonTeam).filter(
@@ -308,19 +316,7 @@ def claim_team(
     db.commit()
     db.refresh(user)
 
-    return schemas.UserProfileResponse(
-        id=user.id,
-        discord_id=user.discord_id,
-        discord_username=user.discord_username,
-        discord_avatar_url=user.discord_avatar_url,
-        team_id=user.team_id,
-        team_name=team.name,
-        profile_url=user.profile_url,
-        participating_next=user.participating_next,
-        crest_url=user.crest_url,
-        created_at=user.created_at,
-        updated_at=user.updated_at
-    )
+    return _build_user_response(user, db)
 
 
 @router.get("/discord/participation-report")
@@ -328,36 +324,40 @@ def get_participation_report(
     db: Session = Depends(get_db),
     _: str = Depends(get_current_user)
 ):
-    """Admin-Endpoint: Report über Teilnahme-Status aller User."""
-    users = db.query(models.UserProfile).all()
+    """Admin-Report: Teilnahme-Status basierend auf Teams."""
+    teams = db.query(models.Team).filter(models.Team.is_active == True).all()
 
-    total = len(users)
-    participating_count = sum(1 for u in users if u.participating_next is True)
-    not_participating_count = sum(1 for u in users if u.participating_next is False)
+    total = len(teams)
+    participating_count = sum(1 for t in teams if t.participating_next)
     rate = (participating_count / total * 100) if total > 0 else 0.0
 
-    _p_team_ids = [u.team_id for u in users if u.team_id]
-    _p_teams_map = {t.id: t.name for t in db.query(models.Team).filter(models.Team.id.in_(_p_team_ids)).all()} if _p_team_ids else {}
+    # Discord-User-Verknüpfungen laden
+    team_ids = [t.id for t in teams]
+    profiles = db.query(models.UserProfile).filter(
+        models.UserProfile.team_id.in_(team_ids),
+        models.UserProfile.is_active == True
+    ).all() if team_ids else []
+    profile_map = {p.team_id: p for p in profiles}
 
     participating_list = []
-    for user in users:
-        if not user.participating_next:
+    for team in teams:
+        if not team.participating_next:
             continue
-        team_name = _p_teams_map.get(user.team_id) if user.team_id else None
-
+        profile = profile_map.get(team.id)
         participating_list.append({
-            "discord_id": user.discord_id,
-            "discord_username": user.discord_username,
-            "team_id": user.team_id,
-            "team_name": team_name,
-            "profile_url": user.profile_url,
+            "team_id": team.id,
+            "team_name": team.name,
+            "discord_user": {
+                "discord_id": profile.discord_id,
+                "discord_username": profile.discord_username,
+            } if profile else None,
         })
 
     return {
-        "total_users": total,
+        "total_teams": total,
         "participating_count": participating_count,
-        "not_participating_count": not_participating_count,
-        "participation_rate": rate,
+        "not_participating_count": total - participating_count,
+        "participation_rate": round(rate, 1),
         "participating": participating_list,
     }
 
@@ -366,11 +366,15 @@ def get_participation_report(
 def list_discord_users(
     search: Optional[str] = None,
     has_team: Optional[bool] = None,
+    include_inactive: bool = False,
     db: Session = Depends(get_db),
     _: str = Depends(get_current_user)
 ):
     """Admin-Endpoint: Liste aller Discord User mit Filteroptionen."""
     query = db.query(models.UserProfile)
+
+    if not include_inactive:
+        query = query.filter(models.UserProfile.is_active == True)
 
     if search:
         query = query.filter(
@@ -385,26 +389,9 @@ def list_discord_users(
 
     users = query.order_by(models.UserProfile.created_at.desc()).all()
 
-    _du_team_ids = [u.team_id for u in users if u.team_id]
-    _du_teams_map = {t.id: t.name for t in db.query(models.Team).filter(models.Team.id.in_(_du_team_ids)).all()} if _du_team_ids else {}
-
     user_responses = []
     for user in users:
-        team_name = _du_teams_map.get(user.team_id) if user.team_id else None
-
-        user_responses.append(schemas.UserProfileResponse(
-            id=user.id,
-            discord_id=user.discord_id,
-            discord_username=user.discord_username,
-            discord_avatar_url=user.discord_avatar_url,
-            team_id=user.team_id,
-            team_name=team_name,
-            profile_url=user.profile_url,
-            participating_next=user.participating_next,
-            crest_url=user.crest_url,
-            created_at=user.created_at,
-            updated_at=user.updated_at
-        ))
+        user_responses.append(_build_user_response(user, db))
 
     return user_responses
 
@@ -470,16 +457,4 @@ def admin_set_team(
     db.commit()
     db.refresh(user)
 
-    return schemas.UserProfileResponse(
-        id=user.id,
-        discord_id=user.discord_id,
-        discord_username=user.discord_username,
-        discord_avatar_url=user.discord_avatar_url,
-        team_id=user.team_id,
-        team_name=team_name,
-        profile_url=user.profile_url,
-        participating_next=user.participating_next,
-        crest_url=user.crest_url,
-        created_at=user.created_at,
-        updated_at=user.updated_at
-    )
+    return _build_user_response(user, db)

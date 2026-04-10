@@ -28,6 +28,7 @@ class Team(Base):
     logo_url = Column(String, nullable=True)  # Wappen/Logo
     onlineliga_url = Column(String, nullable=True)  # Link zu onlineliga.de
     participating_next = Column(Boolean, default=False)  # Dabei am nächsten Pokal (Team-Level)
+    is_active = Column(Boolean, default=True, nullable=False)  # Soft-Delete
 
 class SeasonTeam(Base):
     __tablename__ = "season_teams"
@@ -145,8 +146,8 @@ class UserProfile(Base):
 
     # User-Daten
     profile_url = Column(String, nullable=True)  # Onlineliga Profil-URL
-    participating_next = Column(Boolean, default=True)  # Teilnahme am nächsten Pokal
     crest_url = Column(String, nullable=True)  # Custom Wappen-URL (uploads/)
+    is_active = Column(Boolean, default=True, nullable=False)  # Soft-Delete
 
     # OAuth2 Token Storage (für Discord OAuth2)
     # WICHTIG: In Production mit Encryption speichern!
