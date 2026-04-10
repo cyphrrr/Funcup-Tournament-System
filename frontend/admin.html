@@ -533,6 +533,24 @@ tr.row-inactive td:first-child   { border-left:3px solid #d1d5db; }
 
         <!-- Tab: Saisons -->
         <div id="tab-seasons" class="setup-tab">
+          <div class="card" style="margin-bottom:1rem">
+            <h2>➕ Neue Saison erstellen</h2>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Saison-Name <span style="color:var(--danger)">*</span></label>
+                <input type="text" id="new-season-name" placeholder="z.B. BIW Pokal Saison 52">
+              </div>
+              <div class="form-group">
+                <label>Google Sheet Tab-GID</label>
+                <input type="text" id="new-season-gid" placeholder="z.B. 426603324">
+                <small style="color:var(--text-muted)">Sheet öffnen → Tab auswählen → Zahl nach #gid= aus der URL kopieren</small>
+              </div>
+              <div class="form-group" style="flex:0;display:flex;align-items:flex-end">
+                <button class="btn btn-success" onclick="createNewSeason()">🏆 Erstellen</button>
+              </div>
+            </div>
+          </div>
+
           <div class="card">
             <h2>📅 Alle Saisons</h2>
             <div style="overflow-x:auto">
@@ -580,10 +598,18 @@ tr.row-inactive td:first-child   { border-left:3px solid #d1d5db; }
           <div class="card">
             <h2>👥 Teilnehmer auswählen</h2>
             <p style="color:var(--text-muted);font-size:.9rem;margin-top:0">Lädt Teams aus dem Google Sheet (Spalte C + P) und gleicht sie mit den Discord-Anmeldungen ab.</p>
+            <div style="display:flex;gap:.75rem;margin-bottom:.75rem;align-items:flex-end;flex-wrap:wrap">
+              <div class="form-group" style="margin:0">
+                <label style="font-size:.8rem;margin-bottom:3px;display:block">Saison</label>
+                <select id="participants-season-select" style="min-width:240px">
+                  <option value="">Saison wählen...</option>
+                </select>
+              </div>
+            </div>
             <div style="display:flex;gap:.75rem;margin-bottom:1rem;align-items:center;flex-wrap:wrap">
               <button class="btn btn-primary" onclick="syncWithSheet()">🔄 Teams laden &amp; Sheet abgleichen</button>
               <button class="btn btn-secondary" onclick="openManageTeamsModal()">👥 Teams verwalten</button>
-              <button class="btn btn-success" onclick="showSeasonNameModal()">🏆 Saison anlegen</button>
+              <button class="btn btn-success" onclick="generateSeasonPlan()">📋 Spielplan generieren</button>
               <input type="text" id="participants-search" placeholder="Filter..." oninput="filterParticipantsList()" style="max-width:200px">
               <span id="participant-count" style="color:var(--text-muted);font-size:.9rem"></span>
             </div>
@@ -664,21 +690,6 @@ tr.row-inactive td:first-child   { border-left:3px solid #d1d5db; }
           </div>
           <div style="display:flex;gap:.5rem;justify-content:flex-end;margin-top:1rem">
             <button class="btn btn-secondary" onclick="closeManageTeamsModal()">Schließen</button>
-          </div>
-        </div>
-      </div>
-
-      <div id="season-name-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center" onclick="if(event.target===this) closeSeasonNameModal()">
-        <div style="background:var(--bg-section);border:1px solid var(--border-dark);border-radius:12px;padding:1.5rem;width:450px;max-width:90%" onclick="event.stopPropagation()">
-          <h3 style="margin:0 0 .5rem">🏆 Neue Saison erstellen</h3>
-          <p style="color:var(--text-muted);font-size:.85rem;margin:0 0 1rem" id="season-name-modal-info"></p>
-          <div class="form-group" style="margin-bottom:1.25rem">
-            <label>Saison-Name <span style="color:red">*</span></label>
-            <input type="text" id="season-name-input" placeholder="z.B. BIW Pokal Saison 51" autofocus>
-          </div>
-          <div style="display:flex;gap:.5rem;justify-content:flex-end">
-            <button class="btn btn-secondary" onclick="closeSeasonNameModal()">Abbrechen</button>
-            <button class="btn btn-success" onclick="confirmSeasonCreation()">✅ Saison anlegen</button>
           </div>
         </div>
       </div>

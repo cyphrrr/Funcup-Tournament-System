@@ -140,11 +140,16 @@ def remove_from_season(
     return {"ok": True}
 
 
-def _fetch_sheet_participants(db: Session) -> dict:
+def _fetch_sheet_participants(db: Session, season_id: int | None = None) -> dict:
     """Interne Hilfsfunktion: Sheet-Teilnehmerliste mit Cache holen."""
-    season = db.query(models.Season).filter(
-        models.Season.status.in_(["active", "planned"])
-    ).order_by(models.Season.id.desc()).first()
+    if season_id:
+        season = db.query(models.Season).filter(models.Season.id == season_id).first()
+        if not season:
+            raise HTTPException(status_code=404, detail="Saison nicht gefunden")
+    else:
+        season = db.query(models.Season).filter(
+            models.Season.status.in_(["active", "planned"])
+        ).order_by(models.Season.id.desc()).first()
 
     if not season:
         raise HTTPException(status_code=404, detail="Keine aktive Saison gefunden")
@@ -152,7 +157,7 @@ def _fetch_sheet_participants(db: Session) -> dict:
     if not season.sheet_tab_gid:
         raise HTTPException(
             status_code=400,
-            detail="Keine Google Sheet Tab-GID in der aktiven Saison hinterlegt. Bitte im Saison-Setup unter 'Saisons' → Bearbeiten eintragen."
+            detail=f"Keine Google Sheet Tab-GID in Saison '{season.name}' hinterlegt. Bitte im Saison-Setup unter 'Saisons' → Bearbeiten eintragen."
         )
 
     cache_key = f"sheet_participants_gid_{season.sheet_tab_gid}"
@@ -198,15 +203,17 @@ def _fetch_sheet_participants(db: Session) -> dict:
 
 @router.get("/admin/sheet-participants")
 def get_sheet_participants(
+    season_id: int | None = None,
     db: Session = Depends(get_db),
     _: str = Depends(get_current_user)
 ):
-    """Liest Teilnehmerliste aus Google Sheet (Tab 'TN {nr}', Spalte C + P)."""
-    return _fetch_sheet_participants(db)
+    """Liest Teilnehmerliste aus Google Sheet (GID aus Season.sheet_tab_gid, Spalte C + P)."""
+    return _fetch_sheet_participants(db, season_id)
 
 
 @router.post("/admin/sheet-sync")
 def sync_sheet_participants(
+    season_id: int | None = None,
     db: Session = Depends(get_db),
     _: str = Depends(get_current_user)
 ):
@@ -214,7 +221,7 @@ def sync_sheet_participants(
     Gleicht Google Sheet Teilnehmerliste mit DB ab.
     Legt fehlende Teams aus Sheet automatisch an (participating_next=True).
     """
-    sheet_data = _fetch_sheet_participants(db)
+    sheet_data = _fetch_sheet_participants(db, season_id)
     sheet_with_zusage = [p for p in sheet_data["participants"] if p["zusage"]]
     sheet_names = {p["team_name"].lower(): p["team_name"] for p in sheet_with_zusage}
 
@@ -269,7 +276,7 @@ def sync_sheet_participants(
     db.commit()
 
     return {
-        "tab_name": sheet_data["tab_name"],
+        "season_name": sheet_data["season_name"],
         "matched": matched,
         "only_discord": only_discord,
         "only_sheet": only_sheet,

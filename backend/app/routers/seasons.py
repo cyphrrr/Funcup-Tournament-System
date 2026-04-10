@@ -12,27 +12,30 @@ def create_season(season: schemas.SeasonCreate, db: Session = Depends(get_db), _
     obj = models.Season(
         name=season.name,
         participant_count=season.participant_count,
+        sheet_tab_gid=season.sheet_tab_gid,
     )
     db.add(obj)
     db.commit()
     db.refresh(obj)
 
-    if season.group_count is not None and season.group_count > 0:
-        group_count = season.group_count
-    else:
-        max_per_group = 4
-        group_count = (season.participant_count + max_per_group - 1) // max_per_group
+    # Gruppen nur anlegen wenn participant_count > 0
+    if season.participant_count and season.participant_count > 0:
+        if season.group_count is not None and season.group_count > 0:
+            group_count = season.group_count
+        else:
+            max_per_group = 4
+            group_count = (season.participant_count + max_per_group - 1) // max_per_group
 
-    for i in range(group_count):
-        group_name = chr(ord('A') + i)
-        group = models.Group(
-            season_id=obj.id,
-            name=group_name,
-            sort_order=i + 1,
-        )
-        db.add(group)
+        for i in range(group_count):
+            group_name = chr(ord('A') + i)
+            group = models.Group(
+                season_id=obj.id,
+                name=group_name,
+                sort_order=i + 1,
+            )
+            db.add(group)
 
-    db.commit()
+        db.commit()
     return obj
 
 
@@ -75,6 +78,9 @@ def update_season(season_id: int, update: schemas.SeasonUpdate, db: Session = De
         if season.status == "archived" and (update.status is None or update.status == "archived"):
             raise HTTPException(status_code=400, detail="Archivierte Saisons können nicht bearbeitet werden")
         season.name = update.name
+
+    if update.sheet_tab_gid is not None:
+        season.sheet_tab_gid = update.sheet_tab_gid if update.sheet_tab_gid != "" else None
 
     db.commit()
     db.refresh(season)

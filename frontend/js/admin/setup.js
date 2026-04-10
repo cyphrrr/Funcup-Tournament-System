@@ -5,7 +5,6 @@ const setupState = {
   manualTeamSelected: null,
   createdSeasonId: null,
   seededTeams: { A: null, B: null, C: null },
-  seasonName: '',
 };
 
 function showSetupTab(tabId) {
@@ -25,17 +24,62 @@ async function initSaisonSetup() {
     renderSetupSeasonsList(seasons);
 
     const activePlanned = seasons.filter(s => s.status !== 'archived').sort((a, b) => b.id - a.id);
-    const sel = document.getElementById('schedule-season-select');
-    if (sel) {
-      sel.innerHTML = '<option value="">Wählen...</option>';
+
+    // Spielplan-Tab Dropdown
+    const scheduleSel = document.getElementById('schedule-season-select');
+    if (scheduleSel) {
+      scheduleSel.innerHTML = '<option value="">Wählen...</option>';
       activePlanned.forEach(s => {
-        sel.innerHTML += `<option value="${s.id}">${escapeHtml(s.name)} (${s.status})</option>`;
+        scheduleSel.innerHTML += `<option value="${s.id}">${escapeHtml(s.name)} (${s.status})</option>`;
       });
+    }
+
+    // Teilnehmer-Tab Saison-Dropdown
+    const participantSel = document.getElementById('participants-season-select');
+    if (participantSel) {
+      const current = participantSel.value;
+      participantSel.innerHTML = '<option value="">Saison wählen...</option>';
+      activePlanned.forEach(s => {
+        const gidLabel = s.sheet_tab_gid ? ' ✅' : ' ⚠️ keine GID';
+        participantSel.innerHTML += `<option value="${s.id}">${escapeHtml(s.name)} (${s.status})${gidLabel}</option>`;
+      });
+      // Bisherige Auswahl oder Auto-Select wenn nur eine Saison
+      if (current && activePlanned.some(s => String(s.id) === current)) {
+        participantSel.value = current;
+      } else if (activePlanned.length === 1) {
+        participantSel.value = activePlanned[0].id;
+      }
     }
 
     showSetupTab('tab-seasons');
   } catch (e) {
     console.error('Fehler beim Laden der Saisons:', e);
+  }
+}
+
+async function createNewSeason() {
+  const name = document.getElementById('new-season-name').value.trim();
+  const gid = document.getElementById('new-season-gid').value.trim() || null;
+
+  if (!name) { toast('Saison-Name erforderlich', 'error'); return; }
+
+  try {
+    const res = await authFetch(`${API_URL}/api/seasons`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, participant_count: 0, sheet_tab_gid: gid }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || 'Saison konnte nicht erstellt werden');
+    }
+    const season = await res.json();
+    toast(`Saison "${name}" erstellt`);
+    document.getElementById('new-season-name').value = '';
+    document.getElementById('new-season-gid').value = '';
+    await initSaisonSetup();
+  } catch (e) {
+    toast(`Fehler: ${e.message}`, 'error');
   }
 }
 
@@ -311,11 +355,17 @@ function updateSeedSelection(selectEl) {
 // ---- Google Sheet Sync ----
 
 async function syncWithSheet() {
+  const seasonId = document.getElementById('participants-season-select').value;
+  if (!seasonId) {
+    toast('Bitte zuerst eine Saison wählen', 'error');
+    return;
+  }
+
   const btn = document.querySelector('button[onclick="syncWithSheet()"]');
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Sync läuft...'; }
 
   try {
-    const res = await authFetch(`${API_URL}/api/admin/sheet-sync`, { method: 'POST' });
+    const res = await authFetch(`${API_URL}/api/admin/sheet-sync?season_id=${seasonId}`, { method: 'POST' });
     if (!res.ok) {
       const err = await res.json();
       throw new Error(err.detail || 'Sheet-Sync fehlgeschlagen');
@@ -347,95 +397,58 @@ async function syncWithSheet() {
   }
 }
 
-// ---- Saison anlegen ----
+// ---- Spielplan generieren ----
 
-function showSeasonNameModal() {
-  if (!setupState.participants.length) {
-    toast('Bitte zuerst Teams laden und auswählen', 'error');
+async function generateSeasonPlan() {
+  const seasonId = document.getElementById('participants-season-select').value;
+  if (!seasonId) {
+    toast('Bitte zuerst eine Saison im Dropdown wählen', 'error');
     return;
   }
-  const count = setupState.participants.length;
-  document.getElementById('season-name-modal-info').textContent =
-    `${count} Teams ausgewählt. Gib der neuen Saison einen Namen.`;
-  document.getElementById('season-name-input').value = '';
-  document.getElementById('season-name-modal').style.display = 'flex';
-  setTimeout(() => document.getElementById('season-name-input').focus(), 100);
-}
 
-function closeSeasonNameModal() {
-  document.getElementById('season-name-modal').style.display = 'none';
-}
-
-async function confirmSeasonCreation() {
-  const name = document.getElementById('season-name-input').value.trim();
-  if (!name) {
-    toast('Bitte einen Saison-Namen eingeben', 'error');
-    document.getElementById('season-name-input').focus();
+  const participants = setupState.participants;
+  if (!participants.length) {
+    toast('Keine Teilnehmer geladen. Bitte zuerst "Teams laden" klicken.', 'error');
     return;
   }
-  closeSeasonNameModal();
-  setupState.seasonName = name;
-  await finalizeTeams();
-}
 
-async function finalizeTeams() {
-  if (!setupState.participants.length) {
-    toast('Bitte zuerst Teams laden und auswählen (Tab Teilnehmer)', 'error');
-    return;
-  }
+  const season = allSetupSeasons.find(s => String(s.id) === String(seasonId));
+  const seasonName = season ? season.name : `Saison ${seasonId}`;
+  const groupCount = Math.ceil(participants.length / 4);
+
+  if (!confirm(`${participants.length} Teams in ${groupCount} Gruppen für "${seasonName}" einteilen und Spielplan generieren?`)) return;
 
   try {
-    const seasonsRes = await authFetch(`${API_URL}/api/seasons`);
-    const seasons = await seasonsRes.json();
-    let season = seasons.find(s => s.status === 'planned');
-
-    if (!season) {
-      const name = setupState.seasonName;
-      if (!name) { showSeasonNameModal(); return; }
-
-      const createRes = await authFetch(`${API_URL}/api/seasons`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name,
-          participant_count: setupState.participants.length,
-          group_count: Math.ceil(setupState.participants.length / 4),
-        }),
-      });
-      if (!createRes.ok) {
-        const err = await createRes.json();
-        throw new Error(err.detail || 'Saison konnte nicht erstellt werden');
-      }
-      season = await createRes.json();
-    }
-
-    const teamCount = setupState.participants.length;
-    if (!confirm(`${teamCount} Teams in Saison "${season.name}" synchronisieren und Spielplan generieren?`)) return;
-
-    const teamIds = setupState.participants.map(p => p.team_id);
+    const teamIds = participants.map(p => p.team_id);
     const seededTeams = {};
     for (const [key, tid] of Object.entries(setupState.seededTeams)) {
       if (tid !== null && teamIds.includes(tid)) seededTeams[key] = tid;
     }
 
-    const syncRes = await authFetch(`${API_URL}/api/seasons/${season.id}/teams/sync`, {
+    const syncRes = await authFetch(`${API_URL}/api/seasons/${seasonId}/teams/sync`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ team_ids: teamIds, seeded_teams: seededTeams, generate_schedule: true }),
     });
-
     if (!syncRes.ok) {
       const err = await syncRes.json();
-      throw new Error(err.detail || 'Sync fehlgeschlagen');
+      throw new Error(err.detail || 'Spielplan konnte nicht generiert werden');
     }
-
     const result = await syncRes.json();
-    toast(`Saison "${season.name}" — ${result.groups.length} Gruppen, +${result.added} / -${result.removed} Teams`);
 
-    setupState.createdSeasonId = season.id;
+    // participant_count aktualisieren
+    await authFetch(`${API_URL}/api/seasons/${seasonId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ participant_count: participants.length }),
+    });
+
+    toast(`✅ Spielplan generiert: ${result.groups?.length ?? '?'} Gruppen, ${result.added} Teams zugewiesen`);
+
+    setupState.createdSeasonId = parseInt(seasonId);
     await initSaisonSetup();
     showSetupTab('tab-schedule');
-    document.getElementById('schedule-season-select').value = season.id;
+    document.getElementById('schedule-season-select').value = seasonId;
     loadScheduleForSeason();
   } catch (e) {
     toast(`Fehler: ${e.message}`, 'error');
@@ -644,13 +657,13 @@ async function generateScheduleForSeason() {
   }
 }
 
-// Enter-Taste im Saison-Name-Modal
+// Enter-Taste im "Neue Saison"-Formular
 document.addEventListener('keydown', function(e) {
   if (e.key === 'Enter') {
-    const modal = document.getElementById('season-name-modal');
-    if (modal && modal.style.display === 'flex') {
+    const nameInput = document.getElementById('new-season-name');
+    if (nameInput && document.activeElement === nameInput) {
       e.preventDefault();
-      confirmSeasonCreation();
+      createNewSeason();
     }
   }
 });
