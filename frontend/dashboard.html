@@ -288,7 +288,7 @@ function renderProfile() {
 
   const badgesEl = document.getElementById('user-badges');
   badgesEl.innerHTML = '';
-  if (p.participating_next) {
+  if (p.team_participating_next) {
     badgesEl.innerHTML += '<span class="badge badge-success">✓ Dabei</span>';
   } else {
     badgesEl.innerHTML += '<span class="badge badge-danger">✗ Nicht dabei</span>';
@@ -297,7 +297,7 @@ function renderProfile() {
     badgesEl.innerHTML += `<span class="badge badge-muted">⚽ ${p.team_name || 'Team #' + p.team_id}</span>`;
   }
 
-  document.getElementById('participation-toggle').checked = !!p.participating_next;
+  document.getElementById('participation-toggle').checked = p.team_participating_next;
   document.getElementById('profile-url').value = p.profile_url || '';
 
   renderCrest();
@@ -345,7 +345,7 @@ document.getElementById('participation-toggle').addEventListener('change', async
       method: 'PATCH',
       body: JSON.stringify({ participating: e.target.checked })
     });
-    userProfile.participating_next = e.target.checked;
+    userProfile.team_participating_next = e.target.checked;
     renderProfile();
     showToast(e.target.checked ? 'Du bist dabei! 🏆' : 'Teilnahme zurückgezogen');
   } catch (err) {
