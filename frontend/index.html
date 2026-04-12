@@ -28,6 +28,7 @@
     .phase-badge.group{background:color-mix(in srgb,var(--success) 15%,transparent);color:var(--success);border:1px solid var(--success)}
     .phase-badge.ko{background:color-mix(in srgb,var(--danger) 15%,transparent);color:var(--danger);border:1px solid var(--danger)}
     .phase-badge.completed{background:color-mix(in srgb,#f59e0b 15%,transparent);color:#f59e0b;border:1px solid #f59e0b}
+    .phase-badge.registration{background:color-mix(in srgb,var(--info, #3b82f6) 15%,transparent);color:var(--info, #3b82f6);border:1px solid var(--info, #3b82f6)}
     @media(max-width:768px){.hero-bar-inner{display:grid;grid-template-columns:1fr 1fr;gap:.5rem}.hero-stat-divider{display:none}}
 
     /* Completed Banner */
@@ -84,6 +85,17 @@
     .bracket-label:first-child{margin-top:0}
     .bracket-link{display:block;text-align:center;margin-top:.75rem;font-size:.8rem;color:var(--primary);text-decoration:none}
     .bracket-link:hover{text-decoration:underline}
+
+  /* Participant Gallery (Anmeldephase) */
+  .participant-gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:.75rem;margin-top:1rem}
+  .participant-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:1rem .75rem;text-align:center;transition:border-color .2s,transform .2s}
+  .participant-card:hover{border-color:var(--primary);transform:translateY(-2px)}
+  .participant-card img{width:48px;height:48px;object-fit:contain;margin-bottom:.5rem;border-radius:4px}
+  .participant-card .participant-name{font-size:.8rem;font-weight:600;color:var(--text);line-height:1.2;word-break:break-word}
+  .participant-card .participant-placeholder{width:48px;height:48px;margin:0 auto .5rem;background:var(--card-alt);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;color:var(--muted)}
+  .participant-count-banner{text-align:center;padding:1rem;margin-bottom:1rem;font-size:.95rem;color:var(--text-secondary)}
+  .participant-count-banner strong{color:var(--primary);font-size:1.3rem}
+  @media(max-width:480px){.participant-gallery{grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:.5rem}.participant-card{padding:.75rem .5rem}.participant-card img{width:36px;height:36px}}
   </style>
 </head>
 <body>
@@ -148,20 +160,29 @@ let koBrackets = null;
 let activeSeason = null;
 let isKOPhase = false;
 let isTournamentCompleted = false;
+let isRegistrationPhase = false;
 
 // --- Data Loading ---
 
 async function resolveActiveSeason() {
   const seasons = await fetch(`${API}/api/seasons`).then(r => r.json());
 
-  // 1. Aktive Saison suchen
+  // 1. Geplante Saison = Anmeldephase (höchste Priorität)
+  const plannedSeasons = seasons.filter(s => s.status === 'planned');
+  if (plannedSeasons.length > 0) {
+    plannedSeasons.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    isRegistrationPhase = true;
+    return plannedSeasons[0];
+  }
+
+  // 2. Aktive Saison suchen
   const activeSeasons = seasons.filter(s => s.status === 'active');
   if (activeSeasons.length > 0) {
     activeSeasons.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
     return activeSeasons[0];
   }
 
-  // 2. Keine aktive → jüngste archivierte Saison als "abgeschlossen" anzeigen
+  // 3. Keine aktive → jüngste archivierte Saison als "abgeschlossen" anzeigen
   const archivedSeasons = seasons.filter(s => s.status === 'archived');
   if (archivedSeasons.length > 0) {
     archivedSeasons.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
@@ -169,7 +190,7 @@ async function resolveActiveSeason() {
     return archivedSeasons[0];
   }
 
-  // 3. Gar keine Saison
+  // 4. Gar keine Saison
   return null;
 }
 
@@ -282,6 +303,15 @@ function renderHero() {
 
     document.getElementById('hero-teams-label').textContent = 'Ergebnisse';
     document.getElementById('hero-teams').innerHTML = '<a href="archiv.html" style="color:var(--primary);text-decoration:none;font-weight:600">→ Zum Archiv</a>';
+    return;
+  }
+
+  if (isRegistrationPhase) {
+    document.getElementById('hero-phase').innerHTML = '<span class="phase-badge registration">Anmeldephase</span>'; // static string, no user data
+    document.getElementById('hero-matchday-label').textContent = 'Status';
+    document.getElementById('hero-matchday').textContent = 'Anmeldung offen';
+    document.getElementById('hero-teams-label').textContent = 'Anmeldungen';
+    document.getElementById('hero-teams').textContent = activeSeason.participant_count || '0';
     return;
   }
 
@@ -650,6 +680,71 @@ function renderMiniBracket() {
   container.innerHTML = html || '<p style="color:var(--muted);font-size:.85rem">Noch keine KO-Daten</p>';
 }
 
+// --- Participant Gallery (Registration Phase) ---
+
+async function loadAndRenderParticipants() {
+  const panel = document.getElementById('panel-ergebnisse');
+  const sidebar = document.getElementById('sidebar-content');
+
+  panel.innerHTML = '<em>Lade Teilnehmer...</em>';
+
+  try {
+    const [teams] = await Promise.all([
+      fetch(`${API}/api/teams?participating=true`).then(r => r.json()),
+      loadCrests()
+    ]);
+
+    if (!teams.length) {
+      panel.innerHTML = '<p style="color:var(--muted)">Noch keine Anmeldungen.</p>';
+      sidebar.innerHTML = '';
+      return;
+    }
+
+    // Sort alphabetically
+    teams.sort((a, b) => a.name.localeCompare(b.name, 'de'));
+
+    let html = '';
+    html += `<div class="participant-count-banner">
+      <strong>${teams.length}</strong> Teams haben sich angemeldet
+    </div>`;
+    html += '<div class="participant-gallery">';
+
+    for (const team of teams) {
+      const crestUrl = team.logo_url || null;
+      html += `<div class="participant-card">`;
+      if (crestUrl) {
+        const src = crestUrl.startsWith('http') ? crestUrl : API + crestUrl;
+        html += `<img src="${src}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`;
+        html += `<div class="participant-placeholder" style="display:none">⚽</div>`;
+      } else {
+        html += `<div class="participant-placeholder">⚽</div>`;
+      }
+      html += `<div class="participant-name">${team.name}</div>`;
+      html += `</div>`;
+    }
+
+    html += '</div>';
+    panel.innerHTML = html;
+
+    // Sidebar: Registration info instead of standings
+    const seasonName = activeSeason.name;
+    const teamCount = teams.length;
+    sidebar.innerHTML = `
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:1.25rem;text-align:center">
+        <div style="font-size:2rem;margin-bottom:.5rem">📋</div>
+        <div style="font-family:'Outfit',sans-serif;font-weight:700;font-size:1.1rem;margin-bottom:.25rem">Anmeldephase</div>
+        <div style="color:var(--muted);font-size:.85rem;line-height:1.5">
+          Das Turnier <strong>${seasonName}</strong> ist in Vorbereitung.<br>
+          Aktuell ${teamCount} Anmeldungen.
+        </div>
+      </div>`;
+
+  } catch (e) {
+    console.error('Failed to load participants:', e);
+    panel.innerHTML = '<p style="color:var(--danger)">Fehler beim Laden der Teilnehmer.</p>';
+  }
+}
+
 // --- Initialization ---
 
 (async () => {
@@ -670,6 +765,18 @@ function renderMiniBracket() {
     document.getElementById('panel-news').innerHTML = '<p style="color:var(--muted)">Keine News.</p>';
     document.getElementById('sidebar-content').innerHTML = '<p style="color:var(--muted)">Keine Daten verfügbar.</p>';
     initTabs();
+    return;
+  }
+
+  // Registration phase: show participant gallery instead of results
+  if (isRegistrationPhase) {
+    renderHero();
+    initTabs();
+    // Change tab label
+    const ergebnisseBtn = document.querySelector('[data-tab="ergebnisse"]');
+    if (ergebnisseBtn) ergebnisseBtn.textContent = 'Teilnehmer';
+    await loadAndRenderParticipants();
+    loadNews();
     return;
   }
 
