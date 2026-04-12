@@ -833,6 +833,78 @@
     }
     .completed-banner a { color: var(--gold); font-weight: 600; }
 
+    /* Participant Gallery (Anmeldephase) */
+    .participant-gallery {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 0.75rem;
+      margin-top: 1rem;
+      animation: fadeUp 0.7s ease-out 0.4s both;
+    }
+    .participant-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem 0.75rem;
+      text-align: center;
+      transition: border-color 0.25s, transform 0.25s;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, var(--shadow-alpha, 0.08));
+    }
+    .participant-card:hover {
+      border-color: var(--accent-glow);
+      transform: translateY(-3px);
+    }
+    .participant-card img {
+      width: 52px;
+      height: 52px;
+      object-fit: contain;
+      margin-bottom: 0.6rem;
+      border-radius: 6px;
+    }
+    .participant-card .participant-name {
+      font-family: var(--font-display);
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text);
+      line-height: 1.2;
+      word-break: break-word;
+    }
+    .participant-card .participant-placeholder {
+      width: 52px;
+      height: 52px;
+      margin: 0 auto 0.6rem;
+      background: var(--surface-hover, var(--border));
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      color: var(--text-secondary);
+    }
+    .participant-count-banner {
+      text-align: center;
+      padding: 1.25rem;
+      margin-bottom: 1rem;
+      font-size: 1rem;
+      color: var(--text-secondary);
+      animation: fadeUp 0.7s ease-out 0.3s both;
+    }
+    .participant-count-banner strong {
+      color: var(--accent-text);
+      font-family: var(--font-display);
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+    @media (max-width: 480px) {
+      .participant-gallery {
+        grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+        gap: 0.5rem;
+      }
+      .participant-card { padding: 0.75rem 0.5rem; }
+      .participant-card img { width: 40px; height: 40px; }
+      .participant-card .participant-placeholder { width: 40px; height: 40px; }
+    }
+
     /* ============================
        FOOTER
        ============================ */
@@ -1104,6 +1176,7 @@ let koBrackets = null;
 let activeSeason = null;
 let isKOPhase = false;
 let isTournamentCompleted = false;
+let isRegistrationPhase = false;
 
 // --- Scroll Reveal ---
 const observer = new IntersectionObserver(function(entries) {
@@ -1133,18 +1206,31 @@ document.getElementById('mode-toggle').addEventListener('click', function() {
 // --- Data Loading ---
 
 async function resolveActiveSeason() {
-  const seasons = await fetch(API + '/api/seasons').then(function(r) { return r.json(); });
-  const active = seasons.filter(function(s) { return s.status === 'active'; });
+  var seasons = await fetch(API + '/api/seasons').then(function(r) { return r.json(); });
+
+  // 1. Geplante Saison = Anmeldephase (höchste Priorität)
+  var planned = seasons.filter(function(s) { return s.status === 'planned'; });
+  if (planned.length > 0) {
+    planned.sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); });
+    isRegistrationPhase = true;
+    return planned[0];
+  }
+
+  // 2. Aktive Saison
+  var active = seasons.filter(function(s) { return s.status === 'active'; });
   if (active.length > 0) {
     active.sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); });
     return active[0];
   }
-  const archived = seasons.filter(function(s) { return s.status === 'archived'; });
+
+  // 3. Jüngste archivierte Saison
+  var archived = seasons.filter(function(s) { return s.status === 'archived'; });
   if (archived.length > 0) {
     archived.sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); });
     isTournamentCompleted = true;
     return archived[0];
   }
+
   return null;
 }
 
@@ -1257,6 +1343,24 @@ function renderHero() {
     var banner = document.getElementById('completed-banner');
     banner.innerHTML = '\uD83C\uDFC6 Das Turnier ist abgeschlossen! <a href="archiv.html">Zum Archiv \u2192</a>';
     banner.style.display = 'block';
+    return;
+  }
+
+  if (isRegistrationPhase) {
+    phaseEl.textContent = 'Anmeldephase';
+    badge.style.borderColor = 'rgba(59, 130, 246, 0.3)';
+    badge.style.background = 'rgba(59, 130, 246, 0.1)';
+    badge.querySelector('.live-dot').style.background = '#3b82f6';
+    phaseEl.style.color = '#3b82f6';
+
+    subtitleEl.textContent = 'Die Anmeldung l\u00e4uft!';
+
+    document.getElementById('stat-teams').textContent = activeSeason.participant_count || '0';
+    document.getElementById('stat-teams-label').textContent = 'Anmeldungen';
+    document.getElementById('stat-matchday').textContent = '\u2014';
+    document.getElementById('stat-matchday-label').textContent = 'Spieltag';
+    document.getElementById('stat-played').textContent = '\u2014';
+    document.getElementById('stat-goals').textContent = '\u2014';
     return;
   }
 
@@ -1620,6 +1724,112 @@ function trackPage() {
   }).catch(function() {});
 }
 
+// --- Participant Gallery (Registration Phase) ---
+
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+async function loadAndRenderParticipants() {
+  var ergebnisseContent = document.getElementById('ergebnisse-content');
+  var standingsContent = document.getElementById('standings-content');
+
+  ergebnisseContent.textContent = 'Lade Teilnehmer\u2026';
+
+  try {
+    var responses = await Promise.all([
+      fetch(API + '/api/teams?participating=true').then(function(r) { return r.json(); }),
+      loadCrests()
+    ]);
+    var teams = responses[0];
+
+    if (!teams.length) {
+      ergebnisseContent.textContent = 'Noch keine Anmeldungen.';
+      standingsContent.textContent = '';
+      return;
+    }
+
+    teams.sort(function(a, b) { return a.name.localeCompare(b.name, 'de'); });
+
+    var gallery = document.createElement('div');
+
+    var countBanner = document.createElement('div');
+    countBanner.className = 'participant-count-banner';
+    var strong = document.createElement('strong');
+    strong.textContent = teams.length;
+    countBanner.appendChild(strong);
+    countBanner.appendChild(document.createTextNode(' Teams haben sich angemeldet'));
+    gallery.appendChild(countBanner);
+
+    var grid = document.createElement('div');
+    grid.className = 'participant-gallery';
+
+    for (var i = 0; i < teams.length; i++) {
+      var team = teams[i];
+      var card = document.createElement('div');
+      card.className = 'participant-card';
+
+      if (team.logo_url) {
+        var src = team.logo_url.startsWith('http') ? team.logo_url : API + team.logo_url;
+        var img = document.createElement('img');
+        img.src = src;
+        img.alt = team.name;
+        img.loading = 'lazy';
+        var placeholder = document.createElement('div');
+        placeholder.className = 'participant-placeholder';
+        placeholder.style.display = 'none';
+        placeholder.textContent = '\u26BD';
+        img.onerror = function(p) { return function() { this.style.display = 'none'; p.style.display = 'flex'; }; }(placeholder);
+        card.appendChild(img);
+        card.appendChild(placeholder);
+      } else {
+        var ph = document.createElement('div');
+        ph.className = 'participant-placeholder';
+        ph.textContent = '\u26BD';
+        card.appendChild(ph);
+      }
+
+      var nameEl = document.createElement('div');
+      nameEl.className = 'participant-name';
+      nameEl.textContent = team.name;
+      card.appendChild(nameEl);
+      grid.appendChild(card);
+    }
+
+    gallery.appendChild(grid);
+    ergebnisseContent.innerHTML = '';
+    ergebnisseContent.appendChild(gallery);
+
+    document.getElementById('ergebnisse-title').textContent = 'Teilnehmer';
+    document.getElementById('ergebnisse-tag').textContent = 'Anmeldephase';
+
+    var infoCard = document.createElement('div');
+    infoCard.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.5rem;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.06)';
+    var icon = document.createElement('div');
+    icon.style.cssText = 'font-size:2rem;margin-bottom:.5rem';
+    icon.textContent = '\uD83D\uDCCB';
+    var title = document.createElement('div');
+    title.style.cssText = 'font-family:var(--font-display);font-weight:700;font-size:1.1rem;margin-bottom:.25rem';
+    title.textContent = 'Anmeldephase';
+    var desc = document.createElement('div');
+    desc.style.cssText = 'color:var(--text-secondary);font-size:.85rem;line-height:1.5';
+    desc.textContent = 'Das Turnier ' + activeSeason.name + ' ist in Vorbereitung. Aktuell ' + teams.length + ' Anmeldungen.';
+    infoCard.appendChild(icon);
+    infoCard.appendChild(title);
+    infoCard.appendChild(desc);
+    standingsContent.innerHTML = '';
+    standingsContent.appendChild(infoCard);
+
+  } catch (e) {
+    console.error('Failed to load participants:', e);
+    ergebnisseContent.textContent = 'Fehler beim Laden der Teilnehmer.';
+  }
+}
+
 // --- INIT ---
 
 (async function() {
@@ -1645,6 +1855,15 @@ function trackPage() {
     document.getElementById('standings-content').innerHTML = '';
     document.getElementById('news-content').innerHTML = '<div class="empty-state">Keine News.</div>';
     document.querySelectorAll('.reveal').forEach(function(el) { el.classList.add('visible'); });
+    return;
+  }
+
+  // Registration phase: show participant gallery instead of results
+  if (isRegistrationPhase) {
+    renderHero();
+    await loadAndRenderParticipants();
+    loadNews();
+    document.querySelectorAll('.reveal').forEach(function(el) { observer.observe(el); });
     return;
   }
 
