@@ -612,6 +612,7 @@ document.getElementById('crest-file').addEventListener('change', async function(
   try {
     var result = await apiFetch('/api/upload/crest', { method: 'POST', body: formData });
     userProfile.crest_url = result.crest_url || result.url;
+    sessionStorage.removeItem('biw_crests');
     renderCrest();
     showToast('Wappen hochgeladen');
   } catch (err) { showToast(err.message, 'error'); }
@@ -623,6 +624,7 @@ document.getElementById('delete-crest-btn').addEventListener('click', async func
   try {
     await apiFetch('/api/upload/crest', { method: 'DELETE' });
     userProfile.crest_url = null;
+    sessionStorage.removeItem('biw_crests');
     renderCrest();
     showToast('Wappen gel\u00f6scht');
   } catch (err) { showToast(err.message, 'error'); }
