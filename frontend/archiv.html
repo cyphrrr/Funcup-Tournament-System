@@ -2,96 +2,375 @@
 <html lang="de">
 <head>
   <meta charset="utf-8" />
-  <link rel="icon" type="image/png" href="img/logo_comic.png">
+  <link rel="icon" type="image/png" href="../img/logo_comic.png">
   <title>Archiv – BIW Pokal</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="robots" content="noindex, nofollow" />
-  <script src="js/themes.js"></script>
-  <script type="module" src="js/background.js"></script>
-  <script type="module" src="js/fts-layout.js"></script>
-  <link rel="stylesheet" href="css/shared.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=Lexend:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <script>
+    (function() {
+      var stored = localStorage.getItem('biw_v2_mode');
+      var theme = stored || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+  </script>
   <style>
+    :root,
+    [data-theme="dark"] {
+      --bg: #06090f;
+      --bg-elevated: #0c1018;
+      --surface: #111822;
+      --surface-hover: #172030;
+      --border: #1e2a3a;
+      --border-glow: #2dd4bf33;
+      --text: #e8edf4;
+      --text-secondary: #7b8fa8;
+      --accent: #0d9488;
+      --accent-dim: #0d948822;
+      --accent-glow: #0d948844;
+      --accent-text: #2dd4bf;
+      --gold: #fbbf24;
+      --silver: #94a3b8;
+      --bronze: #d97706;
+      --danger: #f87171;
+      --success: #34d399;
+      --shadow-alpha: 0.3;
+      --header-bg: rgba(6, 9, 15, 0.85);
+      --noise-opacity: 0.04;
+      --font-display: 'Chakra Petch', sans-serif;
+      --font-body: 'Lexend', sans-serif;
+    }
+
+    [data-theme="light"] {
+      --bg: #f0f2f5;
+      --bg-elevated: #e8eaef;
+      --surface: #ffffff;
+      --surface-hover: #f5f7fa;
+      --border: #d1d5de;
+      --border-glow: #0d948833;
+      --text: #111827;
+      --text-secondary: #5b6577;
+      --accent: #0d9488;
+      --accent-dim: #0d948815;
+      --accent-glow: #0d948830;
+      --accent-text: #0d9488;
+      --gold: #b8860b;
+      --silver: #64748b;
+      --bronze: #a0630a;
+      --danger: #dc2626;
+      --success: #059669;
+      --shadow-alpha: 0.08;
+      --header-bg: rgba(240, 242, 245, 0.88);
+      --noise-opacity: 0.025;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body { font-family: var(--font-body); color: var(--text); background: var(--bg); overflow-x: hidden; -webkit-font-smoothing: antialiased; }
+    body::before { content: ''; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E"); pointer-events: none; z-index: 0; opacity: var(--noise-opacity); transition: opacity 0.4s; }
+    a { color: var(--accent-text); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* === HEADER === */
+    .site-header { position: sticky; top: 0; z-index: 100; background: var(--header-bg); backdrop-filter: blur(20px) saturate(1.8); -webkit-backdrop-filter: blur(20px) saturate(1.8); border-bottom: 1px solid var(--border); padding: 0 2rem; height: 60px; display: flex; align-items: center; justify-content: space-between; }
+    .header-brand { display: flex; align-items: center; gap: 0.75rem; text-decoration: none; }
+    .header-brand img { height: 36px; }
+    .header-brand-text { font-family: var(--font-display); font-size: 1.2rem; font-weight: 700; letter-spacing: 0.04em; color: var(--text); }
+    .header-brand-text span { color: var(--accent); }
+    .header-nav { display: flex; align-items: center; gap: 0.25rem; }
+    .header-nav a { font-family: var(--font-display); font-size: 0.78rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-secondary); padding: 0.5rem 0.75rem; border-radius: 6px; transition: all 0.2s; text-decoration: none; }
+    .header-nav a:hover, .header-nav a.active { color: var(--accent); background: var(--accent-dim); }
+    .burger-btn { display: none; background: none; border: none; cursor: pointer; padding: 0.5rem; flex-direction: column; gap: 5px; }
+    .burger-btn span { display: block; width: 22px; height: 2px; background: var(--text); border-radius: 2px; transition: all 0.3s; }
+    .mode-toggle { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; padding: 0.4rem; display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; font-size: 1rem; transition: all 0.25s; flex-shrink: 0; line-height: 1; }
+    .mode-toggle:hover { background: var(--surface-hover); border-color: var(--accent-glow); }
+    .mode-toggle .icon-sun, .mode-toggle .icon-moon { display: none; }
+    [data-theme="dark"] .mode-toggle .icon-sun { display: block; }
+    [data-theme="light"] .mode-toggle .icon-moon { display: block; }
+    @media (max-width: 768px) {
+      .header-nav { display: none; }
+      .burger-btn { display: flex; }
+      .header-nav.open { display: flex; flex-direction: column; position: fixed; top: 60px; right: 0; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 0 0 12px 12px; padding: 1rem; z-index: 200; gap: 0.25rem; }
+    }
+
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+
+    /* === PAGE HERO === */
+    .page-hero { position: relative; padding: 3.5rem 2rem 2.5rem; text-align: center; overflow: hidden; }
+    .page-hero::before { content: ''; position: absolute; top: -40%; left: 50%; transform: translateX(-50%); width: 600px; height: 600px; background: radial-gradient(circle, rgba(45, 212, 191, 0.1) 0%, transparent 70%); pointer-events: none; }
+    .page-hero h1 { font-family: var(--font-display); font-size: clamp(1.8rem, 4vw, 2.6rem); font-weight: 700; letter-spacing: -0.02em; position: relative; animation: fadeUp 0.6s ease-out both; }
+    .page-hero h1 .accent { color: var(--accent-text); }
+    .page-hero p { color: var(--text-secondary); font-size: 0.95rem; margin-top: 0.5rem; position: relative; animation: fadeUp 0.6s ease-out 0.1s both; }
+
+    /* === CONTENT === */
+    .content-wrap { max-width: 1000px; margin: 0 auto; padding: 0 2rem 4rem; position: relative; z-index: 1; }
+
     /* Season Cards */
-    .season-card{background:var(--card);border:1px solid var(--border);border-radius:12px;margin-bottom:1.5rem;overflow:hidden;transition:box-shadow .2s}
-    .season-card:hover{box-shadow:0 8px 24px rgba(0,0,0,.1)}
-    .season-header{padding:1.25rem 1.5rem;cursor:pointer;display:flex;justify-content:space-between;align-items:center;user-select:none}
-    .season-header:hover{background:var(--card-alt)}
-    .season-info{display:flex;align-items:center;gap:1rem}
-    .season-name{font-size:1.2rem;font-weight:700}
-    .season-meta{display:flex;gap:1rem;align-items:center;font-size:.85rem;color:var(--muted)}
-    .season-badge{padding:.25rem .6rem;border-radius:6px;font-size:.75rem;font-weight:600}
-    .season-badge.active{background:#dcfce7;color:#166534}
-    .season-badge.archived{background:var(--card-alt);color:var(--muted)}
-    .season-badge.planned{background:#dbeafe;color:#1e40af}
-    .season-toggle{font-size:1.2rem;color:var(--muted);transition:transform .3s}
-    .season-toggle.open{transform:rotate(180deg)}
-    .season-content{display:none;padding:0 1.5rem 1.5rem;border-top:1px solid var(--border)}
-    .season-content.open{display:block}
+    .season-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      margin-bottom: 0.75rem;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, var(--shadow-alpha));
+      animation: fadeUp 0.5s ease-out both;
+      transition: border-color 0.25s;
+    }
+    .season-card:hover { border-color: var(--accent-glow); }
+
+    .season-header {
+      padding: 1.25rem 1.5rem;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      user-select: none;
+      transition: background 0.2s;
+    }
+    .season-header:hover { background: var(--surface-hover); }
+
+    .season-name {
+      font-family: var(--font-display);
+      font-size: 1.15rem;
+      font-weight: 700;
+    }
+    .season-meta {
+      display: flex;
+      gap: 0.75rem;
+      align-items: center;
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      margin-top: 0.25rem;
+    }
+    .season-badge {
+      padding: 0.2rem 0.55rem;
+      border-radius: 6px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      font-family: var(--font-display);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .season-badge.active { background: rgba(52, 211, 153, 0.15); color: var(--success); }
+    .season-badge.archived { background: var(--surface-hover); color: var(--text-secondary); }
+    .season-badge.planned { background: rgba(99, 102, 241, 0.15); color: #818cf8; }
+
+    .season-toggle {
+      font-size: 1rem;
+      color: var(--text-secondary);
+      transition: transform 0.3s;
+      flex-shrink: 0;
+    }
+    .season-toggle.open { transform: rotate(180deg); }
+
+    .season-content {
+      display: none;
+      padding: 0 1.5rem 1.5rem;
+      border-top: 1px solid var(--border);
+    }
+    .season-content.open { display: block; }
+
+    /* Champion Banner */
+    .champion-banner {
+      background: linear-gradient(135deg, rgba(251, 191, 36, 0.15) 0%, rgba(217, 119, 6, 0.1) 100%);
+      border: 1px solid rgba(251, 191, 36, 0.3);
+      border-radius: 10px;
+      padding: 0.75rem 1rem;
+      margin-top: 1rem;
+      margin-bottom: 1rem;
+      font-weight: 700;
+      font-family: var(--font-display);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.9rem;
+      color: var(--gold);
+    }
+
+    /* Inner Cards */
+    .inner-card {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.25rem;
+      margin-top: 1rem;
+    }
+    .inner-card-title {
+      font-family: var(--font-display);
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin-bottom: 0.75rem;
+    }
+
     /* Compact Table */
-    .compact-table{font-size:.85rem}
-    .compact-table th{font-size:.75rem}
-    .compact-table td{padding:.4rem .5rem}
+    .compact-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+    .compact-table th {
+      font-family: var(--font-display);
+      font-size: 0.68rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-secondary);
+      padding: 0.4rem 0.5rem;
+      border-bottom: 1px solid var(--border);
+      text-align: center;
+    }
+    .compact-table th:first-child { text-align: center; width: 32px; }
+    .compact-table th:nth-child(2) { text-align: left; }
+    .compact-table td { padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--border); text-align: center; font-variant-numeric: tabular-nums; }
+    .compact-table td:nth-child(2) { text-align: left; }
+    .compact-table tbody tr { transition: background 0.15s; }
+    .compact-table tbody tr:hover { background: var(--accent-dim); }
+    .compact-table tbody tr:last-child td { border-bottom: none; }
+    .compact-table .leader td { color: var(--accent-text); font-weight: 600; }
+    .compact-table .rank-cell { font-family: var(--font-display); font-weight: 700; color: var(--accent-text); }
+    .team-cell { display: flex; align-items: center; gap: 0.4rem; }
+
     /* KO Bracket Compact */
-    .ko-scroll-wrapper{position:relative}
-    .ko-scroll-wrapper::after{content:'';position:absolute;top:0;right:0;width:40px;height:100%;background:linear-gradient(to right,transparent,var(--bg));pointer-events:none}
-    .ko-bracket-compact{display:flex;gap:1.5rem;overflow-x:auto;padding:1rem 0;font-size:.85rem}
-    .ko-round-compact{min-width:150px;display:flex;flex-direction:column;gap:.5rem}
-    .ko-round-header-compact{text-align:center;font-size:.8rem;font-weight:600;color:var(--muted);margin-bottom:.5rem}
-    .ko-match-compact{background:var(--card-alt);border:1px solid var(--border);border-radius:6px;padding:.5rem;font-size:.8rem}
-    .ko-match-compact.played{border-left:3px solid var(--success)}
-    .ko-team-compact{display:flex;justify-content:space-between;padding:.2rem 0}
-    .ko-team-compact.winner{font-weight:700;color:var(--success)}
-    /* Champion Badge */
-    .champion-badge{background:linear-gradient(135deg,#fbbf24 0%,#f59e0b 100%);color:#78350f;padding:.5rem 1rem;border-radius:8px;font-weight:700;display:inline-flex;align-items:center;gap:.5rem;font-size:.9rem;margin-bottom:1rem}
+    .ko-scroll-wrapper { position: relative; }
+    .ko-scroll-wrapper::after { content: ''; position: absolute; top: 0; right: 0; width: 40px; height: 100%; background: linear-gradient(to right, transparent, var(--bg-elevated)); pointer-events: none; }
+    .ko-bracket-compact { display: flex; gap: 1.25rem; overflow-x: auto; padding: 0.75rem 0; font-size: 0.82rem; }
+    .ko-bracket-compact::-webkit-scrollbar { height: 4px; }
+    .ko-bracket-compact::-webkit-scrollbar-track { background: transparent; }
+    .ko-bracket-compact::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    .ko-round-compact { min-width: 140px; display: flex; flex-direction: column; gap: 0.4rem; }
+    .ko-round-header { text-align: center; font-size: 0.72rem; font-weight: 600; color: var(--text-secondary); font-family: var(--font-display); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.3rem; }
+    .ko-match-compact { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 0.4rem 0.5rem; font-size: 0.78rem; }
+    .ko-match-compact.played { border-left: 2px solid var(--success); }
+    .ko-team-row { display: flex; justify-content: space-between; padding: 0.15rem 0; }
+    .ko-team-row.winner { font-weight: 700; color: var(--success); }
+    .ko-third-place { border-left: 2px dashed var(--border); padding-left: 0.75rem; }
+
+    .loading-state { text-align: center; padding: 2rem; color: var(--text-secondary); }
+    .loading-skeleton { background: linear-gradient(90deg, var(--surface) 25%, var(--surface-hover) 50%, var(--surface) 75%); background-size: 200% 100%; animation: shimmer 1.5s ease-in-out infinite; border-radius: 8px; height: 60px; margin-bottom: 0.5rem; }
+    .empty-state { text-align: center; padding: 2rem; color: var(--text-secondary); font-size: 0.88rem; }
+    .table-scroll { overflow-x: auto; }
+
+    [data-theme="light"] .season-card { box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06); }
+    [data-theme="light"] .inner-card { background: var(--surface-hover); }
+    [data-theme="light"] .compact-table tbody tr:hover { background: rgba(13, 148, 136, 0.04); }
+    [data-theme="light"] .status-dot { box-shadow: none; }
+    [data-theme="light"] .ko-scroll-wrapper::after { background: linear-gradient(to right, transparent, var(--surface-hover)); }
+
+    /* === FOOTER === */
+    .site-footer { border-top: 1px solid var(--border); padding: 1.5rem 2rem; display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; color: var(--text-secondary); max-width: 1200px; margin: 0 auto; flex-wrap: wrap; gap: 1rem; }
+    .footer-status { display: flex; align-items: center; gap: 0.5rem; }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--success); box-shadow: 0 0 6px var(--success); }
+    .status-dot.offline { background: var(--danger); box-shadow: 0 0 6px var(--danger); }
+    .footer-links a { color: var(--text-secondary); margin-left: 1rem; }
+    .footer-links a:hover { color: var(--accent); }
+    @media (max-width: 768px) {
+      .site-footer { flex-direction: column; text-align: center; }
+      .page-hero { padding: 2.5rem 1.5rem 1.5rem; }
+      .season-header { padding: 1rem; }
+    }
   </style>
 </head>
 <body>
-  <fts-layout page-title="/ Archiv">
-    <section>
-      <h2>Saison-Archiv</h2>
-      <p style="color:var(--muted);margin-bottom:2rem">Alle BIW Pokal Saisons – Klick auf eine Saison für Details</p>
 
-      <div id="seasons-container" class="loading">
-        <em>Lade Saisons...</em>
-      </div>
-    </section>
+  <header class="site-header">
+    <a href="index.html" class="header-brand">
+      <img src="../img/logo_comic.png" alt="BIW Pokal">
+      <div class="header-brand-text">BIW<span>Pokal</span></div>
+    </a>
+    <nav class="header-nav" id="header-nav">
+      <a href="index.html">Start</a>
+      <a href="turnier.html">Gruppen</a>
+      <a href="ko.html">KO-Phase</a>
+      <a href="ewige-tabelle.html">Ewige Tabelle</a>
+      <a href="archiv.html" class="active">Archiv</a>
+      <a href="regeln.html">Regeln</a>
+      <a href="dashboard.html">Profil</a>
+    </nav>
+    <div style="display:flex;align-items:center;gap:0.5rem">
+      <button class="mode-toggle" id="mode-toggle" aria-label="Light/Dark Mode umschalten">
+        <span class="icon-sun">&#9728;&#65039;</span>
+        <span class="icon-moon">&#9790;&#65039;</span>
+      </button>
+      <button class="burger-btn" id="burger-btn" aria-label="Menue">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </header>
+
+  <section class="page-hero">
+    <h1><span class="accent">/</span> Archiv</h1>
+    <p>Alle BIW Pokal Saisons &ndash; Klick auf eine Saison f&uuml;r Details</p>
+  </section>
+
+  <div class="content-wrap">
+    <div id="seasons-container">
+      <div class="loading-skeleton"></div>
+      <div class="loading-skeleton"></div>
+      <div class="loading-skeleton"></div>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    <div class="footer-status">
+      <span class="status-dot" id="backend-dot"></span>
+      <span id="backend-text">Verbinde...</span>
+    </div>
+    <div>&copy; 2026 BIW Pokal &middot; <a href="impressum.html">Impressum</a> &middot; <a href="datenschutz.html">Datenschutz</a></div>
+    <div class="footer-links">
+      <span id="app-version" style="opacity:0.5"></span>
+    </div>
+  </footer>
 
 <script type="module">
-import { API_URL } from './js/config.js';
-import { setBackendStatus } from './js/shared-ui.js';
-import { loadCrests, crestImg, teamName, registerTeams } from './js/team-utils.js';
-const API = API_URL;
+import { API_URL } from '../js/config.js';
+import { loadCrests, crestImg, teamName, registerTeams } from '../js/team-utils.js';
+var API = API_URL;
+
+document.getElementById('burger-btn').addEventListener('click', function() {
+  document.getElementById('header-nav').classList.toggle('open');
+});
+document.getElementById('mode-toggle').addEventListener('click', function() {
+  var current = document.documentElement.getAttribute('data-theme') || 'dark';
+  var next = current === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('biw_v2_mode', next);
+});
+
+function buildCrestEl(teamId, size) {
+  if (!teamId) return null;
+  var htmlStr = crestImg(teamId, size || 16);
+  if (!htmlStr) return null;
+  var doc = new DOMParser().parseFromString(htmlStr, 'text/html');
+  var img = doc.querySelector('img');
+  if (!img) return null;
+  var el = document.createElement('img');
+  el.src = img.src;
+  el.alt = '';
+  el.loading = 'lazy';
+  el.style.cssText = 'width:' + (size || 16) + 'px;height:' + (size || 16) + 'px;object-fit:contain;border-radius:2px;flex-shrink:0';
+  el.addEventListener('error', function() { el.style.display = 'none'; });
+  return el;
+}
 
 function roundName(roundNum, totalRounds) {
-  const remaining = totalRounds - roundNum + 1;
-  if (remaining === 1) return '🏆 Finale';
+  var remaining = totalRounds - roundNum + 1;
+  if (remaining === 1) return 'Finale';
   if (remaining === 2) return 'Halbfinale';
   if (remaining === 3) return 'Viertelfinale';
   if (remaining === 4) return 'Achtelfinale';
-  return `Runde ${roundNum}`;
+  return 'Runde ' + roundNum;
 }
 
-window.toggleSeason = toggleSeason;
 function toggleSeason(seasonId) {
-  const content = document.getElementById(`season-content-${seasonId}`);
-  const toggle = document.getElementById(`season-toggle-${seasonId}`);
-
+  var content = document.getElementById('season-content-' + seasonId);
+  var toggle = document.getElementById('season-toggle-' + seasonId);
   if (content.classList.contains('open')) {
     content.classList.remove('open');
     toggle.classList.remove('open');
   } else {
-    // Close all others
-    document.querySelectorAll('.season-content').forEach(el => el.classList.remove('open'));
-    document.querySelectorAll('.season-toggle').forEach(el => el.classList.remove('open'));
-
-    // Open this one
+    document.querySelectorAll('.season-content').forEach(function(el) { el.classList.remove('open'); });
+    document.querySelectorAll('.season-toggle').forEach(function(el) { el.classList.remove('open'); });
     content.classList.add('open');
     toggle.classList.add('open');
-
-    // Load data if not loaded yet
     if (!content.dataset.loaded) {
       loadSeasonDetails(seasonId);
       content.dataset.loaded = 'true';
@@ -100,351 +379,456 @@ function toggleSeason(seasonId) {
 }
 
 async function loadSeasonDetails(seasonId) {
-  const container = document.getElementById(`season-content-${seasonId}`);
-  container.innerHTML = '<div class="loading"><em>Lade Details...</em></div>';
+  var container = document.getElementById('season-content-' + seasonId);
+  container.textContent = '';
+  var loadEl = document.createElement('div');
+  loadEl.className = 'loading-state';
+  loadEl.textContent = 'Lade Details...';
+  container.appendChild(loadEl);
 
   try {
-    // Load groups+teams and crests in parallel (single groups fetch, not two)
-    const [groups, _] = await Promise.all([
-      fetch(`${API}/api/seasons/${seasonId}/groups-with-teams`).then(r => r.json()),
+    var results = await Promise.all([
+      fetch(API + '/api/seasons/' + seasonId + '/groups-with-teams').then(function(r) { return r.json(); }),
       loadCrests()
     ]);
+    var groups = results[0];
     registerTeams(groups);
 
-    let html = '<div class="card"><h3 style="margin:0 0 .75rem;font-size:1rem">Gruppenphase</h3>';
+    container.textContent = '';
+    var championBanner = null;
 
-    if (groups.length === 0) {
-      html += '<p style="color:var(--muted)">Keine Gruppen vorhanden</p>';
-      html += '</div>';
-    } else {
-      // Fetch all standings in parallel
-      const standingsResults = await Promise.all(
-        groups.map(g => fetch(`${API}/api/groups/${g.group.id}/standings`).then(r => r.json()))
+    // === Gruppenphase ===
+    if (groups.length > 0) {
+      var standingsResults = await Promise.all(
+        groups.map(function(g) { return fetch(API + '/api/groups/' + g.group.id + '/standings').then(function(r) { return r.json(); }); })
       );
 
-      for (let i = 0; i < groups.length; i++) {
-        const g = groups[i];
-        const standings = standingsResults[i];
-
-        html += `<div class="card" style="margin-bottom:1rem">
-          <div class="card-header">
-            <div class="card-title">Gruppe ${g.group.name}</div>
-          </div>`;
+      for (var i = 0; i < groups.length; i++) {
+        var g = groups[i];
+        var standings = standingsResults[i];
+        var card = document.createElement('div');
+        card.className = 'inner-card';
+        var title = document.createElement('div');
+        title.className = 'inner-card-title';
+        title.textContent = 'Gruppe ' + g.group.name;
+        card.appendChild(title);
 
         if (standings.length > 0) {
-          html += '<div style="overflow-x:auto"><table class="compact-table"><thead><tr><th>#</th><th style="text-align:left">Team</th><th>Sp</th><th>S</th><th>U</th><th>N</th><th>T+</th><th>T-</th><th>Pkt</th></tr></thead><tbody>';
-
-          standings.forEach((row, idx) => {
-            const cls = idx === 0 ? 'class="leader"' : '';
-            html += `<tr ${cls}>
-              <td style="font-weight:700;color:var(--primary)">${idx + 1}</td>
-              <td style="text-align:left;display:flex;align-items:center;gap:3px">${crestImg(row.team_id)}${teamName(row.team_id)}</td>
-              <td>${row.played}</td>
-              <td>${row.won}</td>
-              <td>${row.draw}</td>
-              <td>${row.lost}</td>
-              <td>${row.goals_for}</td>
-              <td>${row.goals_against}</td>
-              <td style="font-weight:600">${row.points}</td>
-            </tr>`;
+          var scrollDiv = document.createElement('div');
+          scrollDiv.className = 'table-scroll';
+          var table = document.createElement('table');
+          table.className = 'compact-table';
+          var thead = document.createElement('thead');
+          var hRow = document.createElement('tr');
+          ['#', 'Team', 'Sp', 'S', 'U', 'N', 'T+', 'T\u2212', 'Pkt'].forEach(function(lbl) {
+            var th = document.createElement('th');
+            th.textContent = lbl;
+            hRow.appendChild(th);
           });
+          thead.appendChild(hRow);
+          table.appendChild(thead);
 
-          html += '</tbody></table></div>';
+          var tbody = document.createElement('tbody');
+          standings.forEach(function(row, idx) {
+            var tr = document.createElement('tr');
+            if (idx === 0) tr.className = 'leader';
+            var tdRank = document.createElement('td');
+            tdRank.className = 'rank-cell';
+            tdRank.textContent = idx + 1;
+            tr.appendChild(tdRank);
+
+            var tdTeam = document.createElement('td');
+            var teamWrap = document.createElement('div');
+            teamWrap.className = 'team-cell';
+            var crest = buildCrestEl(row.team_id);
+            if (crest) teamWrap.appendChild(crest);
+            var nameSpan = document.createElement('span');
+            nameSpan.textContent = teamName(row.team_id);
+            teamWrap.appendChild(nameSpan);
+            tdTeam.appendChild(teamWrap);
+            tr.appendChild(tdTeam);
+
+            [row.played, row.won, row.draw, row.lost, row.goals_for, row.goals_against, row.points].forEach(function(val, vi) {
+              var td = document.createElement('td');
+              td.textContent = val;
+              if (vi === 6) td.style.fontWeight = '600';
+              tr.appendChild(td);
+            });
+            tbody.appendChild(tr);
+          });
+          table.appendChild(tbody);
+          scrollDiv.appendChild(table);
+          card.appendChild(scrollDiv);
         } else {
-          html += '<p style="color:var(--muted);font-size:.85rem;margin-top:.5rem">Noch keine Spiele ausgetragen</p>';
+          var noGames = document.createElement('div');
+          noGames.style.cssText = 'color:var(--text-secondary);font-size:.82rem;margin-top:.5rem';
+          noGames.textContent = 'Noch keine Spiele ausgetragen';
+          card.appendChild(noGames);
         }
-
-        html += '</div>';
+        container.appendChild(card);
       }
-      html += '</div>';
+    } else {
+      var noGroups = document.createElement('div');
+      noGroups.className = 'inner-card';
+      noGroups.style.color = 'var(--text-secondary)';
+      noGroups.textContent = 'Keine Gruppen vorhanden';
+      container.appendChild(noGroups);
     }
 
-    // KO-Phase (v2: 3-Bracket-System, fallback auf v1 für alte Saisons)
+    // === KO-Phase ===
     try {
-      let koHtml = '';
-      const bResp = await fetch(`${API}/api/seasons/${seasonId}/ko-brackets`);
-      const bData = bResp.ok ? await bResp.json() : null;
-      const hasBrackets = bData && bData.brackets && Object.values(bData.brackets).some(b => b && b.rounds && Object.keys(b.rounds).length > 0);
+      var bResp = await fetch(API + '/api/seasons/' + seasonId + '/ko-brackets');
+      var bData = bResp.ok ? await bResp.json() : null;
+      var hasBrackets = bData && bData.brackets && Object.values(bData.brackets).some(function(b) {
+        return b && b.rounds && Object.keys(b.rounds).length > 0;
+      });
 
       if (hasBrackets) {
-        // v2: Multiple brackets
-        const bracketLabels = {meister: 'Meister-Bracket', lucky_loser: 'Lucky Loser', loser: 'Verlierer-Bracket'};
-        for (const [type, label] of Object.entries(bracketLabels)) {
-          const b = bData.brackets[type];
-          if (!b || !b.rounds || Object.keys(b.rounds).length === 0) continue;
-          koHtml += `<div class="card" style="margin-top:1.5rem"><h3 style="margin:0 0 .75rem;font-size:1rem">KO: ${label}</h3>`;
-          koHtml += renderCompactBracketV2(b);
-          koHtml += '</div>';
-        }
-        // Champion from meister bracket finale
-        const meister = bData.brackets.meister;
-        if (meister && meister.rounds) {
-          const allMeisterMatches = Object.values(meister.rounds).flat();
-          const finale = allMeisterMatches.find(m => m.round === 'Finale' && m.status === 'played');
-          if (finale && finale.winner_id) {
-            const winnerTeam = finale.home_team && finale.winner_id === finale.home_team.id ? finale.home_team : finale.away_team;
-            const winnerName = winnerTeam ? winnerTeam.name : teamName(finale.winner_id);
-            html = `<div class="champion-badge">🏆 Pokalsieger: ${winnerName}</div>` + html;
-          }
-        }
-      } else {
-        // v1 fallback for archived seasons
-        const bracket = await fetch(`${API}/api/seasons/${seasonId}/ko-bracket`).then(r => {
-          if (r.status === 404) return null;
-          return r.json();
+        var bracketLabels = { meister: 'Meister-Bracket', lucky_loser: 'Lucky Loser', loser: 'Verlierer-Bracket' };
+        Object.keys(bracketLabels).forEach(function(type) {
+          var b = bData.brackets[type];
+          if (!b || !b.rounds || Object.keys(b.rounds).length === 0) return;
+          var koCard = document.createElement('div');
+          koCard.className = 'inner-card';
+          var koTitle = document.createElement('div');
+          koTitle.className = 'inner-card-title';
+          koTitle.textContent = 'KO: ' + bracketLabels[type];
+          koCard.appendChild(koTitle);
+          koCard.appendChild(renderCompactBracketV2(b));
+          container.appendChild(koCard);
         });
-        if (bracket) {
-          koHtml += '<div class="card" style="margin-top:1.5rem"><h3 style="margin:0 0 .75rem;font-size:1rem">KO-Phase</h3>';
-          koHtml += renderCompactBracket(bracket);
-          koHtml += '</div>';
-          const finalMatch = bracket.matches.find(m => m.round === bracket.total_rounds);
-          if (finalMatch && finalMatch.status === 'played') {
-            const winnerId = finalMatch.home_goals > finalMatch.away_goals ? finalMatch.home_team_id : finalMatch.away_team_id;
-            html = `<div class="champion-badge">🏆 Pokalsieger: ${teamName(winnerId)}</div>` + html;
+
+        // Champion
+        var meister = bData.brackets.meister;
+        if (meister && meister.rounds) {
+          var allMatches = [];
+          Object.values(meister.rounds).forEach(function(arr) { allMatches = allMatches.concat(arr); });
+          var finale = allMatches.find(function(m) { return m.round === 'Finale' && m.status === 'played'; });
+          if (finale && finale.winner_id) {
+            var winnerTeam = finale.home_team && finale.winner_id === finale.home_team.id ? finale.home_team : finale.away_team;
+            var winnerNameStr = winnerTeam ? winnerTeam.name : teamName(finale.winner_id);
+            championBanner = document.createElement('div');
+            championBanner.className = 'champion-banner';
+            championBanner.textContent = '\uD83C\uDFC6 Pokalsieger: ' + winnerNameStr;
+          }
+        }
+      } else {
+        // v1 fallback
+        var bracketResp = await fetch(API + '/api/seasons/' + seasonId + '/ko-bracket');
+        if (bracketResp.ok) {
+          var bracket = await bracketResp.json();
+          if (bracket && bracket.matches) {
+            var koCard2 = document.createElement('div');
+            koCard2.className = 'inner-card';
+            var koTitle2 = document.createElement('div');
+            koTitle2.className = 'inner-card-title';
+            koTitle2.textContent = 'KO-Phase';
+            koCard2.appendChild(koTitle2);
+            koCard2.appendChild(renderCompactBracketV1(bracket));
+            container.appendChild(koCard2);
+
+            var finalMatch = bracket.matches.find(function(m) { return m.round === bracket.total_rounds; });
+            if (finalMatch && finalMatch.status === 'played') {
+              var winnerId = finalMatch.home_goals > finalMatch.away_goals ? finalMatch.home_team_id : finalMatch.away_team_id;
+              championBanner = document.createElement('div');
+              championBanner.className = 'champion-banner';
+              championBanner.textContent = '\uD83C\uDFC6 Pokalsieger: ' + teamName(winnerId);
+            }
           }
         }
       }
-
-      if (koHtml) {
-        html += koHtml;
-      } else {
-        html += '<div class="card" style="margin-top:1.5rem"><h3 style="margin:0 0 .75rem;font-size:1rem">KO-Phase</h3>';
-        html += '<p style="color:var(--muted)">Noch nicht gestartet</p></div>';
-      }
-    } catch (e) {
-      html += '<div class="card" style="margin-top:1.5rem"><h3 style="margin:0 0 .75rem;font-size:1rem">KO-Phase</h3>';
-      html += '<p style="color:var(--muted)">Noch nicht gestartet</p></div>';
+    } catch (koErr) {
+      var koFallback = document.createElement('div');
+      koFallback.className = 'inner-card';
+      var koFbTitle = document.createElement('div');
+      koFbTitle.className = 'inner-card-title';
+      koFbTitle.textContent = 'KO-Phase';
+      koFallback.appendChild(koFbTitle);
+      var koFbText = document.createElement('div');
+      koFbText.style.color = 'var(--text-secondary)';
+      koFbText.textContent = 'Noch nicht gestartet';
+      koFallback.appendChild(koFbText);
+      container.appendChild(koFallback);
     }
 
-    container.innerHTML = html;
+    // Insert champion banner at top
+    if (championBanner && container.firstChild) {
+      container.insertBefore(championBanner, container.firstChild);
+    }
+
   } catch (e) {
-    container.innerHTML = `<p style="color:var(--danger)">Fehler beim Laden: ${e.message}</p>`;
+    container.textContent = '';
+    var errDiv = document.createElement('div');
+    errDiv.style.cssText = 'color:var(--danger);padding:1rem';
+    errDiv.textContent = 'Fehler beim Laden: ' + e.message;
+    container.appendChild(errDiv);
   }
 }
 
-function renderCompactBracket(bracket) {
-  const rounds = {};
-  bracket.matches.forEach(m => {
+function renderCompactBracketV2(bracket) {
+  if (!bracket || !bracket.rounds) return document.createTextNode('');
+  var roundKeys = Object.keys(bracket.rounds).sort(function(a, b) {
+    return parseInt(a.replace('runde_', '')) - parseInt(b.replace('runde_', ''));
+  });
+
+  var wrapper = document.createElement('div');
+  wrapper.className = 'ko-scroll-wrapper';
+  var bracketDiv = document.createElement('div');
+  bracketDiv.className = 'ko-bracket-compact';
+  var thirdPlaceMatch = null;
+
+  roundKeys.forEach(function(key) {
+    var matches = bracket.rounds[key];
+    if (!matches || matches.length === 0) return;
+    var roundLabel = matches[0].round || key;
+
+    var roundDiv = document.createElement('div');
+    roundDiv.className = 'ko-round-compact';
+    var header = document.createElement('div');
+    header.className = 'ko-round-header';
+    header.textContent = roundLabel;
+    roundDiv.appendChild(header);
+
+    matches.forEach(function(m) {
+      if (m.is_third_place) { thirdPlaceMatch = m; return; }
+      roundDiv.appendChild(buildKoMatchEl(m, true));
+    });
+    bracketDiv.appendChild(roundDiv);
+  });
+
+  if (thirdPlaceMatch) {
+    var thirdDiv = document.createElement('div');
+    thirdDiv.className = 'ko-round-compact ko-third-place';
+    var thirdHeader = document.createElement('div');
+    thirdHeader.className = 'ko-round-header';
+    thirdHeader.style.fontStyle = 'italic';
+    thirdHeader.textContent = 'Platz 3';
+    thirdDiv.appendChild(thirdHeader);
+    thirdDiv.appendChild(buildKoMatchEl(thirdPlaceMatch, true));
+    bracketDiv.appendChild(thirdDiv);
+  }
+
+  wrapper.appendChild(bracketDiv);
+  return wrapper;
+}
+
+function renderCompactBracketV1(bracket) {
+  var rounds = {};
+  bracket.matches.forEach(function(m) {
     if (!rounds[m.round]) rounds[m.round] = [];
     rounds[m.round].push(m);
   });
 
-  let html = '<div class="ko-scroll-wrapper"><div class="ko-bracket-compact">';
-  let thirdPlaceMatch = null;
+  var wrapper = document.createElement('div');
+  wrapper.className = 'ko-scroll-wrapper';
+  var bracketDiv = document.createElement('div');
+  bracketDiv.className = 'ko-bracket-compact';
+  var thirdPlaceMatch = null;
 
-  Object.keys(rounds).sort((a,b) => a-b).forEach(roundNum => {
-    const roundLabel = roundName(parseInt(roundNum), bracket.total_rounds);
-    html += `<div class="ko-round-compact">
-      <div class="ko-round-header-compact">${roundLabel}</div>`;
+  Object.keys(rounds).sort(function(a, b) { return a - b; }).forEach(function(roundNum) {
+    var label = roundName(parseInt(roundNum), bracket.total_rounds);
+    var roundDiv = document.createElement('div');
+    roundDiv.className = 'ko-round-compact';
+    var header = document.createElement('div');
+    header.className = 'ko-round-header';
+    header.textContent = label;
+    roundDiv.appendChild(header);
 
-    rounds[roundNum].sort((a,b) => a.position - b.position).forEach(m => {
-      if (m.is_third_place) {
-        thirdPlaceMatch = m;
-        return;
-      }
-      if (m.is_bye) {
-        html += `<div class="ko-match-compact" style="opacity:.6">
-          <div style="text-align:center;font-size:.75rem">${crestImg(m.home_team_id)}${teamName(m.home_team_id)} – Freilos</div>
-        </div>`;
-      } else if (!m.home_team_id && !m.away_team_id) {
-        html += `<div class="ko-match-compact"><div style="text-align:center;color:var(--muted);font-size:.75rem">TBD</div></div>`;
-      } else {
-        const cls = m.status === 'played' ? 'played' : '';
-        const hasResult = m.home_goals !== null && m.away_goals !== null;
-        const homeWin = hasResult && m.home_goals > m.away_goals;
-        const awayWin = hasResult && m.away_goals > m.home_goals;
-
-        html += `<div class="ko-match-compact ${cls}">
-          <div class="ko-team-compact ${homeWin ? 'winner' : ''}">
-            <span>${m.home_team_id ? crestImg(m.home_team_id) + teamName(m.home_team_id) : '?'}</span>
-            <span>${hasResult ? m.home_goals : ''}</span>
-          </div>
-          <div class="ko-team-compact ${awayWin ? 'winner' : ''}">
-            <span>${m.away_team_id ? crestImg(m.away_team_id) + teamName(m.away_team_id) : '?'}</span>
-            <span>${hasResult ? m.away_goals : ''}</span>
-          </div>
-        </div>`;
-      }
+    rounds[roundNum].sort(function(a, b) { return a.position - b.position; }).forEach(function(m) {
+      if (m.is_third_place) { thirdPlaceMatch = m; return; }
+      roundDiv.appendChild(buildKoMatchEl(m, false));
     });
-
-    html += '</div>';
+    bracketDiv.appendChild(roundDiv);
   });
 
-  // Spiel um Platz 3
   if (thirdPlaceMatch) {
-    const m = thirdPlaceMatch;
-    const hasResult = m.home_goals !== null && m.away_goals !== null;
-    const homeWin = hasResult && m.home_goals > m.away_goals;
-    const awayWin = hasResult && m.away_goals > m.home_goals;
-    const cls = m.status === 'played' ? 'played' : '';
-    html += `<div class="ko-round-compact" style="border-left:2px dashed var(--border);padding-left:1rem">
-      <div class="ko-round-header-compact" style="font-style:italic">Platz 3</div>
-      <div class="ko-match-compact ${cls}">
-        <div class="ko-team-compact ${homeWin ? 'winner' : ''}">
-          <span>${m.home_team_id ? crestImg(m.home_team_id) + teamName(m.home_team_id) : '?'}</span>
-          <span>${hasResult ? m.home_goals : ''}</span>
-        </div>
-        <div class="ko-team-compact ${awayWin ? 'winner' : ''}">
-          <span>${m.away_team_id ? crestImg(m.away_team_id) + teamName(m.away_team_id) : '?'}</span>
-          <span>${hasResult ? m.away_goals : ''}</span>
-        </div>
-      </div>
-    </div>`;
+    var thirdDiv = document.createElement('div');
+    thirdDiv.className = 'ko-round-compact ko-third-place';
+    var thirdHeader = document.createElement('div');
+    thirdHeader.className = 'ko-round-header';
+    thirdHeader.style.fontStyle = 'italic';
+    thirdHeader.textContent = 'Platz 3';
+    thirdDiv.appendChild(thirdHeader);
+    thirdDiv.appendChild(buildKoMatchEl(thirdPlaceMatch, false));
+    bracketDiv.appendChild(thirdDiv);
   }
 
-  html += '</div></div>';
-  return html;
+  wrapper.appendChild(bracketDiv);
+  return wrapper;
 }
 
-function renderCompactBracketV2(bracket) {
-  if (!bracket || !bracket.rounds) return '';
-  const roundKeys = Object.keys(bracket.rounds).sort((a,b) => {
-    const numA = parseInt(a.replace('runde_',''));
-    const numB = parseInt(b.replace('runde_',''));
-    return numA - numB;
-  });
+function buildKoMatchEl(m, isV2) {
+  var matchDiv = document.createElement('div');
+  matchDiv.className = 'ko-match-compact';
 
-  let html = '<div class="ko-scroll-wrapper"><div class="ko-bracket-compact">';
-  let thirdPlaceMatch = null;
-
-  for (const key of roundKeys) {
-    const matches = bracket.rounds[key];
-    if (!matches || matches.length === 0) continue;
-    const roundLabel = matches[0].round || key;
-
-    html += `<div class="ko-round-compact">
-      <div class="ko-round-header-compact">${roundLabel}</div>`;
-
-    for (const m of matches) {
-      if (m.is_third_place) { thirdPlaceMatch = m; continue; }
-      if (m.is_bye) {
-        const byeName = m.home_team ? m.home_team.name : (m.home_team_id ? teamName(m.home_team_id) : '?');
-        const byeCrest = m.home_team ? crestImg(m.home_team.id) : (m.home_team_id ? crestImg(m.home_team_id) : '');
-        html += `<div class="ko-match-compact" style="opacity:.6">
-          <div style="text-align:center;font-size:.75rem">${byeCrest}${byeName} – Freilos</div></div>`;
-      } else if (!m.home_team && !m.away_team) {
-        html += `<div class="ko-match-compact"><div style="text-align:center;color:var(--muted);font-size:.75rem">TBD</div></div>`;
-      } else {
-        const cls = m.status === 'played' ? 'played' : '';
-        const hasResult = m.home_goals !== null && m.away_goals !== null;
-        const homeWin = hasResult && m.home_goals > m.away_goals;
-        const awayWin = hasResult && m.away_goals > m.home_goals;
-        const homeName = m.home_team ? m.home_team.name : '?';
-        const awayName = m.away_team ? m.away_team.name : '?';
-        const homeId = m.home_team ? m.home_team.id : null;
-        const awayId = m.away_team ? m.away_team.id : null;
-
-        html += `<div class="ko-match-compact ${cls}">
-          <div class="ko-team-compact ${homeWin ? 'winner' : ''}">
-            <span>${homeId ? crestImg(homeId) + homeName : homeName}</span>
-            <span>${hasResult ? m.home_goals : ''}</span>
-          </div>
-          <div class="ko-team-compact ${awayWin ? 'winner' : ''}">
-            <span>${awayId ? crestImg(awayId) + awayName : awayName}</span>
-            <span>${hasResult ? m.away_goals : ''}</span>
-          </div>
-        </div>`;
-      }
-    }
-    html += '</div>';
+  if (m.is_bye) {
+    matchDiv.style.opacity = '0.6';
+    var byeDiv = document.createElement('div');
+    byeDiv.style.cssText = 'text-align:center;font-size:.72rem';
+    var byeId = isV2 ? (m.home_team ? m.home_team.id : m.home_team_id) : m.home_team_id;
+    var byeName = isV2 ? (m.home_team ? m.home_team.name : teamName(m.home_team_id)) : teamName(m.home_team_id);
+    var crest = buildCrestEl(byeId, 14);
+    if (crest) byeDiv.appendChild(crest);
+    byeDiv.appendChild(document.createTextNode(' ' + byeName + ' \u2013 Freilos'));
+    matchDiv.appendChild(byeDiv);
+    return matchDiv;
   }
 
-  // Spiel um Platz 3
-  if (thirdPlaceMatch) {
-    const m = thirdPlaceMatch;
-    const hasResult = m.home_goals !== null && m.away_goals !== null;
-    const homeWin = hasResult && m.home_goals > m.away_goals;
-    const awayWin = hasResult && m.away_goals > m.home_goals;
-    const cls = m.status === 'played' ? 'played' : '';
-    const homeName = m.home_team ? m.home_team.name : '?';
-    const awayName = m.away_team ? m.away_team.name : '?';
-    const homeId = m.home_team ? m.home_team.id : null;
-    const awayId = m.away_team ? m.away_team.id : null;
-    html += `<div class="ko-round-compact" style="border-left:2px dashed var(--border);padding-left:1rem">
-      <div class="ko-round-header-compact" style="font-style:italic">Platz 3</div>
-      <div class="ko-match-compact ${cls}">
-        <div class="ko-team-compact ${homeWin ? 'winner' : ''}">
-          <span>${homeId ? crestImg(homeId) + homeName : homeName}</span>
-          <span>${hasResult ? m.home_goals : ''}</span>
-        </div>
-        <div class="ko-team-compact ${awayWin ? 'winner' : ''}">
-          <span>${awayId ? crestImg(awayId) + awayName : awayName}</span>
-          <span>${hasResult ? m.away_goals : ''}</span>
-        </div>
-      </div>
-    </div>`;
+  var homeId, awayId, homeName, awayName;
+  if (isV2) {
+    homeId = m.home_team ? m.home_team.id : null;
+    awayId = m.away_team ? m.away_team.id : null;
+    homeName = m.home_team ? m.home_team.name : '?';
+    awayName = m.away_team ? m.away_team.name : '?';
+  } else {
+    homeId = m.home_team_id;
+    awayId = m.away_team_id;
+    homeName = m.home_team_id ? teamName(m.home_team_id) : '?';
+    awayName = m.away_team_id ? teamName(m.away_team_id) : '?';
   }
 
-  html += '</div></div>';
-  return html;
+  if (!homeId && !awayId) {
+    var tbdDiv = document.createElement('div');
+    tbdDiv.style.cssText = 'text-align:center;color:var(--text-secondary);font-size:.72rem';
+    tbdDiv.textContent = 'TBD';
+    matchDiv.appendChild(tbdDiv);
+    return matchDiv;
+  }
+
+  if (m.status === 'played') matchDiv.classList.add('played');
+  var hasResult = m.home_goals !== null && m.away_goals !== null;
+  var homeWin = hasResult && m.home_goals > m.away_goals;
+  var awayWin = hasResult && m.away_goals > m.home_goals;
+
+  // Home row
+  var homeRow = document.createElement('div');
+  homeRow.className = 'ko-team-row' + (homeWin ? ' winner' : '');
+  var homeSpan = document.createElement('span');
+  var hCrest = buildCrestEl(homeId, 14);
+  if (hCrest) homeSpan.appendChild(hCrest);
+  homeSpan.appendChild(document.createTextNode(' ' + homeName));
+  homeRow.appendChild(homeSpan);
+  var homeScore = document.createElement('span');
+  homeScore.textContent = hasResult ? m.home_goals : '';
+  homeRow.appendChild(homeScore);
+  matchDiv.appendChild(homeRow);
+
+  // Away row
+  var awayRow = document.createElement('div');
+  awayRow.className = 'ko-team-row' + (awayWin ? ' winner' : '');
+  var awaySpan = document.createElement('span');
+  var aCrest = buildCrestEl(awayId, 14);
+  if (aCrest) awaySpan.appendChild(aCrest);
+  awaySpan.appendChild(document.createTextNode(' ' + awayName));
+  awayRow.appendChild(awaySpan);
+  var awayScore = document.createElement('span');
+  awayScore.textContent = hasResult ? m.away_goals : '';
+  awayRow.appendChild(awayScore);
+  matchDiv.appendChild(awayRow);
+
+  return matchDiv;
 }
 
 async function loadSeasons() {
-  const container = document.getElementById('seasons-container');
-
+  var container = document.getElementById('seasons-container');
   try {
-    const seasons = await fetch(`${API}/api/seasons`).then(r => r.json());
-    setBackendStatus(true);
+    var seasons = await fetch(API + '/api/seasons').then(function(r) { return r.json(); });
+    document.getElementById('backend-dot').classList.remove('offline');
+    document.getElementById('backend-text').textContent = 'Online';
 
     if (seasons.length === 0) {
-      container.innerHTML = '<div class="empty-state">Noch keine Saisons vorhanden</div>';
+      container.textContent = '';
+      var empty = document.createElement('div');
+      empty.className = 'empty-state';
+      empty.textContent = 'Noch keine Saisons vorhanden';
+      container.appendChild(empty);
       return;
     }
 
-    // Sort by ID descending (newest first)
-    seasons.sort((a, b) => b.id - a.id);
+    seasons.sort(function(a, b) { return b.id - a.id; });
 
-    // Fetch group data in batches to avoid rate limiting
-    async function fetchBatched(urls, batchSize = 5) {
-      const results = [];
-      for (let i = 0; i < urls.length; i += batchSize) {
-        const batch = urls.slice(i, i + batchSize);
-        const batchResults = await Promise.all(batch.map(url => fetch(url).then(r => r.json())));
-        results.push(...batchResults);
-      }
-      return results;
+    // Fetch group counts
+    var groupResults = [];
+    for (var i = 0; i < seasons.length; i += 5) {
+      var batch = seasons.slice(i, i + 5);
+      var batchRes = await Promise.all(batch.map(function(s) {
+        return fetch(API + '/api/seasons/' + s.id + '/groups-with-teams').then(function(r) { return r.json(); });
+      }));
+      groupResults = groupResults.concat(batchRes);
     }
-    const groupResults = await fetchBatched(
-      seasons.map(s => `${API}/api/seasons/${s.id}/groups-with-teams`)
-    );
 
-    let html = '';
-    seasons.forEach((season, i) => {
-      const groups = groupResults[i];
-      const badgeClass = season.status === 'active' ? 'active' : season.status === 'archived' ? 'archived' : 'planned';
-      const badgeText = season.status === 'active' ? 'Aktiv' : season.status === 'archived' ? 'Archiviert' : 'Geplant';
-      const teamCount = groups.reduce((sum, g) => sum + g.teams.length, 0);
+    container.textContent = '';
+    seasons.forEach(function(season, idx) {
+      var groups = groupResults[idx];
+      var teamCount = groups.reduce(function(sum, g) { return sum + g.teams.length; }, 0);
 
-      html += `
-        <div class="season-card">
-          <div class="season-header" onclick="toggleSeason(${season.id})">
-            <div class="season-info">
-              <div>
-                <div class="season-name">${season.name}</div>
-                <div class="season-meta">
-                  <span class="season-badge ${badgeClass}">${badgeText}</span>
-                  <span>${teamCount} Teams</span>
-                  <span>${groups.length} Gruppen</span>
-                </div>
-              </div>
-            </div>
-            <div class="season-toggle" id="season-toggle-${season.id}">▼</div>
-          </div>
-          <div class="season-content" id="season-content-${season.id}"></div>
-        </div>`;
+      var card = document.createElement('div');
+      card.className = 'season-card';
+      card.style.animationDelay = (idx * 0.05) + 's';
+
+      var header = document.createElement('div');
+      header.className = 'season-header';
+      header.addEventListener('click', function() { toggleSeason(season.id); });
+
+      var info = document.createElement('div');
+      var nameDiv = document.createElement('div');
+      nameDiv.className = 'season-name';
+      nameDiv.textContent = season.name;
+      info.appendChild(nameDiv);
+
+      var meta = document.createElement('div');
+      meta.className = 'season-meta';
+      var badge = document.createElement('span');
+      badge.className = 'season-badge ' + season.status;
+      badge.textContent = season.status === 'active' ? 'Aktiv' : season.status === 'archived' ? 'Archiviert' : 'Geplant';
+      meta.appendChild(badge);
+      var teamsSpan = document.createElement('span');
+      teamsSpan.textContent = teamCount + ' Teams';
+      meta.appendChild(teamsSpan);
+      var groupsSpan = document.createElement('span');
+      groupsSpan.textContent = groups.length + ' Gruppen';
+      meta.appendChild(groupsSpan);
+      info.appendChild(meta);
+      header.appendChild(info);
+
+      var toggleEl = document.createElement('div');
+      toggleEl.className = 'season-toggle';
+      toggleEl.id = 'season-toggle-' + season.id;
+      toggleEl.textContent = '\u25BC';
+      header.appendChild(toggleEl);
+
+      card.appendChild(header);
+
+      var content = document.createElement('div');
+      content.className = 'season-content';
+      content.id = 'season-content-' + season.id;
+      card.appendChild(content);
+
+      container.appendChild(card);
     });
-
-    container.innerHTML = html;
   } catch (e) {
-    setBackendStatus(false);
-    container.innerHTML = `<div class="empty-state" style="color:var(--danger)">Fehler: ${e.message}</div>`;
+    document.getElementById('backend-dot').classList.add('offline');
+    document.getElementById('backend-text').textContent = 'Offline';
+    container.textContent = '';
+    var errDiv = document.createElement('div');
+    errDiv.className = 'empty-state';
+    errDiv.style.color = 'var(--danger)';
+    errDiv.textContent = 'Fehler: ' + e.message;
+    container.appendChild(errDiv);
   }
 }
 
-// Load seasons on page load
 loadSeasons();
 
+fetch(API + '/api/version').then(function(r) { return r.json(); }).then(function(d) {
+  if (d.version) document.getElementById('app-version').textContent = 'v' + d.version;
+}).catch(function() {});
+
+fetch(API + '/api/track', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ page: 'archiv', referrer: document.referrer || '' })
+}).catch(function() {});
 </script>
-  </fts-layout>
 </body>
 </html>

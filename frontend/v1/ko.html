@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <link rel="icon" type="image/png" href="img/logo_comic.png">
+  <title>KO-Phase – BIW Pokal</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <script src="js/themes.js"></script>
+  <script type="module" src="js/background.js"></script>
+  <script type="module" src="js/fts-layout.js"></script>
+  <link rel="stylesheet" href="css/shared.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    main{max-width:1400px}
+    /* Bracket Container */
+    #ko-container{background:var(--card);border-radius:12px;border:1px solid var(--border);padding:1.5rem;box-shadow:0 4px 16px rgba(0,0,0,.04);margin-bottom:2rem}
+    #ko-container em{display:block;text-align:center;color:var(--muted);padding:1rem}
+    /* Tabs */
+    .bracket-tabs{display:flex;gap:.5rem;margin-bottom:1.5rem;padding:0;flex-wrap:wrap}
+    .bracket-tab{padding:.5rem 1rem;cursor:pointer;border:none;background:var(--card-alt);color:var(--text);font-size:.95rem;font-weight:500;border-radius:8px;transition:all .2s}
+    .bracket-tab:hover{background:var(--muted);color:#fff}
+    .bracket-tab.active{background:var(--primary);color:#fff;font-weight:700}
+    /* KO Bracket */
+    .ko-scroll-wrapper{position:relative}
+    .ko-scroll-wrapper::after{content:'';position:absolute;top:0;right:0;width:40px;height:100%;background:linear-gradient(to right,transparent,var(--bg));pointer-events:none}
+    .ko-bracket{display:flex;gap:2rem;overflow-x:auto;padding:1rem 0;align-items:flex-start}
+    .ko-round{min-width:180px;max-width:220px;display:flex;flex-direction:column;justify-content:space-around}
+    .ko-round-header{text-align:center;margin:0 0 1rem;font-size:.95rem;font-weight:600;background:var(--card-alt);border-radius:8px;padding:.4rem .75rem;display:inline-block;color:var(--text)}
+    .ko-match{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:.65rem .85rem;margin-bottom:.75rem;font-size:.85rem;position:relative;min-height:60px;display:flex;flex-direction:column;justify-content:center}
+    .ko-match.bye{background:color-mix(in srgb,var(--primary) 10%,var(--card));border-style:dashed}
+    .ko-match.played{border-left:3px solid var(--success)}
+    .ko-match.pending{border-left:3px solid var(--primary)}
+    .ko-match-team{display:flex;justify-content:space-between;align-items:center;padding:2px 0}
+    .ko-match-team.winner{font-weight:700;color:var(--success)}
+    .ko-match-team.loser{color:var(--muted)}
+    .ko-match-team .name{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .ko-match-team .score{min-width:20px;text-align:right;font-weight:600}
+    .ko-match-vs{font-size:.7rem;color:var(--muted);text-align:center;margin:2px 0}
+    .ko-match-tbd{color:var(--muted);font-style:italic;text-align:center}
+    .ko-match-bye-badge{font-size:.7rem;color:var(--muted);text-align:center;background:var(--card-alt);border-radius:4px;padding:1px 6px;margin-top:2px;display:inline-block}
+    .ko-match::after{content:"";position:absolute;right:-1rem;top:50%;width:1rem;height:1px;background:var(--border)}
+    .ko-round:last-child .ko-match::after{display:none}
+    .ko-empty{text-align:center;padding:2rem;color:var(--muted)}
+    .ko-third-place{border-left:2px dashed var(--border);padding-left:1.5rem}
+    .ko-third-place .ko-round-header{background:color-mix(in srgb,var(--primary) 10%,var(--card));font-style:italic}
+  </style>
+</head>
+<body>
+  <fts-layout page-title="/ KO-Phase">
+    <section>
+      <div class="card">
+        <h2 style="margin-top:0">KO-Phase</h2>
+        <h3>Saison auswählen</h3>
+        <div id="seasons" style="display:flex;gap:.5rem;flex-wrap:wrap"></div>
+      </div>
+
+      <div id="ko-container">
+        <em>Wähle eine Saison</em>
+      </div>
+    </section>
+
+<script type="module">
+import { API_URL } from './js/config.js';
+import { setBackendStatus } from './js/shared-ui.js';
+import { loadCrests, crestImg } from './js/team-utils.js';
+const API = API_URL;
+
+const seasonsDiv = document.getElementById('seasons');
+const koContainer = document.getElementById('ko-container');
+let bracketsCache = null;
+let activeTab = 'meister';
+
+const ROUND_ORDER = ['runde_1', 'runde_2', 'runde_3', 'runde_4', 'viertelfinale', 'halbfinale', 'finale'];
+
+const ROUND_LABELS = {
+  'finale': '🏆 Finale',
+  'halbfinale': 'Halbfinale',
+  'viertelfinale': 'Viertelfinale'
+};
+
+const TAB_LABELS = {
+  'meister': 'Meisterrunde',
+  'lucky_loser': 'Lucky Loser',
+  'loser': 'Loser'
+};
+
+function roundLabel(key) {
+  if (ROUND_LABELS[key]) return ROUND_LABELS[key];
+  const match = key.match(/^runde_(\d+)$/);
+  if (match) return `Runde ${match[1]}`;
+  return key;
+}
+
+function sortRounds(roundKeys) {
+  return roundKeys.sort((a, b) => {
+    const idxA = ROUND_ORDER.indexOf(a);
+    const idxB = ROUND_ORDER.indexOf(b);
+    const posA = idxA === -1 ? -1 : idxA;
+    const posB = idxB === -1 ? -1 : idxB;
+    return posA - posB;
+  });
+}
+
+function renderMatch(m) {
+  const div = document.createElement('div');
+  const hasResult = m.home_goals !== null && m.away_goals !== null;
+  const isPlayed = hasResult;
+
+  if (m.is_bye) {
+    div.className = 'ko-match bye';
+    const byeTeam = m.home_team || m.away_team;
+    const teamName = byeTeam ? byeTeam.name : '?';
+    const teamId = byeTeam ? byeTeam.id : null;
+    div.innerHTML = `
+      <div class="ko-match-team winner"><span class="name">${crestImg(teamId)}${teamName}</span><span class="score">✓</span></div>
+      <div style="text-align:center"><span class="ko-match-bye-badge">Freilos</span></div>`;
+  } else if (!m.home_team && !m.away_team) {
+    div.className = 'ko-match pending';
+    div.innerHTML = `<div class="ko-match-tbd">?</div>`;
+  } else {
+    div.className = `ko-match ${isPlayed ? 'played' : 'pending'}`;
+    const homeName = m.home_team ? m.home_team.name : '?';
+    const awayName = m.away_team ? m.away_team.name : '?';
+    const homeId = m.home_team ? m.home_team.id : null;
+    const awayId = m.away_team ? m.away_team.id : null;
+    const homeIsWinner = m.winner_id && m.home_team && m.winner_id === m.home_team.id;
+    const awayIsWinner = m.winner_id && m.away_team && m.winner_id === m.away_team.id;
+
+    div.innerHTML = `
+      <div class="ko-match-team ${homeIsWinner ? 'winner' : ''} ${awayIsWinner ? 'loser' : ''}">
+        <span class="name">${crestImg(homeId)}${homeName}</span>
+        <span class="score">${hasResult ? m.home_goals : ''}</span>
+      </div>
+      <div class="ko-match-vs">vs</div>
+      <div class="ko-match-team ${awayIsWinner ? 'winner' : ''} ${homeIsWinner ? 'loser' : ''}">
+        <span class="name">${crestImg(awayId)}${awayName}</span>
+        <span class="score">${hasResult ? m.away_goals : ''}</span>
+      </div>`;
+  }
+  return div;
+}
+
+function renderBracket(bracketData) {
+  const container = document.createElement('div');
+  container.className = 'ko-bracket';
+
+  const rounds = bracketData.rounds;
+  const sortedKeys = sortRounds(Object.keys(rounds));
+
+  sortedKeys.forEach(key => {
+    const col = document.createElement('div');
+    col.className = 'ko-round';
+
+    const header = document.createElement('div');
+    header.className = 'ko-round-header';
+    header.textContent = roundLabel(key);
+    col.appendChild(header);
+
+    const normalMatches = rounds[key].filter(m => !m.is_third_place);
+    normalMatches.forEach(m => {
+      col.appendChild(renderMatch(m));
+    });
+
+    container.appendChild(col);
+  });
+
+  // Spiel um Platz 3 als eigene Spalte nach dem Finale
+  const finaleKey = sortedKeys[sortedKeys.length - 1];
+  const thirdPlace = rounds[finaleKey]?.find(m => m.is_third_place);
+
+  if (thirdPlace) {
+    const tpCol = document.createElement('div');
+    tpCol.className = 'ko-round ko-third-place';
+
+    const tpHeader = document.createElement('div');
+    tpHeader.className = 'ko-round-header';
+    tpHeader.textContent = 'Spiel um Platz 3';
+    tpCol.appendChild(tpHeader);
+
+    tpCol.appendChild(renderMatch(thirdPlace));
+    container.appendChild(tpCol);
+  }
+
+  return container;
+}
+
+function renderTabs() {
+  if (!bracketsCache) return;
+
+  const brackets = bracketsCache.brackets;
+  const bracketKeys = Object.keys(brackets);
+
+  let html = '<div class="bracket-tabs">';
+  bracketKeys.forEach(key => {
+    html += `<button class="bracket-tab ${key === activeTab ? 'active' : ''}" data-tab="${key}">${TAB_LABELS[key] || key}</button>`;
+  });
+  html += '</div>';
+  html += '<div id="bracket-content"></div>';
+
+  koContainer.innerHTML = html;
+
+  // Tab click handlers
+  koContainer.querySelectorAll('.bracket-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      activeTab = btn.dataset.tab;
+      koContainer.querySelectorAll('.bracket-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      showBracket();
+    });
+  });
+
+  showBracket();
+}
+
+function showBracket() {
+  const contentDiv = document.getElementById('bracket-content');
+  if (!bracketsCache || !bracketsCache.brackets[activeTab]) {
+    contentDiv.innerHTML = '<div class="ko-empty">Kein Bracket verfügbar</div>';
+    return;
+  }
+  contentDiv.innerHTML = '';
+  const scrollWrapper = document.createElement('div');
+  scrollWrapper.className = 'ko-scroll-wrapper';
+  scrollWrapper.appendChild(renderBracket(bracketsCache.brackets[activeTab]));
+  contentDiv.appendChild(scrollWrapper);
+}
+
+async function loadKOBrackets(seasonId) {
+  koContainer.innerHTML = '<em>Lade...</em>';
+  bracketsCache = null;
+  activeTab = 'meister';
+  await loadCrests();
+
+  try {
+    // Check status first
+    const statusRes = await fetch(`${API}/api/seasons/${seasonId}/ko-brackets/status`);
+    if (statusRes.ok) {
+      const status = await statusRes.json();
+      if (!status.brackets_generated) {
+        koContainer.innerHTML = '<div class="ko-empty">KO-Phase beginnt nach Abschluss der Gruppenphase</div>';
+        return;
+      }
+    }
+
+    const res = await fetch(`${API}/api/seasons/${seasonId}/ko-brackets`);
+    if (!res.ok) {
+      if (res.status === 404) {
+        koContainer.innerHTML = '<div class="ko-empty">KO-Phase beginnt nach Abschluss der Gruppenphase</div>';
+        return;
+      }
+      throw new Error('Fehler beim Laden');
+    }
+
+    bracketsCache = await res.json();
+    const bracketKeys = Object.keys(bracketsCache.brackets);
+    if (bracketKeys.length === 0) {
+      koContainer.innerHTML = '<div class="ko-empty">Keine Brackets vorhanden</div>';
+      return;
+    }
+    if (!bracketsCache.brackets[activeTab]) {
+      activeTab = bracketKeys[0];
+    }
+    renderTabs();
+  } catch (e) {
+    koContainer.innerHTML = `<div class="ko-empty" style="color:var(--danger)">Fehler beim Laden: ${e.message}</div>`;
+  }
+}
+
+// Load seasons
+fetch(`${API}/api/seasons`).then(r => r.json()).then(seasons => {
+  setBackendStatus(true);
+  seasonsDiv.innerHTML = '';
+
+  // Sortiere nach ID absteigend (neueste zuerst), nur die 3 neuesten
+  seasons.sort((a, b) => b.id - a.id);
+  const recentSeasons = seasons.slice(0, 3);
+
+  recentSeasons.forEach(s => {
+    const div = document.createElement('div');
+    div.textContent = s.name;
+    div.className = 'season-item';
+    div.dataset.seasonId = s.id;
+    div.onclick = (e) => {
+      seasonsDiv.querySelectorAll('.season-item').forEach(el => el.classList.remove('active'));
+      e.target.classList.add('active');
+      loadKOBrackets(s.id);
+    };
+    seasonsDiv.appendChild(div);
+  });
+
+  // Hinweis auf Archiv
+  const hint = document.createElement('p');
+  hint.innerHTML = 'Alle vergangenen Turniere sind im <a href="archiv.html" style="color:var(--primary)">Archiv</a> einsehbar.';
+  hint.style.cssText = 'font-size:.85rem;color:var(--muted);margin-top:.5rem;width:100%';
+  seasonsDiv.appendChild(hint);
+
+  // Default-Saison automatisch laden (planned > active > erste)
+  const defaultSeason =
+    recentSeasons.find(s => s.status === 'planned') ||
+    recentSeasons.find(s => s.status === 'active') ||
+    recentSeasons[0];
+
+  if (defaultSeason) {
+    // Active-Styling auf den richtigen Button setzen
+    const defaultEl = seasonsDiv.querySelector(`[data-season-id="${defaultSeason.id}"]`);
+    if (defaultEl) defaultEl.classList.add('active');
+    loadKOBrackets(defaultSeason.id);
+  }
+});
+
+</script>
+  </fts-layout>
+</body>
+</html>

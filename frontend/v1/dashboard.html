@@ -1,0 +1,509 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <link rel="icon" type="image/png" href="img/logo_comic.png">
+  <title>Mein Profil – BIW Pokal</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="js/themes.js"></script>
+  <script type="module" src="js/background.js"></script>
+  <script type="module" src="js/fts-layout.js"></script>
+  <link rel="stylesheet" href="css/shared.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    main{max-width:800px}
+    h2{margin-bottom:1rem}
+    /* Login Screen */
+    .login-screen{text-align:center;padding:4rem 2rem}
+    .login-screen h2{font-size:1.5rem;margin-bottom:.5rem}
+    .login-screen p{color:var(--muted);margin-bottom:2rem}
+    .discord-login-btn{display:inline-flex;align-items:center;gap:.75rem;background:#5865F2;color:#fff;border:none;border-radius:10px;padding:.85rem 2rem;font-size:1rem;font-weight:600;cursor:pointer;transition:background .2s,transform .1s;text-decoration:none}
+    .discord-login-btn:hover{background:#4752C4;transform:translateY(-1px)}
+    .discord-login-btn:active{transform:translateY(0)}
+    .discord-login-btn:visited{color:#fff}
+    .discord-login-btn svg{width:24px;height:24px}
+    /* Profile Header */
+    .profile-header{display:flex;align-items:center;gap:1.25rem;margin-bottom:.5rem}
+    .profile-avatar{width:64px;height:64px;border-radius:50%;border:3px solid var(--primary);object-fit:cover}
+    .profile-info h2{margin:0;font-size:1.3rem}
+    .profile-info p{margin:.25rem 0 0;color:var(--muted);font-size:.9rem}
+    /* Badges */
+    .badge{display:inline-block;padding:.25rem .75rem;border-radius:20px;font-size:.8rem;font-weight:600}
+    .badge-success{background:#dcfce7;color:#166534}
+    .badge-danger{background:#fee2e2;color:#991b1b}
+    .badge-muted{background:var(--card-alt);color:var(--muted)}
+    /* Forms */
+    .form-group{margin-bottom:1.25rem}
+    .form-group label{display:block;font-weight:600;margin-bottom:.4rem;font-size:.9rem}
+    .form-group .hint{color:var(--muted);font-size:.8rem;margin-top:.25rem}
+    input[type="text"],input[type="url"]{width:100%;padding:.6rem .85rem;border:1px solid var(--border);border-radius:8px;font-size:.95rem;background:var(--bg);color:var(--text);transition:border-color .2s}
+    input[type="text"]:focus,input[type="url"]:focus{outline:none;border-color:var(--primary)}
+    /* Toggle Switch */
+    .toggle-row{display:flex;align-items:center;justify-content:space-between;padding:.75rem 0}
+    .toggle-label{font-weight:600;font-size:.95rem}
+    .toggle-sub{color:var(--muted);font-size:.8rem}
+    .toggle-switch{position:relative;width:52px;height:28px;cursor:pointer}
+    .toggle-switch input{opacity:0;width:0;height:0}
+    .toggle-slider{position:absolute;top:0;left:0;right:0;bottom:0;background:var(--border);border-radius:14px;transition:background .3s}
+    .toggle-slider::before{content:"";position:absolute;width:22px;height:22px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:transform .3s}
+    .toggle-switch input:checked + .toggle-slider{background:var(--primary)}
+    .toggle-switch input:checked + .toggle-slider::before{transform:translateX(24px)}
+    /* Crest Upload */
+    .crest-preview{width:128px;height:128px;border-radius:12px;border:2px dashed var(--border);display:flex;align-items:center;justify-content:center;overflow:hidden;background:var(--bg);margin-bottom:1rem;position:relative}
+    .crest-preview img{width:100%;height:100%;object-fit:contain}
+    .crest-preview .placeholder{color:var(--muted);font-size:.8rem;text-align:center;padding:.5rem}
+    .crest-upload-area{display:flex;align-items:flex-start;gap:1.5rem}
+    .crest-actions{display:flex;flex-direction:column;gap:.5rem}
+    /* Team Search */
+    .team-search-results{max-height:200px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;margin-top:.5rem;display:none}
+    .team-search-results.visible{display:block}
+    .team-result{padding:.6rem .85rem;cursor:pointer;transition:background .15s;border-bottom:1px solid var(--border);font-size:.9rem}
+    .team-result:last-child{border-bottom:none}
+    .team-result:hover{background:var(--card-alt)}
+    .team-current{display:flex;align-items:center;gap:.75rem;padding:.75rem;background:color-mix(in srgb,var(--primary) 10%,var(--card));border-radius:8px;margin-bottom:1rem}
+    .team-current-logo{width:32px;height:32px;border-radius:4px;object-fit:contain}
+    /* Toast */
+    .toast{position:fixed;bottom:2rem;right:2rem;padding:.85rem 1.25rem;border-radius:10px;font-size:.9rem;font-weight:500;color:#fff;z-index:200;transform:translateY(100px);opacity:0;transition:all .3s}
+    .toast.visible{transform:translateY(0);opacity:1}
+    .toast-success{background:var(--success)}
+    .toast-error{background:#dc2626}
+    /* Logout */
+    .logout-row{display:flex;justify-content:flex-end;margin-top:1rem}
+  </style>
+</head>
+<body>
+  <fts-layout page-title="/ Mein Profil">
+    <!-- ════════ LOGIN SCREEN ════════ -->
+    <section id="login-screen" class="login-screen">
+      <div class="card">
+        <div style="font-size:3rem;margin-bottom:1rem">🏆</div>
+        <h2>Willkommen beim BIW Pokal</h2>
+        <p>Melde dich mit Discord an, um dein Profil zu verwalten, deine Teilnahme zu setzen und dein Team-Wappen hochzuladen.</p>
+        <a id="discord-login-btn" class="discord-login-btn" href="#">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>
+          Mit Discord anmelden
+        </a>
+      </div>
+    </section>
+
+    <!-- ════════ DASHBOARD (nach Login) ════════ -->
+    <section id="dashboard" style="display:none">
+
+      <!-- Profil-Header -->
+      <div class="card">
+        <div class="profile-header">
+          <img id="user-avatar" class="profile-avatar" src="" alt="Avatar">
+          <div class="profile-info">
+            <h2 id="user-name">Laden...</h2>
+            <p id="user-discord-tag"></p>
+          </div>
+        </div>
+        <div id="user-badges" style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.75rem"></div>
+      </div>
+
+      <!-- Teilnahme -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🏆 Teilnahme</div>
+        </div>
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-label">Nächster Pokal</div>
+            <div class="toggle-sub">Bist du beim nächsten BIW Pokal dabei?</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="participation-toggle">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Profil-URL -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🔗 Onlineliga Profil</div>
+        </div>
+        <div class="form-group">
+          <label for="profile-url">Profil-URL</label>
+          <div style="display:flex;gap:.5rem">
+            <input type="url" id="profile-url" placeholder="https://www.onlineliga.de/user/deinname">
+            <button class="btn btn-primary" id="save-profile-btn">Speichern</button>
+          </div>
+          <div class="hint">Dein öffentliches Onlineliga-Profil</div>
+        </div>
+      </div>
+
+      <!-- Wappen Upload -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🛡️ Team-Wappen</div>
+        </div>
+        <div class="crest-upload-area">
+          <div class="crest-preview" id="crest-preview">
+            <div class="placeholder">Kein Wappen</div>
+          </div>
+          <div class="crest-actions">
+            <label class="btn btn-primary" style="cursor:pointer">
+              Bild auswählen
+              <input type="file" id="crest-file" accept=".png,.jpg,.jpeg,.svg,.webp" style="display:none">
+            </label>
+            <button class="btn btn-danger" id="delete-crest-btn" style="display:none">Wappen löschen</button>
+            <div class="hint">PNG, JPG oder SVG · Max. 2 MB · Empfohlen: 512×512 px, quadratisch</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Team Claim -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">⚽ Mein Team</div>
+        </div>
+        <div id="team-current" class="team-current" style="display:none">
+          <img id="team-current-logo" class="team-current-logo" src="" alt="">
+          <div>
+            <strong id="team-current-name"></strong>
+            <div style="color:var(--muted);font-size:.8rem" id="team-current-info"></div>
+          </div>
+        </div>
+        <div id="team-claim-section">
+          <div class="form-group">
+            <label for="team-search">Team suchen & verknüpfen</label>
+            <input type="text" id="team-search" placeholder="Teamname eingeben...">
+            <div class="team-search-results" id="team-search-results"></div>
+            <div class="hint">Suche dein Team und klicke darauf, um es mit deinem Profil zu verknüpfen.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Logout -->
+      <div class="logout-row">
+        <button class="btn btn-outline" id="logout-btn">Abmelden</button>
+      </div>
+    </section>
+
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+
+<script type="module">
+import { API_URL } from './js/config.js';
+import { setBackendStatus } from './js/shared-ui.js';
+const API = API_URL;
+
+// ── State ──
+let jwt = null;
+let discordId = null;
+let userProfile = null;
+
+// ── Helpers ──
+function showToast(msg, type = 'success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `toast toast-${type} visible`;
+  setTimeout(() => t.classList.remove('visible'), 3000);
+}
+
+async function apiFetch(path, opts = {}) {
+  const headers = { ...opts.headers };
+  if (jwt) headers['Authorization'] = `Bearer ${jwt}`;
+  if (opts.body && !(opts.body instanceof FormData)) {
+    headers['Content-Type'] = 'application/json';
+  }
+  const res = await fetch(`${API}${path}`, { ...opts, headers });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Fehler' }));
+    throw new Error(err.detail || `HTTP ${res.status}`);
+  }
+  if (res.status === 204) return null;
+  return res.json();
+}
+
+// ── OAuth2 Flow ──
+function initOAuth() {
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get('token');
+  const storedToken = localStorage.getItem('biw_dashboard_token');
+
+  if (token) {
+    jwt = token;
+    localStorage.setItem('biw_dashboard_token', token);
+    window.history.replaceState({}, '', window.location.pathname);
+    return true;
+  } else if (storedToken) {
+    jwt = storedToken;
+    return true;
+  }
+  return false;
+}
+
+function showLogin() {
+  document.getElementById('login-screen').style.display = '';
+  document.getElementById('dashboard').style.display = 'none';
+
+  const loginBtn = document.getElementById('discord-login-btn');
+  loginBtn.href = `${API}/api/auth/discord/login?redirect=${encodeURIComponent(window.location.origin + '/dashboard.html')}`;
+}
+
+function showDashboard() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('dashboard').style.display = '';
+}
+
+// ── Load Profile ──
+async function loadProfile() {
+  try {
+    const payload = JSON.parse(atob(jwt.split('.')[1]));
+    discordId = payload.discord_id || payload.sub;
+
+    if (!discordId) throw new Error('Keine Discord-ID im Token');
+
+    userProfile = await apiFetch(`/api/discord/users/${discordId}`);
+    renderProfile();
+    showDashboard();
+  } catch (e) {
+    console.error('Profil laden fehlgeschlagen:', e);
+    localStorage.removeItem('biw_dashboard_token');
+    jwt = null;
+    showLogin();
+    if (e.message !== 'Keine Discord-ID im Token') {
+      showToast('Sitzung abgelaufen – bitte erneut anmelden', 'error');
+    }
+  }
+}
+
+function renderProfile() {
+  const p = userProfile;
+
+  const avatarEl = document.getElementById('user-avatar');
+  if (p.discord_avatar_url) {
+    avatarEl.src = p.discord_avatar_url;
+  } else if (p.discord_id) {
+    const defaultIdx = (BigInt(p.discord_id) >> 22n) % 6n;
+    avatarEl.src = `https://cdn.discordapp.com/embed/avatars/${defaultIdx}.png`;
+  }
+
+  document.getElementById('user-name').textContent = p.discord_username || 'Unbekannt';
+  document.getElementById('user-discord-tag').textContent = `Discord-ID: ${p.discord_id}`;
+
+  const badgesEl = document.getElementById('user-badges');
+  badgesEl.innerHTML = '';
+  if (p.team_participating_next) {
+    badgesEl.innerHTML += '<span class="badge badge-success">✓ Dabei</span>';
+  } else {
+    badgesEl.innerHTML += '<span class="badge badge-danger">✗ Nicht dabei</span>';
+  }
+  if (p.team_name || p.team_id) {
+    badgesEl.innerHTML += `<span class="badge badge-muted">⚽ ${p.team_name || 'Team #' + p.team_id}</span>`;
+  }
+
+  document.getElementById('participation-toggle').checked = p.team_participating_next;
+  document.getElementById('profile-url').value = p.profile_url || '';
+
+  renderCrest();
+  renderTeam();
+}
+
+function renderCrest() {
+  const preview = document.getElementById('crest-preview');
+  const deleteBtn = document.getElementById('delete-crest-btn');
+
+  if (userProfile.crest_url) {
+    preview.innerHTML = `<img src="${API}${userProfile.crest_url}" alt="Wappen">`;
+    deleteBtn.style.display = '';
+  } else {
+    preview.innerHTML = '<div class="placeholder">Kein Wappen</div>';
+    deleteBtn.style.display = 'none';
+  }
+}
+
+function renderTeam() {
+  const currentEl = document.getElementById('team-current');
+
+  if (userProfile.team_id) {
+    currentEl.style.display = 'flex';
+    document.getElementById('team-current-name').textContent = userProfile.team_name || `Team #${userProfile.team_id}`;
+    document.getElementById('team-current-info').textContent = 'Dein verknüpftes Team';
+
+    const logoEl = document.getElementById('team-current-logo');
+    if (userProfile.crest_url) {
+      logoEl.src = `${API}${userProfile.crest_url}`;
+    } else {
+      logoEl.src = '';
+      logoEl.style.display = 'none';
+    }
+  } else {
+    currentEl.style.display = 'none';
+  }
+}
+
+// ── Event Handlers ──
+
+document.getElementById('participation-toggle').addEventListener('change', async (e) => {
+  try {
+    await apiFetch(`/api/discord/users/${discordId}/participation`, {
+      method: 'PATCH',
+      body: JSON.stringify({ participating: e.target.checked })
+    });
+    userProfile.team_participating_next = e.target.checked;
+    renderProfile();
+    showToast(e.target.checked ? 'Du bist dabei! 🏆' : 'Teilnahme zurückgezogen');
+  } catch (err) {
+    e.target.checked = !e.target.checked;
+    showToast(err.message, 'error');
+  }
+});
+
+document.getElementById('save-profile-btn').addEventListener('click', async () => {
+  const url = document.getElementById('profile-url').value.trim();
+  const btn = document.getElementById('save-profile-btn');
+  btn.disabled = true;
+
+  try {
+    await apiFetch(`/api/discord/users/${discordId}/profile`, {
+      method: 'PATCH',
+      body: JSON.stringify({ profile_url: url })
+    });
+    userProfile.profile_url = url;
+    showToast('Profil-URL gespeichert ✓');
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+document.getElementById('crest-file').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  if (file.size > 2 * 1024 * 1024) {
+    showToast('Datei zu groß (max. 2 MB)', 'error');
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  try {
+    const result = await apiFetch('/api/upload/crest', {
+      method: 'POST',
+      body: formData
+    });
+    userProfile.crest_url = result.crest_url || result.url;
+    sessionStorage.removeItem('biw_crests');
+    renderCrest();
+    showToast('Wappen hochgeladen ✓');
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+
+  e.target.value = '';
+});
+
+document.getElementById('delete-crest-btn').addEventListener('click', async () => {
+  if (!confirm('Wappen wirklich löschen?')) return;
+
+  try {
+    await apiFetch('/api/upload/crest', { method: 'DELETE' });
+    userProfile.crest_url = null;
+    sessionStorage.removeItem('biw_crests');
+    renderCrest();
+    showToast('Wappen gelöscht');
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+});
+
+let searchTimeout;
+document.getElementById('team-search').addEventListener('input', (e) => {
+  clearTimeout(searchTimeout);
+  const query = e.target.value.trim();
+  const resultsEl = document.getElementById('team-search-results');
+
+  if (query.length < 2) {
+    resultsEl.classList.remove('visible');
+    return;
+  }
+
+  searchTimeout = setTimeout(async () => {
+    try {
+      const teams = await apiFetch(`/api/teams/search?name=${encodeURIComponent(query)}`);
+      resultsEl.innerHTML = '';
+
+      if (teams.length === 0) {
+        resultsEl.innerHTML = '<div class="team-result" style="color:var(--muted)">Kein Team gefunden</div>';
+      } else {
+        teams.forEach(t => {
+          const div = document.createElement('div');
+          div.className = 'team-result';
+          div.textContent = t.name;
+          div.addEventListener('click', () => claimTeam(t.id, t.name));
+          resultsEl.appendChild(div);
+        });
+      }
+      resultsEl.classList.add('visible');
+    } catch (err) {
+      resultsEl.innerHTML = '<div class="team-result" style="color:var(--danger)">Fehler bei der Suche</div>';
+      resultsEl.classList.add('visible');
+    }
+  }, 300);
+});
+
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('#team-search') && !e.target.closest('#team-search-results')) {
+    document.getElementById('team-search-results').classList.remove('visible');
+  }
+});
+
+async function claimTeam(teamId, teamName) {
+  if (!confirm(`Team "${teamName}" mit deinem Profil verknüpfen?`)) return;
+
+  try {
+    await apiFetch(`/api/discord/users/${discordId}/claim-team`, {
+      method: 'POST',
+      body: JSON.stringify({ team_id: teamId })
+    });
+    userProfile.team_id = teamId;
+    userProfile.team_name = teamName;
+    document.getElementById('team-search').value = '';
+    document.getElementById('team-search-results').classList.remove('visible');
+    renderProfile();
+    showToast(`Team "${teamName}" verknüpft ✓`);
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+document.getElementById('logout-btn').addEventListener('click', () => {
+  localStorage.removeItem('biw_dashboard_token');
+  jwt = null;
+  discordId = null;
+  userProfile = null;
+  showLogin();
+  showToast('Abgemeldet');
+});
+
+// ── Init ──
+async function init() {
+  const hasToken = initOAuth();
+
+  if (hasToken) {
+    try {
+      await loadProfile();
+      setBackendStatus(true);
+    } catch (e) {
+      setBackendStatus(false);
+    }
+  } else {
+    showLogin();
+  }
+}
+
+init();
+
+
+</script>
+  </fts-layout>
+</body>
+</html>

@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <link rel="icon" type="image/png" href="img/logo_comic.png">
+  <title>Gruppenphase – BIW Pokal</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <script src="js/themes.js"></script>
+  <script type="module" src="js/background.js"></script>
+  <script type="module" src="js/fts-layout.js"></script>
+  <link rel="stylesheet" href="css/shared.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    td:first-child,th:first-child{text-align:center;width:40px;font-weight:600}
+    td:nth-child(2),th:nth-child(2){text-align:left}
+    .seasons-grid{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.75rem}
+    /* Matches */
+    .matches-section{margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--border)}
+    .matchday-group{margin-bottom:1rem}
+    .matchday-title{font-size:.85rem;font-weight:600;color:var(--muted);margin-bottom:.5rem;text-transform:uppercase}
+    .match-header{display:grid;grid-template-columns:1fr auto 1fr auto;gap:.75rem;align-items:center;padding:.5rem .75rem;margin-bottom:.5rem;background:var(--card);border:1px solid var(--border);border-radius:6px;font-size:.8rem;font-weight:600;color:var(--muted);text-transform:uppercase}
+    .match-header-home{text-align:right}
+    .match-header-score{text-align:center}
+    .match-header-away{text-align:left}
+    .match-item{display:grid;grid-template-columns:1fr auto 1fr auto;gap:.75rem;align-items:center;padding:.5rem .75rem;margin-bottom:.25rem;background:var(--card-alt);border-radius:6px;font-size:.9rem}
+    .match-home{text-align:right}
+    .match-score.scheduled{color:var(--muted)}
+    .match-score.played{color:var(--bg)}
+    .match-away{text-align:left}
+    .match-info{text-align:right;font-size:.8rem;color:var(--muted);white-space:nowrap}
+  </style>
+</head>
+<body>
+  <fts-layout page-title="/ Turnier">
+    <section>
+      <div class="card">
+        <h2 style="margin-top:0">Gruppenphase</h2>
+        <h3>Saisons</h3>
+        <div id="seasons" class="seasons-grid"></div>
+      </div>
+
+      <div class="card">
+        <h3>Gruppen & Tabellen (<span id="active-season">–</span>)</h3>
+        <div id="groups"><em>Wähle eine Saison</em></div>
+      </div>
+    </section>
+
+<script type="module">
+import { API_URL } from './js/config.js';
+import { setBackendStatus } from './js/shared-ui.js';
+import { loadCrests, crestImg, teamName, registerTeams } from './js/team-utils.js';
+const API = API_URL;
+
+const seasonsContainer = document.getElementById('seasons');
+const groupsDiv = document.getElementById('groups');
+const activeSeasonSpan = document.getElementById('active-season');
+let openedSeasonId = null;
+
+async function loadTeams(seasonId) {
+  const groups = await fetch(`${API}/api/seasons/${seasonId}/groups-with-teams`).then(r => r.json());
+  registerTeams(groups);
+}
+
+async function loadSeason(season, clickedElement) {
+  if (openedSeasonId === season.id) {
+    openedSeasonId = null;
+    groupsDiv.innerHTML = '<em>Wähle eine Saison</em>';
+    activeSeasonSpan.textContent = '–';
+    seasonsContainer.querySelectorAll('.season-item').forEach(li => li.classList.remove('active'));
+    return;
+  }
+
+  openedSeasonId = season.id;
+  activeSeasonSpan.textContent = season.name;
+  groupsDiv.innerHTML = '<em>Lade...</em>';
+
+  // Active state
+  seasonsContainer.querySelectorAll('.season-item').forEach(li => li.classList.remove('active'));
+  if (clickedElement) {
+    clickedElement.classList.add('active');
+  } else {
+    // Fallback: Element über data-Attribut finden
+    const el = seasonsContainer.querySelector(`[data-season-id="${season.id}"]`);
+    if (el) el.classList.add('active');
+  }
+
+  // Teams und Crests cachen
+  await Promise.all([loadTeams(season.id), loadCrests()]);
+
+  // Gruppen laden
+  const groups = await fetch(`${API}/api/seasons/${season.id}/groups-with-teams`).then(r => r.json());
+  groupsDiv.innerHTML = '';
+
+  for (const g of groups) {
+    const card = document.createElement('div');
+    card.className = 'card';
+    const teamNames = g.teams.map(t => t.name).join(', ') || '–';
+    card.innerHTML = `<div class="card-header"><div class="card-title">Gruppe ${g.group.name}</div><div class="card-sub">${teamNames}</div></div>`;
+
+    const table = await fetch(`${API}/api/groups/${g.group.id}/standings`).then(r => r.json());
+    if (table.length) {
+      const maxPts = Math.max(...table.map(r => r.points));
+      const tbl = document.createElement('table');
+      const header = tbl.insertRow();
+      ['Pl.', 'Team', 'Sp', 'S', 'U', 'N', 'T+', 'T-', 'Pkt'].forEach(h => {
+        const th = document.createElement('th');
+        th.textContent = h;
+        header.appendChild(th);
+      });
+      table.forEach((row, idx) => {
+        const tr = tbl.insertRow();
+        if (row.points === maxPts) tr.className = 'leader';
+
+        tr.insertCell().textContent = idx + 1;
+
+        const teamCell = tr.insertCell();
+        const teamLink = document.createElement('a');
+        teamLink.href = `team.html?id=${row.team_id}`;
+        teamLink.style.color = 'inherit';
+        teamLink.style.textDecoration = 'none';
+        teamLink.style.fontWeight = row.points === maxPts ? '700' : '500';
+        teamLink.style.display = 'inline-flex';
+        teamLink.style.alignItems = 'center';
+        teamLink.innerHTML = `${crestImg(row.team_id)}${teamName(row.team_id)}`;
+        teamCell.appendChild(teamLink);
+
+        tr.insertCell().textContent = row.played;
+        tr.insertCell().textContent = row.won;
+        tr.insertCell().textContent = row.draw;
+        tr.insertCell().textContent = row.lost;
+        tr.insertCell().textContent = row.goals_for;
+        tr.insertCell().textContent = row.goals_against;
+        tr.insertCell().textContent = row.points;
+      });
+      const scrollWrap = document.createElement('div');
+      scrollWrap.style.overflowX = 'auto';
+      scrollWrap.appendChild(tbl);
+      card.appendChild(scrollWrap);
+    }
+
+    // Matches anzeigen
+    if (g.matches && g.matches.length > 0) {
+      const matchesSection = document.createElement('div');
+      matchesSection.className = 'matches-section';
+
+      // Nach Spieltag gruppieren
+      const matchesByDay = {};
+      g.matches.forEach(m => {
+        const day = m.matchday || 0;
+        if (!matchesByDay[day]) matchesByDay[day] = [];
+        matchesByDay[day].push(m);
+      });
+
+      // Header für Matches hinzufügen (einmalig am Anfang)
+      const headerDiv = document.createElement('div');
+      headerDiv.className = 'match-header';
+      const h1 = document.createElement('div');
+      h1.className = 'match-header-home';
+      h1.textContent = 'Heim';
+      const h2 = document.createElement('div');
+      h2.className = 'match-header-score';
+      h2.textContent = 'Ergebnis';
+      const h3 = document.createElement('div');
+      h3.className = 'match-header-away';
+      h3.textContent = 'Gast';
+      const h4 = document.createElement('div');
+      h4.textContent = 'Spieltag';
+      headerDiv.appendChild(h1);
+      headerDiv.appendChild(h2);
+      headerDiv.appendChild(h3);
+      headerDiv.appendChild(h4);
+      matchesSection.appendChild(headerDiv);
+
+      // Spieltage sortiert darstellen
+      Object.keys(matchesByDay).sort((a, b) => a - b).forEach(day => {
+        const dayDiv = document.createElement('div');
+        dayDiv.className = 'matchday-group';
+
+        matchesByDay[day].forEach(m => {
+          const matchDiv = document.createElement('div');
+          matchDiv.className = 'match-item';
+
+          // Team A (rechtsbündig)
+          const homeDiv = document.createElement('div');
+          homeDiv.className = 'match-home';
+          homeDiv.style.display = 'flex';
+          homeDiv.style.alignItems = 'center';
+          homeDiv.style.justifyContent = 'flex-end';
+          homeDiv.innerHTML = `${teamName(m.home_team_id)}${crestImg(m.home_team_id)}`;
+
+          // Ergebnis (zentriert)
+          const scoreDiv = document.createElement('div');
+          scoreDiv.className = `match-score ${m.status}`;
+          if (m.status === 'played' && m.home_goals !== null && m.away_goals !== null) {
+            scoreDiv.textContent = `${m.home_goals}:${m.away_goals}`;
+          } else {
+            scoreDiv.textContent = '-:-';
+          }
+
+          // Team B (linksbündig)
+          const awayDiv = document.createElement('div');
+          awayDiv.className = 'match-away';
+          awayDiv.style.display = 'flex';
+          awayDiv.style.alignItems = 'center';
+          awayDiv.innerHTML = `${crestImg(m.away_team_id)}${teamName(m.away_team_id)}`;
+
+          // Spieltag-Info (rechtsbündig)
+          const infoDiv = document.createElement('div');
+          infoDiv.className = 'match-info';
+          if (m.matchday) {
+            if (m.ingame_week) {
+              infoDiv.textContent = `${m.matchday} (W${m.ingame_week})`;
+            } else {
+              infoDiv.textContent = `Spieltag ${m.matchday}`;
+            }
+          }
+
+          matchDiv.appendChild(homeDiv);
+          matchDiv.appendChild(scoreDiv);
+          matchDiv.appendChild(awayDiv);
+          matchDiv.appendChild(infoDiv);
+          dayDiv.appendChild(matchDiv);
+        });
+
+        matchesSection.appendChild(dayDiv);
+      });
+
+      card.appendChild(matchesSection);
+    }
+
+    groupsDiv.appendChild(card);
+  }
+}
+
+// Saisons laden
+fetch(`${API}/api/seasons`).then(r => r.json()).then(seasons => {
+  setBackendStatus(true);
+  seasonsContainer.innerHTML = '';
+
+  // Sortiere nach ID absteigend (neueste zuerst), nur die 3 neuesten anzeigen
+  seasons.sort((a, b) => b.id - a.id);
+  const recentSeasons = seasons.slice(0, 3);
+
+  recentSeasons.forEach(s => {
+    const div = document.createElement('div');
+    div.textContent = s.name;
+    div.className = 'season-item';
+    div.dataset.seasonId = s.id;
+    div.onclick = (e) => loadSeason(s, e.target);
+    seasonsContainer.appendChild(div);
+  });
+
+  // Hinweis auf Archiv
+  const hint = document.createElement('p');
+  hint.innerHTML = 'Alle vergangenen Turniere sind im <a href="archiv.html" style="color:var(--primary)">Archiv</a> einsehbar.';
+  hint.style.cssText = 'font-size:.85rem;color:var(--muted);margin-top:.5rem;width:100%';
+  seasonsContainer.appendChild(hint);
+
+  // Default-Saison automatisch laden (planned > active > erste)
+  const defaultSeason =
+    recentSeasons.find(s => s.status === 'planned') ||
+    recentSeasons.find(s => s.status === 'active') ||
+    recentSeasons[0];
+
+  if (defaultSeason) {
+    loadSeason(defaultSeason);
+  }
+});
+
+</script>
+  </fts-layout>
+</body>
+</html>

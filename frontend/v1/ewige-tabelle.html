@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <link rel="icon" type="image/png" href="img/logo_comic.png">
+  <title>Ewige Tabelle – BIW Pokal</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <script src="js/themes.js"></script>
+  <script type="module" src="js/background.js"></script>
+  <script type="module" src="js/fts-layout.js"></script>
+  <link rel="stylesheet" href="css/shared.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    th{position:sticky;top:0;background:var(--card);z-index:10}
+    @media(min-width:769px){th{top:72px}}
+    td:first-child,th:first-child{text-align:left;padding-left:1rem}
+    tr.top3{background:var(--card-alt)}
+    tr.top1{font-weight:700;color:var(--primary)}
+    .rank{font-weight:700;color:var(--primary);min-width:40px}
+  </style>
+</head>
+<body>
+  <fts-layout page-title="/ Ewige Tabelle">
+    <section>
+      <div class="card">
+        <h2 style="margin-top:0">Ewige Tabelle</h2>
+        <p style="color:var(--muted);margin-bottom:1.5rem">Alle Teams, alle Spiele, alle Tore – über alle Saisons hinweg</p>
+        <div id="standings-container" class="loading">
+          <em>Lade Statistiken...</em>
+        </div>
+      </div>
+    </section>
+
+<script type="module">
+import { API_URL } from './js/config.js';
+import { setBackendStatus } from './js/shared-ui.js';
+import { loadCrests, crestImg } from './js/team-utils.js';
+const API = API_URL;
+
+// Ewige Tabelle laden
+async function loadAllTimeStandings() {
+  const container = document.getElementById('standings-container');
+
+  try {
+    await loadCrests();
+    const standings = await fetch(`${API}/api/all-time-standings`).then(r => r.json());
+    setBackendStatus(true);
+
+    if (standings.length === 0) {
+      container.innerHTML = '<div class="loading"><em>Noch keine Spiele vorhanden</em></div>';
+      return;
+    }
+
+    let html = `
+      <div style="overflow-x:auto"><table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Team</th>
+            <th>Sp</th>
+            <th>S</th>
+            <th>U</th>
+            <th>N</th>
+            <th>T+</th>
+            <th>T-</th>
+            <th>TD</th>
+            <th>Pkt</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+
+    standings.forEach((row, idx) => {
+      const rank = idx + 1;
+      const tdiff = row.goals_for - row.goals_against;
+      let rowClass = '';
+
+      if (rank === 1) rowClass = 'top1';
+      else if (rank <= 3) rowClass = 'top3';
+
+      html += `
+        <tr class="${rowClass}">
+          <td class="rank">${rank}</td>
+          <td style="text-align:left;display:flex;align-items:center;gap:4px">
+            ${crestImg(row.team_id)}<a href="team.html?id=${row.team_id}" style="color:inherit;text-decoration:none;font-weight:${rank === 1 ? '700' : '500'}">${row.team_name}</a>
+          </td>
+          <td>${row.played}</td>
+          <td>${row.won}</td>
+          <td>${row.draw}</td>
+          <td>${row.lost}</td>
+          <td>${row.goals_for}</td>
+          <td>${row.goals_against}</td>
+          <td style="font-weight:600;color:${tdiff > 0 ? 'var(--success)' : tdiff < 0 ? 'var(--danger)' : 'inherit'}">${tdiff > 0 ? '+' : ''}${tdiff}</td>
+          <td style="font-weight:700">${row.points}</td>
+        </tr>
+      `;
+    });
+
+    html += '</tbody></table></div>';
+    container.innerHTML = html;
+  } catch (e) {
+    setBackendStatus(false);
+    container.innerHTML = '<div class="loading" style="color:var(--danger)">Fehler beim Laden der Daten</div>';
+  }
+}
+
+loadAllTimeStandings();
+
+</script>
+  </fts-layout>
+</body>
+</html>

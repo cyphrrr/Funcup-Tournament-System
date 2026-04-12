@@ -2,114 +2,416 @@
 <html lang="de">
 <head>
   <meta charset="utf-8" />
-  <link rel="icon" type="image/png" href="img/logo_comic.png">
+  <link rel="icon" type="image/png" href="../img/logo_comic.png">
   <title>Ewige Tabelle – BIW Pokal</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="robots" content="noindex, nofollow" />
-  <script src="js/themes.js"></script>
-  <script type="module" src="js/background.js"></script>
-  <script type="module" src="js/fts-layout.js"></script>
-  <link rel="stylesheet" href="css/shared.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=Lexend:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <script>
+    (function() {
+      var stored = localStorage.getItem('biw_v2_mode');
+      var theme = stored || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+  </script>
   <style>
-    th{position:sticky;top:0;background:var(--card);z-index:10}
-    @media(min-width:769px){th{top:72px}}
-    td:first-child,th:first-child{text-align:left;padding-left:1rem}
-    tr.top3{background:var(--card-alt)}
-    tr.top1{font-weight:700;color:var(--primary)}
-    .rank{font-weight:700;color:var(--primary);min-width:40px}
+    :root,
+    [data-theme="dark"] {
+      --bg: #06090f;
+      --bg-elevated: #0c1018;
+      --surface: #111822;
+      --surface-hover: #172030;
+      --border: #1e2a3a;
+      --border-glow: #2dd4bf33;
+      --text: #e8edf4;
+      --text-secondary: #7b8fa8;
+      --accent: #0d9488;
+      --accent-dim: #0d948822;
+      --accent-glow: #0d948844;
+      --accent-text: #2dd4bf;
+      --gold: #fbbf24;
+      --silver: #94a3b8;
+      --bronze: #d97706;
+      --danger: #f87171;
+      --success: #34d399;
+      --shadow-alpha: 0.3;
+      --header-bg: rgba(6, 9, 15, 0.85);
+      --noise-opacity: 0.04;
+      --font-display: 'Chakra Petch', sans-serif;
+      --font-body: 'Lexend', sans-serif;
+    }
+
+    [data-theme="light"] {
+      --bg: #f0f2f5;
+      --bg-elevated: #e8eaef;
+      --surface: #ffffff;
+      --surface-hover: #f5f7fa;
+      --border: #d1d5de;
+      --border-glow: #0d948833;
+      --text: #111827;
+      --text-secondary: #5b6577;
+      --accent: #0d9488;
+      --accent-dim: #0d948815;
+      --accent-glow: #0d948830;
+      --accent-text: #0d9488;
+      --gold: #b8860b;
+      --silver: #64748b;
+      --bronze: #a0630a;
+      --danger: #dc2626;
+      --success: #059669;
+      --shadow-alpha: 0.08;
+      --header-bg: rgba(240, 242, 245, 0.88);
+      --noise-opacity: 0.025;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body { font-family: var(--font-body); color: var(--text); background: var(--bg); overflow-x: hidden; -webkit-font-smoothing: antialiased; }
+    body::before { content: ''; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E"); pointer-events: none; z-index: 0; opacity: var(--noise-opacity); transition: opacity 0.4s; }
+    a { color: var(--accent-text); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* === HEADER === */
+    .site-header { position: sticky; top: 0; z-index: 100; background: var(--header-bg); backdrop-filter: blur(20px) saturate(1.8); -webkit-backdrop-filter: blur(20px) saturate(1.8); border-bottom: 1px solid var(--border); padding: 0 2rem; height: 60px; display: flex; align-items: center; justify-content: space-between; }
+    .header-brand { display: flex; align-items: center; gap: 0.75rem; text-decoration: none; }
+    .header-brand img { height: 36px; }
+    .header-brand-text { font-family: var(--font-display); font-size: 1.2rem; font-weight: 700; letter-spacing: 0.04em; color: var(--text); }
+    .header-brand-text span { color: var(--accent); }
+    .header-nav { display: flex; align-items: center; gap: 0.25rem; }
+    .header-nav a { font-family: var(--font-display); font-size: 0.78rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-secondary); padding: 0.5rem 0.75rem; border-radius: 6px; transition: all 0.2s; text-decoration: none; }
+    .header-nav a:hover, .header-nav a.active { color: var(--accent); background: var(--accent-dim); }
+    .burger-btn { display: none; background: none; border: none; cursor: pointer; padding: 0.5rem; flex-direction: column; gap: 5px; }
+    .burger-btn span { display: block; width: 22px; height: 2px; background: var(--text); border-radius: 2px; transition: all 0.3s; }
+    .mode-toggle { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; padding: 0.4rem; display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; font-size: 1rem; transition: all 0.25s; flex-shrink: 0; line-height: 1; }
+    .mode-toggle:hover { background: var(--surface-hover); border-color: var(--accent-glow); }
+    .mode-toggle .icon-sun, .mode-toggle .icon-moon { display: none; }
+    [data-theme="dark"] .mode-toggle .icon-sun { display: block; }
+    [data-theme="light"] .mode-toggle .icon-moon { display: block; }
+    @media (max-width: 768px) {
+      .header-nav { display: none; }
+      .burger-btn { display: flex; }
+      .header-nav.open { display: flex; flex-direction: column; position: fixed; top: 60px; right: 0; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 0 0 12px 12px; padding: 1rem; z-index: 200; gap: 0.25rem; }
+    }
+
+    /* === PAGE HERO === */
+    .page-hero { position: relative; padding: 3.5rem 2rem 2.5rem; text-align: center; overflow: hidden; }
+    .page-hero::before { content: ''; position: absolute; top: -40%; left: 50%; transform: translateX(-50%); width: 600px; height: 600px; background: radial-gradient(circle, rgba(45, 212, 191, 0.1) 0%, transparent 70%); pointer-events: none; }
+    .page-hero h1 { font-family: var(--font-display); font-size: clamp(1.8rem, 4vw, 2.6rem); font-weight: 700; letter-spacing: -0.02em; position: relative; animation: fadeUp 0.6s ease-out both; }
+    .page-hero h1 .accent { color: var(--accent-text); }
+    .page-hero p { color: var(--text-secondary); font-size: 0.95rem; margin-top: 0.5rem; position: relative; animation: fadeUp 0.6s ease-out 0.1s both; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+
+    /* === CONTENT === */
+    .content-wrap { max-width: 1000px; margin: 0 auto; padding: 0 2rem 4rem; position: relative; z-index: 1; }
+
+    .table-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+      animation: fadeUp 0.6s ease-out 0.15s both;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, var(--shadow-alpha));
+    }
+
+    .table-scroll { overflow-x: auto; }
+
+    .standings-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+    .standings-table th {
+      font-family: var(--font-display);
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-secondary);
+      padding: 0.75rem 0.6rem;
+      border-bottom: 1px solid var(--border);
+      text-align: center;
+      position: sticky;
+      top: 0;
+      background: var(--surface);
+      z-index: 5;
+    }
+    .standings-table th:first-child,
+    .standings-table td:first-child { text-align: center; width: 48px; }
+    .standings-table th:nth-child(2),
+    .standings-table td:nth-child(2) { text-align: left; }
+    .standings-table td {
+      padding: 0.6rem;
+      border-bottom: 1px solid var(--border);
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+    }
+    .standings-table tbody tr { transition: background 0.15s; }
+    .standings-table tbody tr:hover { background: var(--accent-dim); }
+    .standings-table tbody tr:last-child td { border-bottom: none; }
+
+    .rank-cell { font-family: var(--font-display); font-weight: 700; }
+    .rank-1 .rank-cell { color: var(--gold); }
+    .rank-2 .rank-cell { color: var(--silver); }
+    .rank-3 .rank-cell { color: var(--bronze); }
+
+    .rank-1 { background: rgba(251, 191, 36, 0.06); }
+    .rank-2 { background: rgba(148, 163, 184, 0.04); }
+    .rank-3 { background: rgba(217, 119, 6, 0.04); }
+
+    .team-cell {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .team-cell a {
+      color: var(--text);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .team-cell a:hover { color: var(--accent-text); text-decoration: underline; }
+    .rank-1 .team-cell a { font-weight: 700; color: var(--gold); }
+
+    .pts-cell { font-weight: 700; font-family: var(--font-display); }
+    .td-positive { color: var(--success); font-weight: 600; }
+    .td-negative { color: var(--danger); font-weight: 600; }
+
+    .loading-state {
+      text-align: center;
+      padding: 3rem 2rem;
+      color: var(--text-secondary);
+    }
+    .loading-skeleton {
+      background: linear-gradient(90deg, var(--surface) 25%, var(--surface-hover) 50%, var(--surface) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s ease-in-out infinite;
+      border-radius: 6px;
+      height: 40px;
+      margin-bottom: 4px;
+    }
+    .error-state { text-align: center; padding: 3rem 2rem; color: var(--danger); }
+
+    [data-theme="light"] .table-card { box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06); }
+    [data-theme="light"] .standings-table tbody tr:hover { background: rgba(13, 148, 136, 0.04); }
+    [data-theme="light"] .status-dot { box-shadow: none; }
+
+    /* === FOOTER === */
+    .site-footer { border-top: 1px solid var(--border); padding: 1.5rem 2rem; display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; color: var(--text-secondary); max-width: 1200px; margin: 0 auto; flex-wrap: wrap; gap: 1rem; }
+    .footer-status { display: flex; align-items: center; gap: 0.5rem; }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--success); box-shadow: 0 0 6px var(--success); }
+    .status-dot.offline { background: var(--danger); box-shadow: 0 0 6px var(--danger); }
+    .footer-links a { color: var(--text-secondary); margin-left: 1rem; }
+    .footer-links a:hover { color: var(--accent); }
+    @media (max-width: 768px) {
+      .site-footer { flex-direction: column; text-align: center; }
+      .page-hero { padding: 2.5rem 1.5rem 1.5rem; }
+    }
   </style>
 </head>
 <body>
-  <fts-layout page-title="/ Ewige Tabelle">
-    <section>
-      <div class="card">
-        <h2 style="margin-top:0">Ewige Tabelle</h2>
-        <p style="color:var(--muted);margin-bottom:1.5rem">Alle Teams, alle Spiele, alle Tore – über alle Saisons hinweg</p>
-        <div id="standings-container" class="loading">
-          <em>Lade Statistiken...</em>
+
+  <header class="site-header">
+    <a href="index.html" class="header-brand">
+      <img src="../img/logo_comic.png" alt="BIW Pokal">
+      <div class="header-brand-text">BIW<span>Pokal</span></div>
+    </a>
+    <nav class="header-nav" id="header-nav">
+      <a href="index.html">Start</a>
+      <a href="turnier.html">Gruppen</a>
+      <a href="ko.html">KO-Phase</a>
+      <a href="ewige-tabelle.html" class="active">Ewige Tabelle</a>
+      <a href="archiv.html">Archiv</a>
+      <a href="regeln.html">Regeln</a>
+      <a href="dashboard.html">Profil</a>
+    </nav>
+    <div style="display:flex;align-items:center;gap:0.5rem">
+      <button class="mode-toggle" id="mode-toggle" aria-label="Light/Dark Mode umschalten">
+        <span class="icon-sun">&#9728;&#65039;</span>
+        <span class="icon-moon">&#9790;&#65039;</span>
+      </button>
+      <button class="burger-btn" id="burger-btn" aria-label="Menue">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </header>
+
+  <section class="page-hero">
+    <h1><span class="accent">/</span> Ewige Tabelle</h1>
+    <p>Alle Teams, alle Spiele, alle Tore &ndash; &uuml;ber alle Saisons hinweg</p>
+  </section>
+
+  <div class="content-wrap">
+    <div class="table-card">
+      <div id="standings-container">
+        <div style="padding:1rem">
+          <div class="loading-skeleton"></div>
+          <div class="loading-skeleton"></div>
+          <div class="loading-skeleton"></div>
+          <div class="loading-skeleton"></div>
+          <div class="loading-skeleton"></div>
         </div>
       </div>
-    </section>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    <div class="footer-status">
+      <span class="status-dot" id="backend-dot"></span>
+      <span id="backend-text">Verbinde...</span>
+    </div>
+    <div>&copy; 2026 BIW Pokal &middot; <a href="impressum.html">Impressum</a> &middot; <a href="datenschutz.html">Datenschutz</a></div>
+    <div class="footer-links">
+      <span id="app-version" style="opacity:0.5"></span>
+    </div>
+  </footer>
 
 <script type="module">
-import { API_URL } from './js/config.js';
-import { setBackendStatus } from './js/shared-ui.js';
-import { loadCrests, crestImg } from './js/team-utils.js';
-const API = API_URL;
+import { API_URL } from '../js/config.js';
+import { loadCrests, crestImg } from '../js/team-utils.js';
+var API = API_URL;
 
-// Ewige Tabelle laden
+document.getElementById('burger-btn').addEventListener('click', function() {
+  document.getElementById('header-nav').classList.toggle('open');
+});
+
+document.getElementById('mode-toggle').addEventListener('click', function() {
+  var current = document.documentElement.getAttribute('data-theme') || 'dark';
+  var next = current === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('biw_v2_mode', next);
+});
+
+function buildCrestEl(teamId, size) {
+  if (!teamId) return null;
+  var htmlStr = crestImg(teamId, size || 18);
+  if (!htmlStr) return null;
+  var doc = new DOMParser().parseFromString(htmlStr, 'text/html');
+  var img = doc.querySelector('img');
+  if (!img) return null;
+  var el = document.createElement('img');
+  el.src = img.src;
+  el.alt = '';
+  el.loading = 'lazy';
+  el.style.cssText = 'width:' + (size || 18) + 'px;height:' + (size || 18) + 'px;object-fit:contain;border-radius:2px;flex-shrink:0';
+  el.addEventListener('error', function() { el.style.display = 'none'; });
+  return el;
+}
+
 async function loadAllTimeStandings() {
-  const container = document.getElementById('standings-container');
+  var container = document.getElementById('standings-container');
 
   try {
     await loadCrests();
-    const standings = await fetch(`${API}/api/all-time-standings`).then(r => r.json());
-    setBackendStatus(true);
+    var standings = await fetch(API + '/api/all-time-standings').then(function(r) { return r.json(); });
+
+    document.getElementById('backend-dot').classList.remove('offline');
+    document.getElementById('backend-text').textContent = 'Online';
 
     if (standings.length === 0) {
-      container.innerHTML = '<div class="loading"><em>Noch keine Spiele vorhanden</em></div>';
+      container.textContent = '';
+      var empty = document.createElement('div');
+      empty.className = 'loading-state';
+      empty.textContent = 'Noch keine Spiele vorhanden';
+      container.appendChild(empty);
       return;
     }
 
-    let html = `
-      <div style="overflow-x:auto"><table>
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Team</th>
-            <th>Sp</th>
-            <th>S</th>
-            <th>U</th>
-            <th>N</th>
-            <th>T+</th>
-            <th>T-</th>
-            <th>TD</th>
-            <th>Pkt</th>
-          </tr>
-        </thead>
-        <tbody>
-    `;
+    var scrollWrap = document.createElement('div');
+    scrollWrap.className = 'table-scroll';
+    var table = document.createElement('table');
+    table.className = 'standings-table';
 
-    standings.forEach((row, idx) => {
-      const rank = idx + 1;
-      const tdiff = row.goals_for - row.goals_against;
-      let rowClass = '';
-
-      if (rank === 1) rowClass = 'top1';
-      else if (rank <= 3) rowClass = 'top3';
-
-      html += `
-        <tr class="${rowClass}">
-          <td class="rank">${rank}</td>
-          <td style="text-align:left;display:flex;align-items:center;gap:4px">
-            ${crestImg(row.team_id)}<a href="team.html?id=${row.team_id}" style="color:inherit;text-decoration:none;font-weight:${rank === 1 ? '700' : '500'}">${row.team_name}</a>
-          </td>
-          <td>${row.played}</td>
-          <td>${row.won}</td>
-          <td>${row.draw}</td>
-          <td>${row.lost}</td>
-          <td>${row.goals_for}</td>
-          <td>${row.goals_against}</td>
-          <td style="font-weight:600;color:${tdiff > 0 ? 'var(--success)' : tdiff < 0 ? 'var(--danger)' : 'inherit'}">${tdiff > 0 ? '+' : ''}${tdiff}</td>
-          <td style="font-weight:700">${row.points}</td>
-        </tr>
-      `;
+    // thead
+    var thead = document.createElement('thead');
+    var headerRow = document.createElement('tr');
+    ['#', 'Team', 'Sp', 'S', 'U', 'N', 'T+', 'T\u2212', 'TD', 'Pkt'].forEach(function(label) {
+      var th = document.createElement('th');
+      th.textContent = label;
+      headerRow.appendChild(th);
     });
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
 
-    html += '</tbody></table></div>';
-    container.innerHTML = html;
+    // tbody
+    var tbody = document.createElement('tbody');
+    standings.forEach(function(row, idx) {
+      var rank = idx + 1;
+      var tr = document.createElement('tr');
+      if (rank === 1) tr.className = 'rank-1';
+      else if (rank === 2) tr.className = 'rank-2';
+      else if (rank === 3) tr.className = 'rank-3';
+
+      // Rank
+      var tdRank = document.createElement('td');
+      tdRank.className = 'rank-cell';
+      tdRank.textContent = rank;
+      tr.appendChild(tdRank);
+
+      // Team name with crest
+      var tdTeam = document.createElement('td');
+      var teamWrap = document.createElement('div');
+      teamWrap.className = 'team-cell';
+      var crest = buildCrestEl(row.team_id);
+      if (crest) teamWrap.appendChild(crest);
+      var link = document.createElement('a');
+      link.href = 'team.html?id=' + row.team_id;
+      link.textContent = row.team_name;
+      teamWrap.appendChild(link);
+      tdTeam.appendChild(teamWrap);
+      tr.appendChild(tdTeam);
+
+      // Stats
+      [row.played, row.won, row.draw, row.lost, row.goals_for, row.goals_against].forEach(function(val) {
+        var td = document.createElement('td');
+        td.textContent = val;
+        tr.appendChild(td);
+      });
+
+      // Goal diff
+      var tdiff = row.goals_for - row.goals_against;
+      var tdTD = document.createElement('td');
+      tdTD.textContent = (tdiff > 0 ? '+' : '') + tdiff;
+      if (tdiff > 0) tdTD.className = 'td-positive';
+      else if (tdiff < 0) tdTD.className = 'td-negative';
+      tr.appendChild(tdTD);
+
+      // Points
+      var tdPts = document.createElement('td');
+      tdPts.className = 'pts-cell';
+      tdPts.textContent = row.points;
+      tr.appendChild(tdPts);
+
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    scrollWrap.appendChild(table);
+
+    container.textContent = '';
+    container.appendChild(scrollWrap);
   } catch (e) {
-    setBackendStatus(false);
-    container.innerHTML = '<div class="loading" style="color:var(--danger)">Fehler beim Laden der Daten</div>';
+    document.getElementById('backend-dot').classList.add('offline');
+    document.getElementById('backend-text').textContent = 'Offline';
+    container.textContent = '';
+    var err = document.createElement('div');
+    err.className = 'error-state';
+    err.textContent = 'Fehler beim Laden der Daten';
+    container.appendChild(err);
   }
 }
 
 loadAllTimeStandings();
 
+fetch(API + '/api/version').then(function(r) { return r.json(); }).then(function(d) {
+  if (d.version) document.getElementById('app-version').textContent = 'v' + d.version;
+}).catch(function() {});
+
+fetch(API + '/api/track', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ page: 'ewige-tabelle', referrer: document.referrer || '' })
+}).catch(function() {});
 </script>
-  </fts-layout>
 </body>
 </html>

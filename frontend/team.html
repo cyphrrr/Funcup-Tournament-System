@@ -2,177 +2,474 @@
 <html lang="de">
 <head>
   <meta charset="utf-8" />
-  <link rel="icon" type="image/png" href="img/logo_comic.png">
+  <link rel="icon" type="image/png" href="../img/logo_comic.png">
   <title>Team-Profil – BIW Pokal</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="robots" content="noindex, nofollow" />
-  <script src="js/themes.js"></script>
-  <script type="module" src="js/background.js"></script>
-  <script type="module" src="js/fts-layout.js"></script>
-  <link rel="stylesheet" href="css/shared.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=Lexend:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <script>
+    (function() {
+      var stored = localStorage.getItem('biw_v2_mode');
+      var theme = stored || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+  </script>
   <style>
-    /* Overrides: flat header */
-    header{background:var(--card);border-bottom:1px solid var(--border);box-shadow:none}
-    main{max-width:900px}
-    a{text-decoration:none}
-    a:hover{text-decoration:underline;opacity:1}
-    .back-link{display:inline-flex;align-items:center;gap:.5rem;color:var(--muted);font-size:.9rem;margin-bottom:1.5rem}
-    .back-link:hover{color:var(--primary)}
-    /* Team Header */
-    .team-header{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:2rem;margin-bottom:2rem;display:flex;flex-direction:column;align-items:center;gap:1rem;text-align:center}
-    .team-logo{width:160px;height:160px;border-radius:12px;background:color-mix(in srgb,var(--primary) 10%,var(--card));display:flex;align-items:center;justify-content:center;font-size:4rem;font-weight:700;color:var(--primary);flex-shrink:0;border:1px solid var(--border)}
-    .team-logo img{width:100%;height:100%;object-fit:cover;border-radius:10px}
-    .team-name{font-size:2rem;font-weight:700;margin:0}
-    .team-buttons{display:flex;gap:.5rem;justify-content:center}
-    .team-buttons button,.team-buttons a{padding:.5rem 1rem;border-radius:8px;text-decoration:none;font-weight:600;font-size:.9rem}
-    .team-meta{display:flex;gap:1rem;color:var(--muted);font-size:.9rem}
-    .team-meta a{color:var(--primary);text-decoration:none}
-    .team-meta a:hover{text-decoration:underline}
-    /* Stats Cards */
-    .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:1rem;margin-bottom:2rem}
-    .stat-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:1rem;text-align:center}
-    .stat-value{font-size:1.8rem;font-weight:700;font-family:'Outfit',sans-serif;color:var(--primary)}
-    .stat-label{font-size:.8rem;color:var(--muted);margin-top:.25rem}
-    /* Override: flat cards */
-    .card{background:var(--card);border-top:1px solid var(--border);border-top-left-radius:12px;border-top-right-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,.04)}
-    .card h2{margin:0 0 1rem;font-size:1.2rem}
+    :root,
+    [data-theme="dark"] {
+      --bg: #06090f;
+      --bg-elevated: #0c1018;
+      --surface: #111822;
+      --surface-hover: #172030;
+      --border: #1e2a3a;
+      --border-glow: #2dd4bf33;
+      --text: #e8edf4;
+      --text-secondary: #7b8fa8;
+      --accent: #0d9488;
+      --accent-dim: #0d948822;
+      --accent-glow: #0d948844;
+      --accent-text: #2dd4bf;
+      --gold: #fbbf24;
+      --danger: #f87171;
+      --success: #34d399;
+      --warning: #fbbf24;
+      --shadow-alpha: 0.3;
+      --header-bg: rgba(6, 9, 15, 0.85);
+      --noise-opacity: 0.04;
+      --font-display: 'Chakra Petch', sans-serif;
+      --font-body: 'Lexend', sans-serif;
+    }
+
+    [data-theme="light"] {
+      --bg: #f0f2f5;
+      --bg-elevated: #e8eaef;
+      --surface: #ffffff;
+      --surface-hover: #f5f7fa;
+      --border: #d1d5de;
+      --border-glow: #0d948833;
+      --text: #111827;
+      --text-secondary: #5b6577;
+      --accent: #0d9488;
+      --accent-dim: #0d948815;
+      --accent-glow: #0d948830;
+      --accent-text: #0d9488;
+      --gold: #b8860b;
+      --danger: #dc2626;
+      --success: #059669;
+      --warning: #d97706;
+      --shadow-alpha: 0.08;
+      --header-bg: rgba(240, 242, 245, 0.88);
+      --noise-opacity: 0.025;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body { font-family: var(--font-body); color: var(--text); background: var(--bg); overflow-x: hidden; -webkit-font-smoothing: antialiased; }
+    body::before { content: ''; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E"); pointer-events: none; z-index: 0; opacity: var(--noise-opacity); transition: opacity 0.4s; }
+    a { color: var(--accent-text); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* === HEADER === */
+    .site-header { position: sticky; top: 0; z-index: 100; background: var(--header-bg); backdrop-filter: blur(20px) saturate(1.8); -webkit-backdrop-filter: blur(20px) saturate(1.8); border-bottom: 1px solid var(--border); padding: 0 2rem; height: 60px; display: flex; align-items: center; justify-content: space-between; }
+    .header-brand { display: flex; align-items: center; gap: 0.75rem; text-decoration: none; }
+    .header-brand img { height: 36px; }
+    .header-brand-text { font-family: var(--font-display); font-size: 1.2rem; font-weight: 700; letter-spacing: 0.04em; color: var(--text); }
+    .header-brand-text span { color: var(--accent); }
+    .header-nav { display: flex; align-items: center; gap: 0.25rem; }
+    .header-nav a { font-family: var(--font-display); font-size: 0.78rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-secondary); padding: 0.5rem 0.75rem; border-radius: 6px; transition: all 0.2s; text-decoration: none; }
+    .header-nav a:hover, .header-nav a.active { color: var(--accent); background: var(--accent-dim); }
+    .burger-btn { display: none; background: none; border: none; cursor: pointer; padding: 0.5rem; flex-direction: column; gap: 5px; }
+    .burger-btn span { display: block; width: 22px; height: 2px; background: var(--text); border-radius: 2px; transition: all 0.3s; }
+    .mode-toggle { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; padding: 0.4rem; display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; font-size: 1rem; transition: all 0.25s; flex-shrink: 0; line-height: 1; }
+    .mode-toggle:hover { background: var(--surface-hover); border-color: var(--accent-glow); }
+    .mode-toggle .icon-sun, .mode-toggle .icon-moon { display: none; }
+    [data-theme="dark"] .mode-toggle .icon-sun { display: block; }
+    [data-theme="light"] .mode-toggle .icon-moon { display: block; }
+    @media (max-width: 768px) {
+      .header-nav { display: none; }
+      .burger-btn { display: flex; }
+      .header-nav.open { display: flex; flex-direction: column; position: fixed; top: 60px; right: 0; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 0 0 12px 12px; padding: 1rem; z-index: 200; gap: 0.25rem; }
+    }
+
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+
+    /* === CONTENT === */
+    .content-wrap { max-width: 900px; margin: 0 auto; padding: 2rem; position: relative; z-index: 1; }
+
+    .back-link { display: inline-flex; align-items: center; gap: 0.4rem; color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1.5rem; text-decoration: none; transition: color 0.2s; }
+    .back-link:hover { color: var(--accent-text); text-decoration: none; }
+
+    /* Team Header Card */
+    .team-header-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 2.5rem;
+      margin-bottom: 1.5rem;
+      text-align: center;
+      animation: fadeUp 0.5s ease-out both;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, var(--shadow-alpha));
+    }
+    .team-logo-wrap {
+      width: 140px; height: 140px;
+      border-radius: 14px;
+      background: var(--accent-dim);
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 1.25rem;
+      font-size: 3rem; font-weight: 700; color: var(--accent-text);
+      font-family: var(--font-display);
+      border: 2px solid var(--border);
+      overflow: hidden;
+    }
+    .team-logo-wrap img { width: 100%; height: 100%; object-fit: cover; }
+    .team-name-heading {
+      font-family: var(--font-display);
+      font-size: 1.8rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      margin-bottom: 0.75rem;
+    }
+    .team-buttons { display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap; }
+    .team-btn {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      padding: 0.5rem 1rem; border-radius: 8px;
+      font-size: 0.82rem; font-weight: 600;
+      border: none; cursor: default; text-decoration: none;
+      transition: opacity 0.2s;
+    }
+    .team-btn-link { background: var(--accent); color: #fff; cursor: pointer; }
+    .team-btn-link:hover { opacity: 0.85; text-decoration: none; }
+    .team-btn-claimed { background: #2563eb; color: #fff; }
+    .team-btn-unclaimed { background: var(--surface-hover); color: var(--text-secondary); border: 1px solid var(--border); }
+
+    /* Stats Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+      animation: fadeUp 0.5s ease-out 0.1s both;
+    }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem 1rem;
+      text-align: center;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, var(--shadow-alpha));
+    }
+    .stat-value {
+      font-family: var(--font-display);
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: var(--accent-text);
+    }
+    .stat-label { font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem; }
+
     /* Match List */
-    .match-list{display:flex;flex-direction:column;gap:.75rem}
-    .match-item{background:var(--card-alt);border:1px solid var(--border);border-radius:10px;padding:1rem;display:flex;justify-content:space-between;align-items:center}
-    .match-item.win{border-left:4px solid var(--success)}
-    .match-item.loss{border-left:4px solid var(--danger)}
-    .match-item.draw{border-left:4px solid var(--warning)}
-    .match-item.scheduled{border-left:4px solid var(--muted)}
-    .match-teams{flex:1}
-    /* Override: inverted match-score */
-    .match-score{background:var(--card-alt);color:var(--primary);box-shadow:none}
-    .match-result{font-size:1.2rem;font-weight:700;min-width:60px;text-align:center}
-    .match-result.win{color:var(--success)}
-    .match-result.loss{color:var(--danger)}
-    .match-result.draw{color:var(--warning)}
-    .match-badge{font-size:.75rem;color:var(--muted);margin-top:.25rem}
-    .opponent-link{color:var(--primary);text-decoration:none;font-weight:600}
-    .opponent-link:hover{text-decoration:underline}
+    .matches-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.75rem;
+      animation: fadeUp 0.5s ease-out 0.2s both;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, var(--shadow-alpha));
+    }
+    .matches-card h2 {
+      font-family: var(--font-display);
+      font-size: 1.05rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+    }
+    .match-list { display: flex; flex-direction: column; gap: 0.5rem; }
+    .match-item {
+      background: var(--surface-hover);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.85rem 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: border-color 0.2s;
+    }
+    .match-item:hover { border-color: var(--accent-glow); }
+    .match-item.win { border-left: 3px solid var(--success); }
+    .match-item.loss { border-left: 3px solid var(--danger); }
+    .match-item.draw { border-left: 3px solid var(--warning); }
+    .match-item.scheduled { border-left: 3px solid var(--text-secondary); }
+    .match-teams { flex: 1; }
+    .match-opponent { font-weight: 600; }
+    .match-opponent a { color: var(--text); }
+    .match-opponent a:hover { color: var(--accent-text); }
+    .match-badge { font-size: 0.72rem; color: var(--text-secondary); margin-top: 0.2rem; }
+    .match-result {
+      font-family: var(--font-display);
+      font-size: 1.1rem;
+      font-weight: 700;
+      min-width: 50px;
+      text-align: center;
+    }
+    .match-result.win { color: var(--success); }
+    .match-result.loss { color: var(--danger); }
+    .match-result.draw { color: var(--warning); }
+    .match-result.scheduled { color: var(--text-secondary); }
+
+    .empty-state { text-align: center; padding: 2rem; color: var(--text-secondary); font-size: 0.9rem; }
+    .loading-state { text-align: center; padding: 3rem; color: var(--text-secondary); }
+    .loading-skeleton { background: linear-gradient(90deg, var(--surface) 25%, var(--surface-hover) 50%, var(--surface) 75%); background-size: 200% 100%; animation: shimmer 1.5s ease-in-out infinite; border-radius: 8px; height: 60px; margin-bottom: 0.5rem; }
+
+    [data-theme="light"] .team-header-card,
+    [data-theme="light"] .stat-card,
+    [data-theme="light"] .matches-card { box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06); }
+    [data-theme="light"] .match-item { background: var(--surface); }
+    [data-theme="light"] .status-dot { box-shadow: none; }
+
+    /* === FOOTER === */
+    .site-footer { border-top: 1px solid var(--border); padding: 1.5rem 2rem; display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; color: var(--text-secondary); max-width: 1200px; margin: 0 auto; flex-wrap: wrap; gap: 1rem; }
+    .footer-status { display: flex; align-items: center; gap: 0.5rem; }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--success); box-shadow: 0 0 6px var(--success); }
+    .status-dot.offline { background: var(--danger); box-shadow: 0 0 6px var(--danger); }
+    .footer-links a { color: var(--text-secondary); margin-left: 1rem; }
+    .footer-links a:hover { color: var(--accent); }
+    @media (max-width: 768px) {
+      .site-footer { flex-direction: column; text-align: center; }
+      .content-wrap { padding: 1.5rem; }
+      .team-header-card { padding: 1.5rem; }
+    }
   </style>
 </head>
 <body>
-  <fts-layout page-title="/ Team">
-    <a href="javascript:history.back()" class="back-link">← Zurück</a>
 
-    <div id="team-content" class="loading">
-      <em>Lade Team-Profil...</em>
+  <header class="site-header">
+    <a href="index.html" class="header-brand">
+      <img src="../img/logo_comic.png" alt="BIW Pokal">
+      <div class="header-brand-text">BIW<span>Pokal</span></div>
+    </a>
+    <nav class="header-nav" id="header-nav">
+      <a href="index.html">Start</a>
+      <a href="turnier.html">Gruppen</a>
+      <a href="ko.html">KO-Phase</a>
+      <a href="ewige-tabelle.html">Ewige Tabelle</a>
+      <a href="archiv.html">Archiv</a>
+      <a href="regeln.html">Regeln</a>
+      <a href="dashboard.html">Profil</a>
+    </nav>
+    <div style="display:flex;align-items:center;gap:0.5rem">
+      <button class="mode-toggle" id="mode-toggle" aria-label="Light/Dark Mode umschalten">
+        <span class="icon-sun">&#9728;&#65039;</span>
+        <span class="icon-moon">&#9790;&#65039;</span>
+      </button>
+      <button class="burger-btn" id="burger-btn" aria-label="Menue">
+        <span></span><span></span><span></span>
+      </button>
     </div>
+  </header>
+
+  <div class="content-wrap">
+    <a href="javascript:history.back()" class="back-link">&larr; Zur&uuml;ck</a>
+    <div id="team-content">
+      <div class="loading-skeleton" style="height:200px;margin-bottom:1rem"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:0.75rem;margin-bottom:1rem">
+        <div class="loading-skeleton" style="height:80px"></div>
+        <div class="loading-skeleton" style="height:80px"></div>
+        <div class="loading-skeleton" style="height:80px"></div>
+        <div class="loading-skeleton" style="height:80px"></div>
+      </div>
+      <div class="loading-skeleton" style="height:200px"></div>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    <div class="footer-status">
+      <span class="status-dot" id="backend-dot"></span>
+      <span id="backend-text">Verbinde...</span>
+    </div>
+    <div>&copy; 2026 BIW Pokal &middot; <a href="impressum.html">Impressum</a> &middot; <a href="datenschutz.html">Datenschutz</a></div>
+    <div class="footer-links">
+      <span id="app-version" style="opacity:0.5"></span>
+    </div>
+  </footer>
 
 <script type="module">
-import { API_URL } from './js/config.js';
-import { setBackendStatus } from './js/shared-ui.js';
-const API = API_URL;
+import { API_URL } from '../js/config.js';
+var API = API_URL;
 
-// Get team ID from URL
-const urlParams = new URLSearchParams(window.location.search);
-const teamId = urlParams.get('id');
+document.getElementById('burger-btn').addEventListener('click', function() {
+  document.getElementById('header-nav').classList.toggle('open');
+});
+document.getElementById('mode-toggle').addEventListener('click', function() {
+  var current = document.documentElement.getAttribute('data-theme') || 'dark';
+  var next = current === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('biw_v2_mode', next);
+});
+
+var urlParams = new URLSearchParams(window.location.search);
+var teamId = urlParams.get('id');
 
 if (!teamId) {
-  document.getElementById('team-content').innerHTML = '<div class="empty-state">Keine Team-ID angegeben</div>';
+  var c = document.getElementById('team-content');
+  c.textContent = '';
+  var e = document.createElement('div');
+  e.className = 'empty-state';
+  e.textContent = 'Keine Team-ID angegeben';
+  c.appendChild(e);
 } else {
   loadTeamProfile(teamId);
 }
 
 async function loadTeamProfile(teamId) {
-  const container = document.getElementById('team-content');
+  var container = document.getElementById('team-content');
 
   try {
-    const team = await fetch(`${API}/api/teams/${teamId}`).then(r => {
-      if (!r.ok) throw new Error('Team nicht gefunden');
-      return r.json();
-    });
-    setBackendStatus(true);
+    var resp = await fetch(API + '/api/teams/' + teamId);
+    if (!resp.ok) throw new Error('Team nicht gefunden');
+    var team = await resp.json();
 
-    const logoHTML = team.logo_url
-      ? `<img src="${team.logo_url}" alt="${team.name} Logo">`
-      : team.name.substring(0, 2).toUpperCase();
+    document.getElementById('backend-dot').classList.remove('offline');
+    document.getElementById('backend-text').textContent = 'Online';
+    document.title = team.name + ' – BIW Pokal';
 
-    const onlineligaLink = team.onlineliga_url
-      ? `<a href="${team.onlineliga_url}" target="_blank" rel="noopener" style="background:var(--primary);color:white;border:none;cursor:pointer">🔗 Onlineliga-Profil</a>`
-      : '';
+    container.textContent = '';
 
-    const discordStatus = team.discord_claimed
-      ? `<button style="background:#2563eb;color:white;border:none;cursor:default" disabled>✅ Discord geclaimt</button>`
-      : `<button style="background:#dc2626;color:white;border:none;cursor:default" disabled>✘ Nicht geclaimt</button>`;
+    // === Team Header ===
+    var headerCard = document.createElement('div');
+    headerCard.className = 'team-header-card';
 
-    let html = `
-      <div class="team-header">
-        <div class="team-logo">${logoHTML}</div>
-        <h1 class="team-name">${team.name}</h1>
-        <div class="team-buttons">
-          ${onlineligaLink}
-          ${discordStatus}
-        </div>
-      </div>
-
-      <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-value">${team.stats.played}</div>
-          <div class="stat-label">Gespielt</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value" style="color:var(--success)">${team.stats.wins}</div>
-          <div class="stat-label">Siege</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value" style="color:var(--warning)">${team.stats.draws}</div>
-          <div class="stat-label">Unentschieden</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value" style="color:var(--danger)">${team.stats.losses}</div>
-          <div class="stat-label">Niederlagen</div>
-        </div>
-      </div>
-
-      <div class="card">
-        <h2>Letzte Spiele</h2>
-    `;
-
-    if (team.recent_matches.length === 0) {
-      html += '<div class="empty-state">Noch keine Spiele ausgetragen</div>';
+    var logoWrap = document.createElement('div');
+    logoWrap.className = 'team-logo-wrap';
+    if (team.logo_url) {
+      var logoImg = document.createElement('img');
+      logoImg.src = team.logo_url;
+      logoImg.alt = '';
+      logoImg.addEventListener('error', function() { logoWrap.textContent = team.name.substring(0, 2).toUpperCase(); });
+      logoWrap.appendChild(logoImg);
     } else {
-      html += '<div class="match-list">';
-
-      team.recent_matches.forEach(match => {
-        const resultClass = match.result;
-        const resultText = match.result === 'scheduled'
-          ? '-:-'
-          : `${match.own_goals}:${match.opponent_goals}`;
-
-        const homeAway = match.is_home ? '🏠 Heim' : '✈️ Auswärts';
-        const vs = match.is_home ? 'vs' : '@';
-
-        html += `
-          <div class="match-item ${resultClass}">
-            <div class="match-teams">
-              <div><strong>${vs} <a href="team.html?id=${match.opponent_id}" class="opponent-link">${match.opponent_name}</a></strong></div>
-              <div class="match-badge">${match.season_name} • ${homeAway}</div>
-            </div>
-            <div class="match-result ${resultClass}">${resultText}</div>
-          </div>
-        `;
-      });
-
-      html += '</div>';
+      logoWrap.textContent = team.name.substring(0, 2).toUpperCase();
     }
+    headerCard.appendChild(logoWrap);
 
-    html += '</div>';
+    var nameH1 = document.createElement('h1');
+    nameH1.className = 'team-name-heading';
+    nameH1.textContent = team.name;
+    headerCard.appendChild(nameH1);
 
-    container.innerHTML = html;
-  } catch (e) {
-    setBackendStatus(false);
-    container.innerHTML = `<div class="empty-state" style="color:var(--danger)">Fehler: ${e.message}</div>`;
+    var btnsWrap = document.createElement('div');
+    btnsWrap.className = 'team-buttons';
+    if (team.onlineliga_url) {
+      var olLink = document.createElement('a');
+      olLink.className = 'team-btn team-btn-link';
+      olLink.href = team.onlineliga_url;
+      olLink.target = '_blank';
+      olLink.rel = 'noopener';
+      olLink.textContent = 'Onlineliga-Profil';
+      btnsWrap.appendChild(olLink);
+    }
+    var claimBtn = document.createElement('span');
+    claimBtn.className = 'team-btn ' + (team.discord_claimed ? 'team-btn-claimed' : 'team-btn-unclaimed');
+    claimBtn.textContent = team.discord_claimed ? 'Discord geclaimt' : 'Nicht geclaimt';
+    btnsWrap.appendChild(claimBtn);
+    headerCard.appendChild(btnsWrap);
+    container.appendChild(headerCard);
+
+    // === Stats Grid ===
+    var statsGrid = document.createElement('div');
+    statsGrid.className = 'stats-grid';
+    var statsData = [
+      { value: team.stats.played, label: 'Gespielt', color: '' },
+      { value: team.stats.wins, label: 'Siege', color: 'var(--success)' },
+      { value: team.stats.draws, label: 'Unentschieden', color: 'var(--warning)' },
+      { value: team.stats.losses, label: 'Niederlagen', color: 'var(--danger)' }
+    ];
+    statsData.forEach(function(s) {
+      var card = document.createElement('div');
+      card.className = 'stat-card';
+      var val = document.createElement('div');
+      val.className = 'stat-value';
+      val.textContent = s.value;
+      if (s.color) val.style.color = s.color;
+      card.appendChild(val);
+      var lbl = document.createElement('div');
+      lbl.className = 'stat-label';
+      lbl.textContent = s.label;
+      card.appendChild(lbl);
+      statsGrid.appendChild(card);
+    });
+    container.appendChild(statsGrid);
+
+    // === Matches Card ===
+    var matchesCard = document.createElement('div');
+    matchesCard.className = 'matches-card';
+    var matchesH2 = document.createElement('h2');
+    matchesH2.textContent = 'Letzte Spiele';
+    matchesCard.appendChild(matchesH2);
+
+    if (!team.recent_matches || team.recent_matches.length === 0) {
+      var emptyDiv = document.createElement('div');
+      emptyDiv.className = 'empty-state';
+      emptyDiv.textContent = 'Noch keine Spiele ausgetragen';
+      matchesCard.appendChild(emptyDiv);
+    } else {
+      var listDiv = document.createElement('div');
+      listDiv.className = 'match-list';
+      team.recent_matches.forEach(function(match) {
+        var item = document.createElement('div');
+        item.className = 'match-item ' + match.result;
+
+        var teamsDiv = document.createElement('div');
+        teamsDiv.className = 'match-teams';
+        var oppDiv = document.createElement('div');
+        oppDiv.className = 'match-opponent';
+        var vs = match.is_home ? 'vs ' : '@ ';
+        oppDiv.appendChild(document.createTextNode(vs));
+        var oppLink = document.createElement('a');
+        oppLink.href = 'team.html?id=' + match.opponent_id;
+        oppLink.textContent = match.opponent_name;
+        oppDiv.appendChild(oppLink);
+        teamsDiv.appendChild(oppDiv);
+
+        var badge = document.createElement('div');
+        badge.className = 'match-badge';
+        var homeAway = match.is_home ? 'Heim' : 'Ausw\u00e4rts';
+        badge.textContent = match.season_name + ' \u00b7 ' + homeAway;
+        teamsDiv.appendChild(badge);
+        item.appendChild(teamsDiv);
+
+        var resultDiv = document.createElement('div');
+        resultDiv.className = 'match-result ' + match.result;
+        resultDiv.textContent = match.result === 'scheduled' ? '-:-' : match.own_goals + ':' + match.opponent_goals;
+        item.appendChild(resultDiv);
+
+        listDiv.appendChild(item);
+      });
+      matchesCard.appendChild(listDiv);
+    }
+    container.appendChild(matchesCard);
+
+  } catch (err) {
+    document.getElementById('backend-dot').classList.add('offline');
+    document.getElementById('backend-text').textContent = 'Offline';
+    container.textContent = '';
+    var errDiv = document.createElement('div');
+    errDiv.className = 'empty-state';
+    errDiv.style.color = 'var(--danger)';
+    errDiv.textContent = 'Fehler: ' + err.message;
+    container.appendChild(errDiv);
   }
 }
+
+fetch(API + '/api/version').then(function(r) { return r.json(); }).then(function(d) {
+  if (d.version) document.getElementById('app-version').textContent = 'v' + d.version;
+}).catch(function() {});
+
+fetch(API + '/api/track', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ page: 'team', referrer: document.referrer || '' })
+}).catch(function() {});
 </script>
-  </fts-layout>
 </body>
 </html>

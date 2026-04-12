@@ -2,116 +2,323 @@
 <html lang="de">
 <head>
   <meta charset="utf-8" />
-  <link rel="icon" type="image/png" href="img/logo_comic.png">
+  <link rel="icon" type="image/png" href="../img/logo_comic.png">
   <title>Mein Profil – BIW Pokal</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <script src="js/themes.js"></script>
-  <script type="module" src="js/background.js"></script>
-  <script type="module" src="js/fts-layout.js"></script>
-  <link rel="stylesheet" href="css/shared.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=Lexend:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <script>
+    (function() {
+      var stored = localStorage.getItem('biw_v2_mode');
+      var theme = stored || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+  </script>
   <style>
-    main{max-width:800px}
-    h2{margin-bottom:1rem}
+    :root,
+    [data-theme="dark"] {
+      --bg: #06090f;
+      --bg-elevated: #0c1018;
+      --surface: #111822;
+      --surface-hover: #172030;
+      --border: #1e2a3a;
+      --border-glow: #2dd4bf33;
+      --text: #e8edf4;
+      --text-secondary: #7b8fa8;
+      --accent: #0d9488;
+      --accent-dim: #0d948822;
+      --accent-glow: #0d948844;
+      --accent-text: #2dd4bf;
+      --gold: #fbbf24;
+      --danger: #f87171;
+      --success: #34d399;
+      --discord: #5865F2;
+      --shadow-alpha: 0.3;
+      --header-bg: rgba(6, 9, 15, 0.85);
+      --noise-opacity: 0.04;
+      --font-display: 'Chakra Petch', sans-serif;
+      --font-body: 'Lexend', sans-serif;
+    }
+
+    [data-theme="light"] {
+      --bg: #f0f2f5;
+      --bg-elevated: #e8eaef;
+      --surface: #ffffff;
+      --surface-hover: #f5f7fa;
+      --border: #d1d5de;
+      --border-glow: #0d948833;
+      --text: #111827;
+      --text-secondary: #5b6577;
+      --accent: #0d9488;
+      --accent-dim: #0d948815;
+      --accent-glow: #0d948830;
+      --accent-text: #0d9488;
+      --gold: #b8860b;
+      --danger: #dc2626;
+      --success: #059669;
+      --discord: #5865F2;
+      --shadow-alpha: 0.08;
+      --header-bg: rgba(240, 242, 245, 0.88);
+      --noise-opacity: 0.025;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body { font-family: var(--font-body); color: var(--text); background: var(--bg); overflow-x: hidden; -webkit-font-smoothing: antialiased; }
+    body::before { content: ''; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E"); pointer-events: none; z-index: 0; opacity: var(--noise-opacity); transition: opacity 0.4s; }
+    a { color: var(--accent-text); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* === HEADER === */
+    .site-header { position: sticky; top: 0; z-index: 100; background: var(--header-bg); backdrop-filter: blur(20px) saturate(1.8); -webkit-backdrop-filter: blur(20px) saturate(1.8); border-bottom: 1px solid var(--border); padding: 0 2rem; height: 60px; display: flex; align-items: center; justify-content: space-between; }
+    .header-brand { display: flex; align-items: center; gap: 0.75rem; text-decoration: none; }
+    .header-brand img { height: 36px; }
+    .header-brand-text { font-family: var(--font-display); font-size: 1.2rem; font-weight: 700; letter-spacing: 0.04em; color: var(--text); }
+    .header-brand-text span { color: var(--accent); }
+    .header-nav { display: flex; align-items: center; gap: 0.25rem; }
+    .header-nav a { font-family: var(--font-display); font-size: 0.78rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-secondary); padding: 0.5rem 0.75rem; border-radius: 6px; transition: all 0.2s; text-decoration: none; }
+    .header-nav a:hover, .header-nav a.active { color: var(--accent); background: var(--accent-dim); }
+    .burger-btn { display: none; background: none; border: none; cursor: pointer; padding: 0.5rem; flex-direction: column; gap: 5px; }
+    .burger-btn span { display: block; width: 22px; height: 2px; background: var(--text); border-radius: 2px; transition: all 0.3s; }
+    .mode-toggle { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; padding: 0.4rem; display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; font-size: 1rem; transition: all 0.25s; flex-shrink: 0; line-height: 1; }
+    .mode-toggle:hover { background: var(--surface-hover); border-color: var(--accent-glow); }
+    .mode-toggle .icon-sun, .mode-toggle .icon-moon { display: none; }
+    [data-theme="dark"] .mode-toggle .icon-sun { display: block; }
+    [data-theme="light"] .mode-toggle .icon-moon { display: block; }
+    @media (max-width: 768px) {
+      .header-nav { display: none; }
+      .burger-btn { display: flex; }
+      .header-nav.open { display: flex; flex-direction: column; position: fixed; top: 60px; right: 0; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 0 0 12px 12px; padding: 1rem; z-index: 200; gap: 0.25rem; }
+    }
+
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* === PAGE HERO === */
+    .page-hero { position: relative; padding: 3.5rem 2rem 2.5rem; text-align: center; overflow: hidden; }
+    .page-hero::before { content: ''; position: absolute; top: -40%; left: 50%; transform: translateX(-50%); width: 600px; height: 600px; background: radial-gradient(circle, rgba(45, 212, 191, 0.1) 0%, transparent 70%); pointer-events: none; }
+    .page-hero h1 { font-family: var(--font-display); font-size: clamp(1.8rem, 4vw, 2.6rem); font-weight: 700; letter-spacing: -0.02em; position: relative; animation: fadeUp 0.6s ease-out both; }
+    .page-hero h1 .accent { color: var(--accent-text); }
+    .page-hero p { color: var(--text-secondary); font-size: 0.95rem; margin-top: 0.5rem; position: relative; animation: fadeUp 0.6s ease-out 0.1s both; }
+
+    /* === CONTENT === */
+    .content-wrap { max-width: 800px; margin: 0 auto; padding: 0 2rem 4rem; position: relative; z-index: 1; }
+
+    .section-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.75rem 2rem;
+      margin-bottom: 1rem;
+      animation: fadeUp 0.5s ease-out both;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, var(--shadow-alpha));
+    }
+    .section-card:nth-child(2) { animation-delay: 0.05s; }
+    .section-card:nth-child(3) { animation-delay: 0.1s; }
+    .section-card:nth-child(4) { animation-delay: 0.15s; }
+    .section-card:nth-child(5) { animation-delay: 0.2s; }
+
+    .section-card-title {
+      font-family: var(--font-display);
+      font-size: 0.95rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
     /* Login Screen */
-    .login-screen{text-align:center;padding:4rem 2rem}
-    .login-screen h2{font-size:1.5rem;margin-bottom:.5rem}
-    .login-screen p{color:var(--muted);margin-bottom:2rem}
-    .discord-login-btn{display:inline-flex;align-items:center;gap:.75rem;background:#5865F2;color:#fff;border:none;border-radius:10px;padding:.85rem 2rem;font-size:1rem;font-weight:600;cursor:pointer;transition:background .2s,transform .1s;text-decoration:none}
-    .discord-login-btn:hover{background:#4752C4;transform:translateY(-1px)}
-    .discord-login-btn:active{transform:translateY(0)}
-    .discord-login-btn:visited{color:#fff}
-    .discord-login-btn svg{width:24px;height:24px}
+    .login-screen { text-align: center; padding: 2rem 0; }
+    .login-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 3rem 2rem;
+      animation: fadeUp 0.5s ease-out 0.15s both;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, var(--shadow-alpha));
+    }
+    .login-icon { font-size: 3rem; margin-bottom: 1rem; }
+    .login-card h2 { font-family: var(--font-display); font-size: 1.3rem; font-weight: 700; margin-bottom: 0.5rem; }
+    .login-card p { color: var(--text-secondary); margin-bottom: 2rem; font-size: 0.9rem; line-height: 1.6; }
+
+    .discord-btn {
+      display: inline-flex; align-items: center; gap: 0.75rem;
+      background: var(--discord); color: #fff;
+      border: none; border-radius: 10px;
+      padding: 0.85rem 2rem; font-size: 0.95rem; font-weight: 600;
+      cursor: pointer; transition: background 0.2s, transform 0.1s;
+      text-decoration: none; font-family: var(--font-body);
+    }
+    .discord-btn:hover { background: #4752C4; transform: translateY(-1px); text-decoration: none; }
+    .discord-btn:visited { color: #fff; }
+    .discord-btn svg { width: 22px; height: 22px; }
+
     /* Profile Header */
-    .profile-header{display:flex;align-items:center;gap:1.25rem;margin-bottom:.5rem}
-    .profile-avatar{width:64px;height:64px;border-radius:50%;border:3px solid var(--primary);object-fit:cover}
-    .profile-info h2{margin:0;font-size:1.3rem}
-    .profile-info p{margin:.25rem 0 0;color:var(--muted);font-size:.9rem}
-    /* Badges */
-    .badge{display:inline-block;padding:.25rem .75rem;border-radius:20px;font-size:.8rem;font-weight:600}
-    .badge-success{background:#dcfce7;color:#166534}
-    .badge-danger{background:#fee2e2;color:#991b1b}
-    .badge-muted{background:var(--card-alt);color:var(--muted)}
+    .profile-header { display: flex; align-items: center; gap: 1.25rem; margin-bottom: 0.5rem; }
+    .profile-avatar { width: 60px; height: 60px; border-radius: 50%; border: 2px solid var(--accent); object-fit: cover; }
+    .profile-name { font-family: var(--font-display); font-size: 1.2rem; font-weight: 700; }
+    .profile-sub { color: var(--text-secondary); font-size: 0.82rem; margin-top: 0.15rem; }
+    .badges-row { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.75rem; }
+    .badge { display: inline-block; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.78rem; font-weight: 600; }
+    .badge-success { background: rgba(52, 211, 153, 0.15); color: var(--success); }
+    .badge-danger { background: rgba(248, 113, 113, 0.15); color: var(--danger); }
+    .badge-muted { background: var(--surface-hover); color: var(--text-secondary); }
+
+    /* Toggle */
+    .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 0; }
+    .toggle-label { font-weight: 600; font-size: 0.92rem; }
+    .toggle-sub { color: var(--text-secondary); font-size: 0.78rem; }
+    .toggle-switch { position: relative; width: 48px; height: 26px; cursor: pointer; flex-shrink: 0; }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: var(--border); border-radius: 13px; transition: background 0.3s; }
+    .toggle-slider::before { content: ""; position: absolute; width: 20px; height: 20px; left: 3px; bottom: 3px; background: #fff; border-radius: 50%; transition: transform 0.3s; }
+    .toggle-switch input:checked + .toggle-slider { background: var(--accent); }
+    .toggle-switch input:checked + .toggle-slider::before { transform: translateX(22px); }
+
     /* Forms */
-    .form-group{margin-bottom:1.25rem}
-    .form-group label{display:block;font-weight:600;margin-bottom:.4rem;font-size:.9rem}
-    .form-group .hint{color:var(--muted);font-size:.8rem;margin-top:.25rem}
-    input[type="text"],input[type="url"]{width:100%;padding:.6rem .85rem;border:1px solid var(--border);border-radius:8px;font-size:.95rem;background:var(--bg);color:var(--text);transition:border-color .2s}
-    input[type="text"]:focus,input[type="url"]:focus{outline:none;border-color:var(--primary)}
-    /* Toggle Switch */
-    .toggle-row{display:flex;align-items:center;justify-content:space-between;padding:.75rem 0}
-    .toggle-label{font-weight:600;font-size:.95rem}
-    .toggle-sub{color:var(--muted);font-size:.8rem}
-    .toggle-switch{position:relative;width:52px;height:28px;cursor:pointer}
-    .toggle-switch input{opacity:0;width:0;height:0}
-    .toggle-slider{position:absolute;top:0;left:0;right:0;bottom:0;background:var(--border);border-radius:14px;transition:background .3s}
-    .toggle-slider::before{content:"";position:absolute;width:22px;height:22px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:transform .3s}
-    .toggle-switch input:checked + .toggle-slider{background:var(--primary)}
-    .toggle-switch input:checked + .toggle-slider::before{transform:translateX(24px)}
+    .form-group { margin-bottom: 0.75rem; }
+    .form-group label { display: block; font-weight: 600; margin-bottom: 0.35rem; font-size: 0.88rem; }
+    .form-group .hint { color: var(--text-secondary); font-size: 0.78rem; margin-top: 0.25rem; }
+    .form-input {
+      width: 100%; padding: 0.6rem 0.85rem;
+      border: 1px solid var(--border); border-radius: 8px;
+      font-size: 0.9rem; font-family: var(--font-body);
+      background: var(--bg); color: var(--text);
+      transition: border-color 0.2s;
+    }
+    .form-input:focus { outline: none; border-color: var(--accent); }
+    .form-row { display: flex; gap: 0.5rem; }
+
+    /* Buttons */
+    .btn { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.55rem 1.1rem; border: none; border-radius: 8px; font-size: 0.85rem; font-weight: 600; cursor: pointer; font-family: var(--font-body); transition: opacity 0.2s; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover:not(:disabled) { opacity: 0.85; }
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn-danger:hover:not(:disabled) { opacity: 0.85; }
+    .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+    .btn-outline:hover:not(:disabled) { background: var(--surface-hover); }
+
     /* Crest Upload */
-    .crest-preview{width:128px;height:128px;border-radius:12px;border:2px dashed var(--border);display:flex;align-items:center;justify-content:center;overflow:hidden;background:var(--bg);margin-bottom:1rem;position:relative}
-    .crest-preview img{width:100%;height:100%;object-fit:contain}
-    .crest-preview .placeholder{color:var(--muted);font-size:.8rem;text-align:center;padding:.5rem}
-    .crest-upload-area{display:flex;align-items:flex-start;gap:1.5rem}
-    .crest-actions{display:flex;flex-direction:column;gap:.5rem}
+    .crest-area { display: flex; align-items: flex-start; gap: 1.5rem; }
+    .crest-preview {
+      width: 120px; height: 120px; border-radius: 12px;
+      border: 2px dashed var(--border); display: flex;
+      align-items: center; justify-content: center;
+      overflow: hidden; background: var(--bg); flex-shrink: 0;
+    }
+    .crest-preview img { width: 100%; height: 100%; object-fit: contain; }
+    .crest-placeholder { color: var(--text-secondary); font-size: 0.78rem; text-align: center; padding: 0.5rem; }
+    .crest-actions { display: flex; flex-direction: column; gap: 0.5rem; }
+
     /* Team Search */
-    .team-search-results{max-height:200px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;margin-top:.5rem;display:none}
-    .team-search-results.visible{display:block}
-    .team-result{padding:.6rem .85rem;cursor:pointer;transition:background .15s;border-bottom:1px solid var(--border);font-size:.9rem}
-    .team-result:last-child{border-bottom:none}
-    .team-result:hover{background:var(--card-alt)}
-    .team-current{display:flex;align-items:center;gap:.75rem;padding:.75rem;background:color-mix(in srgb,var(--primary) 10%,var(--card));border-radius:8px;margin-bottom:1rem}
-    .team-current-logo{width:32px;height:32px;border-radius:4px;object-fit:contain}
+    .team-search-results { max-height: 200px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; margin-top: 0.5rem; display: none; background: var(--surface); }
+    .team-search-results.visible { display: block; }
+    .team-result { padding: 0.6rem 0.85rem; cursor: pointer; transition: background 0.15s; border-bottom: 1px solid var(--border); font-size: 0.88rem; }
+    .team-result:last-child { border-bottom: none; }
+    .team-result:hover { background: var(--surface-hover); }
+    .team-current { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem; background: var(--accent-dim); border: 1px solid var(--accent-glow); border-radius: 8px; margin-bottom: 1rem; }
+    .team-current-logo { width: 32px; height: 32px; border-radius: 4px; object-fit: contain; }
+
     /* Toast */
-    .toast{position:fixed;bottom:2rem;right:2rem;padding:.85rem 1.25rem;border-radius:10px;font-size:.9rem;font-weight:500;color:#fff;z-index:200;transform:translateY(100px);opacity:0;transition:all .3s}
-    .toast.visible{transform:translateY(0);opacity:1}
-    .toast-success{background:var(--success)}
-    .toast-error{background:#dc2626}
-    /* Logout */
-    .logout-row{display:flex;justify-content:flex-end;margin-top:1rem}
+    .toast { position: fixed; bottom: 2rem; right: 2rem; padding: 0.8rem 1.2rem; border-radius: 10px; font-size: 0.88rem; font-weight: 500; color: #fff; z-index: 300; transform: translateY(100px); opacity: 0; transition: all 0.3s; font-family: var(--font-body); }
+    .toast.visible { transform: translateY(0); opacity: 1; }
+    .toast-success { background: var(--success); }
+    .toast-error { background: var(--danger); }
+
+    .logout-row { display: flex; justify-content: flex-end; margin-top: 0.5rem; }
+
+    [data-theme="light"] .section-card,
+    [data-theme="light"] .login-card { box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06); }
+    [data-theme="light"] .status-dot { box-shadow: none; }
+
+    /* === FOOTER === */
+    .site-footer { border-top: 1px solid var(--border); padding: 1.5rem 2rem; display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; color: var(--text-secondary); max-width: 1200px; margin: 0 auto; flex-wrap: wrap; gap: 1rem; }
+    .footer-status { display: flex; align-items: center; gap: 0.5rem; }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--success); box-shadow: 0 0 6px var(--success); }
+    .status-dot.offline { background: var(--danger); box-shadow: 0 0 6px var(--danger); }
+    .footer-links a { color: var(--text-secondary); margin-left: 1rem; }
+    .footer-links a:hover { color: var(--accent); }
+    @media (max-width: 768px) {
+      .site-footer { flex-direction: column; text-align: center; }
+      .page-hero { padding: 2.5rem 1.5rem 1.5rem; }
+      .section-card { padding: 1.25rem 1.5rem; }
+      .crest-area { flex-direction: column; align-items: center; }
+      .profile-header { flex-direction: column; text-align: center; }
+    }
   </style>
 </head>
 <body>
-  <fts-layout page-title="/ Mein Profil">
-    <!-- ════════ LOGIN SCREEN ════════ -->
-    <section id="login-screen" class="login-screen">
-      <div class="card">
-        <div style="font-size:3rem;margin-bottom:1rem">🏆</div>
+
+  <header class="site-header">
+    <a href="index.html" class="header-brand">
+      <img src="../img/logo_comic.png" alt="BIW Pokal">
+      <div class="header-brand-text">BIW<span>Pokal</span></div>
+    </a>
+    <nav class="header-nav" id="header-nav">
+      <a href="index.html">Start</a>
+      <a href="turnier.html">Gruppen</a>
+      <a href="ko.html">KO-Phase</a>
+      <a href="ewige-tabelle.html">Ewige Tabelle</a>
+      <a href="archiv.html">Archiv</a>
+      <a href="regeln.html">Regeln</a>
+      <a href="dashboard.html" class="active">Profil</a>
+    </nav>
+    <div style="display:flex;align-items:center;gap:0.5rem">
+      <button class="mode-toggle" id="mode-toggle" aria-label="Light/Dark Mode umschalten">
+        <span class="icon-sun">&#9728;&#65039;</span>
+        <span class="icon-moon">&#9790;&#65039;</span>
+      </button>
+      <button class="burger-btn" id="burger-btn" aria-label="Menue">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </header>
+
+  <section class="page-hero">
+    <h1><span class="accent">/</span> Mein Profil</h1>
+    <p>Verwalte dein Team und deine Teilnahme</p>
+  </section>
+
+  <div class="content-wrap">
+
+    <!-- LOGIN SCREEN -->
+    <div id="login-screen" class="login-screen">
+      <div class="login-card">
+        <div class="login-icon">&#127942;</div>
         <h2>Willkommen beim BIW Pokal</h2>
         <p>Melde dich mit Discord an, um dein Profil zu verwalten, deine Teilnahme zu setzen und dein Team-Wappen hochzuladen.</p>
-        <a id="discord-login-btn" class="discord-login-btn" href="#">
+        <a id="discord-login-btn" class="discord-btn" href="#">
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>
           Mit Discord anmelden
         </a>
       </div>
-    </section>
+    </div>
 
-    <!-- ════════ DASHBOARD (nach Login) ════════ -->
-    <section id="dashboard" style="display:none">
+    <!-- DASHBOARD -->
+    <div id="dashboard" style="display:none">
 
-      <!-- Profil-Header -->
-      <div class="card">
+      <!-- Profile Header -->
+      <div class="section-card">
         <div class="profile-header">
           <img id="user-avatar" class="profile-avatar" src="" alt="Avatar">
-          <div class="profile-info">
-            <h2 id="user-name">Laden...</h2>
-            <p id="user-discord-tag"></p>
+          <div>
+            <div class="profile-name" id="user-name">Laden...</div>
+            <div class="profile-sub" id="user-discord-tag"></div>
           </div>
         </div>
-        <div id="user-badges" style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.75rem"></div>
+        <div class="badges-row" id="user-badges"></div>
       </div>
 
       <!-- Teilnahme -->
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">🏆 Teilnahme</div>
-        </div>
+      <div class="section-card">
+        <div class="section-card-title">&#127942; Teilnahme</div>
         <div class="toggle-row">
           <div>
-            <div class="toggle-label">Nächster Pokal</div>
-            <div class="toggle-sub">Bist du beim nächsten BIW Pokal dabei?</div>
+            <div class="toggle-label">N&auml;chster Pokal</div>
+            <div class="toggle-sub">Bist du beim n&auml;chsten BIW Pokal dabei?</div>
           </div>
           <label class="toggle-switch">
             <input type="checkbox" id="participation-toggle">
@@ -121,58 +328,52 @@
       </div>
 
       <!-- Profil-URL -->
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">🔗 Onlineliga Profil</div>
-        </div>
+      <div class="section-card">
+        <div class="section-card-title">&#128279; Onlineliga Profil</div>
         <div class="form-group">
           <label for="profile-url">Profil-URL</label>
-          <div style="display:flex;gap:.5rem">
-            <input type="url" id="profile-url" placeholder="https://www.onlineliga.de/user/deinname">
+          <div class="form-row">
+            <input type="url" id="profile-url" class="form-input" placeholder="https://www.onlineliga.de/user/deinname">
             <button class="btn btn-primary" id="save-profile-btn">Speichern</button>
           </div>
-          <div class="hint">Dein öffentliches Onlineliga-Profil</div>
+          <div class="hint">Dein &ouml;ffentliches Onlineliga-Profil</div>
         </div>
       </div>
 
       <!-- Wappen Upload -->
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">🛡️ Team-Wappen</div>
-        </div>
-        <div class="crest-upload-area">
+      <div class="section-card">
+        <div class="section-card-title">&#128737;&#65039; Team-Wappen</div>
+        <div class="crest-area">
           <div class="crest-preview" id="crest-preview">
-            <div class="placeholder">Kein Wappen</div>
+            <div class="crest-placeholder">Kein Wappen</div>
           </div>
           <div class="crest-actions">
             <label class="btn btn-primary" style="cursor:pointer">
-              Bild auswählen
+              Bild ausw&auml;hlen
               <input type="file" id="crest-file" accept=".png,.jpg,.jpeg,.svg,.webp" style="display:none">
             </label>
-            <button class="btn btn-danger" id="delete-crest-btn" style="display:none">Wappen löschen</button>
-            <div class="hint">PNG, JPG oder SVG · Max. 2 MB · Empfohlen: 512×512 px, quadratisch</div>
+            <button class="btn btn-danger" id="delete-crest-btn" style="display:none">Wappen l&ouml;schen</button>
+            <div class="hint" style="color:var(--text-secondary);font-size:.78rem">PNG, JPG oder SVG &middot; Max. 2 MB &middot; Empfohlen: 512&times;512 px</div>
           </div>
         </div>
       </div>
 
       <!-- Team Claim -->
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">⚽ Mein Team</div>
-        </div>
+      <div class="section-card">
+        <div class="section-card-title">&#9917; Mein Team</div>
         <div id="team-current" class="team-current" style="display:none">
           <img id="team-current-logo" class="team-current-logo" src="" alt="">
           <div>
             <strong id="team-current-name"></strong>
-            <div style="color:var(--muted);font-size:.8rem" id="team-current-info"></div>
+            <div style="color:var(--text-secondary);font-size:.78rem" id="team-current-info"></div>
           </div>
         </div>
         <div id="team-claim-section">
           <div class="form-group">
-            <label for="team-search">Team suchen & verknüpfen</label>
-            <input type="text" id="team-search" placeholder="Teamname eingeben...">
+            <label for="team-search">Team suchen &amp; verkn&uuml;pfen</label>
+            <input type="text" id="team-search" class="form-input" placeholder="Teamname eingeben...">
             <div class="team-search-results" id="team-search-results"></div>
-            <div class="hint">Suche dein Team und klicke darauf, um es mit deinem Profil zu verknüpfen.</div>
+            <div class="hint">Suche dein Team und klicke darauf, um es mit deinem Profil zu verkn&uuml;pfen.</div>
           </div>
         </div>
       </div>
@@ -181,50 +382,73 @@
       <div class="logout-row">
         <button class="btn btn-outline" id="logout-btn">Abmelden</button>
       </div>
-    </section>
+    </div>
+  </div>
 
-    <!-- Toast -->
-    <div class="toast" id="toast"></div>
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <footer class="site-footer">
+    <div class="footer-status">
+      <span class="status-dot" id="backend-dot"></span>
+      <span id="backend-text">Verbinde...</span>
+    </div>
+    <div>&copy; 2026 BIW Pokal &middot; <a href="impressum.html">Impressum</a> &middot; <a href="datenschutz.html">Datenschutz</a></div>
+    <div class="footer-links">
+      <span id="app-version" style="opacity:0.5"></span>
+    </div>
+  </footer>
 
 <script type="module">
-import { API_URL } from './js/config.js';
-import { setBackendStatus } from './js/shared-ui.js';
-const API = API_URL;
+import { API_URL } from '../js/config.js';
+var API = API_URL;
 
-// ── State ──
-let jwt = null;
-let discordId = null;
-let userProfile = null;
+// --- UI Helpers ---
+document.getElementById('burger-btn').addEventListener('click', function() {
+  document.getElementById('header-nav').classList.toggle('open');
+});
+document.getElementById('mode-toggle').addEventListener('click', function() {
+  var current = document.documentElement.getAttribute('data-theme') || 'dark';
+  var next = current === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('biw_v2_mode', next);
+});
 
-// ── Helpers ──
-function showToast(msg, type = 'success') {
-  const t = document.getElementById('toast');
+// --- State ---
+var jwt = null;
+var discordId = null;
+var userProfile = null;
+
+function showToast(msg, type) {
+  var t = document.getElementById('toast');
   t.textContent = msg;
-  t.className = `toast toast-${type} visible`;
-  setTimeout(() => t.classList.remove('visible'), 3000);
+  t.className = 'toast toast-' + (type || 'success') + ' visible';
+  setTimeout(function() { t.classList.remove('visible'); }, 3000);
 }
 
-async function apiFetch(path, opts = {}) {
-  const headers = { ...opts.headers };
-  if (jwt) headers['Authorization'] = `Bearer ${jwt}`;
+function apiFetch(path, opts) {
+  opts = opts || {};
+  var headers = Object.assign({}, opts.headers || {});
+  if (jwt) headers['Authorization'] = 'Bearer ' + jwt;
   if (opts.body && !(opts.body instanceof FormData)) {
     headers['Content-Type'] = 'application/json';
   }
-  const res = await fetch(`${API}${path}`, { ...opts, headers });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: 'Fehler' }));
-    throw new Error(err.detail || `HTTP ${res.status}`);
-  }
-  if (res.status === 204) return null;
-  return res.json();
+  return fetch(API + path, Object.assign({}, opts, { headers: headers })).then(function(res) {
+    if (!res.ok) {
+      return res.json().catch(function() { return { detail: 'Fehler' }; }).then(function(err) {
+        throw new Error(err.detail || 'HTTP ' + res.status);
+      });
+    }
+    if (res.status === 204) return null;
+    return res.json();
+  });
 }
 
-// ── OAuth2 Flow ──
+// --- OAuth2 Flow ---
 function initOAuth() {
-  const params = new URLSearchParams(window.location.search);
-  const token = params.get('token');
-  const storedToken = localStorage.getItem('biw_dashboard_token');
-
+  var params = new URLSearchParams(window.location.search);
+  var token = params.get('token');
+  var storedToken = localStorage.getItem('biw_dashboard_token');
   if (token) {
     jwt = token;
     localStorage.setItem('biw_dashboard_token', token);
@@ -240,9 +464,8 @@ function initOAuth() {
 function showLogin() {
   document.getElementById('login-screen').style.display = '';
   document.getElementById('dashboard').style.display = 'none';
-
-  const loginBtn = document.getElementById('discord-login-btn');
-  loginBtn.href = `${API}/api/auth/discord/login?redirect=${encodeURIComponent(window.location.origin + '/dashboard.html')}`;
+  var loginBtn = document.getElementById('discord-login-btn');
+  loginBtn.href = API + '/api/auth/discord/login?redirect=' + encodeURIComponent(window.location.origin + '/dashboard.html');
 }
 
 function showDashboard() {
@@ -250,15 +473,13 @@ function showDashboard() {
   document.getElementById('dashboard').style.display = '';
 }
 
-// ── Load Profile ──
+// --- Load Profile ---
 async function loadProfile() {
   try {
-    const payload = JSON.parse(atob(jwt.split('.')[1]));
+    var payload = JSON.parse(atob(jwt.split('.')[1]));
     discordId = payload.discord_id || payload.sub;
-
     if (!discordId) throw new Error('Keine Discord-ID im Token');
-
-    userProfile = await apiFetch(`/api/discord/users/${discordId}`);
+    userProfile = await apiFetch('/api/discord/users/' + discordId);
     renderProfile();
     showDashboard();
   } catch (e) {
@@ -267,67 +488,78 @@ async function loadProfile() {
     jwt = null;
     showLogin();
     if (e.message !== 'Keine Discord-ID im Token') {
-      showToast('Sitzung abgelaufen – bitte erneut anmelden', 'error');
+      showToast('Sitzung abgelaufen \u2013 bitte erneut anmelden', 'error');
     }
   }
 }
 
 function renderProfile() {
-  const p = userProfile;
-
-  const avatarEl = document.getElementById('user-avatar');
+  var p = userProfile;
+  var avatarEl = document.getElementById('user-avatar');
   if (p.discord_avatar_url) {
     avatarEl.src = p.discord_avatar_url;
   } else if (p.discord_id) {
-    const defaultIdx = (BigInt(p.discord_id) >> 22n) % 6n;
-    avatarEl.src = `https://cdn.discordapp.com/embed/avatars/${defaultIdx}.png`;
+    var defaultIdx = Number(BigInt(p.discord_id) >> 22n) % 6;
+    avatarEl.src = 'https://cdn.discordapp.com/embed/avatars/' + defaultIdx + '.png';
   }
 
   document.getElementById('user-name').textContent = p.discord_username || 'Unbekannt';
-  document.getElementById('user-discord-tag').textContent = `Discord-ID: ${p.discord_id}`;
+  document.getElementById('user-discord-tag').textContent = 'Discord-ID: ' + p.discord_id;
 
-  const badgesEl = document.getElementById('user-badges');
-  badgesEl.innerHTML = '';
+  var badgesEl = document.getElementById('user-badges');
+  badgesEl.textContent = '';
+  var dabeiSpan = document.createElement('span');
   if (p.team_participating_next) {
-    badgesEl.innerHTML += '<span class="badge badge-success">✓ Dabei</span>';
+    dabeiSpan.className = 'badge badge-success';
+    dabeiSpan.textContent = '\u2713 Dabei';
   } else {
-    badgesEl.innerHTML += '<span class="badge badge-danger">✗ Nicht dabei</span>';
+    dabeiSpan.className = 'badge badge-danger';
+    dabeiSpan.textContent = '\u2717 Nicht dabei';
   }
+  badgesEl.appendChild(dabeiSpan);
+
   if (p.team_name || p.team_id) {
-    badgesEl.innerHTML += `<span class="badge badge-muted">⚽ ${p.team_name || 'Team #' + p.team_id}</span>`;
+    var teamSpan = document.createElement('span');
+    teamSpan.className = 'badge badge-muted';
+    teamSpan.textContent = '\u26bd ' + (p.team_name || 'Team #' + p.team_id);
+    badgesEl.appendChild(teamSpan);
   }
 
   document.getElementById('participation-toggle').checked = p.team_participating_next;
   document.getElementById('profile-url').value = p.profile_url || '';
-
   renderCrest();
   renderTeam();
 }
 
 function renderCrest() {
-  const preview = document.getElementById('crest-preview');
-  const deleteBtn = document.getElementById('delete-crest-btn');
-
+  var preview = document.getElementById('crest-preview');
+  var deleteBtn = document.getElementById('delete-crest-btn');
+  preview.textContent = '';
   if (userProfile.crest_url) {
-    preview.innerHTML = `<img src="${API}${userProfile.crest_url}" alt="Wappen">`;
+    var img = document.createElement('img');
+    img.src = API + userProfile.crest_url;
+    img.alt = 'Wappen';
+    preview.appendChild(img);
     deleteBtn.style.display = '';
   } else {
-    preview.innerHTML = '<div class="placeholder">Kein Wappen</div>';
+    var ph = document.createElement('div');
+    ph.className = 'crest-placeholder';
+    ph.textContent = 'Kein Wappen';
+    preview.appendChild(ph);
     deleteBtn.style.display = 'none';
   }
 }
 
 function renderTeam() {
-  const currentEl = document.getElementById('team-current');
-
+  var currentEl = document.getElementById('team-current');
   if (userProfile.team_id) {
     currentEl.style.display = 'flex';
-    document.getElementById('team-current-name').textContent = userProfile.team_name || `Team #${userProfile.team_id}`;
-    document.getElementById('team-current-info').textContent = 'Dein verknüpftes Team';
-
-    const logoEl = document.getElementById('team-current-logo');
+    document.getElementById('team-current-name').textContent = userProfile.team_name || 'Team #' + userProfile.team_id;
+    document.getElementById('team-current-info').textContent = 'Dein verkn\u00fcpftes Team';
+    var logoEl = document.getElementById('team-current-logo');
     if (userProfile.crest_url) {
-      logoEl.src = `${API}${userProfile.crest_url}`;
+      logoEl.src = API + userProfile.crest_url;
+      logoEl.style.display = '';
     } else {
       logoEl.src = '';
       logoEl.style.display = 'none';
@@ -337,35 +569,33 @@ function renderTeam() {
   }
 }
 
-// ── Event Handlers ──
-
-document.getElementById('participation-toggle').addEventListener('change', async (e) => {
+// --- Event Handlers ---
+document.getElementById('participation-toggle').addEventListener('change', async function(e) {
   try {
-    await apiFetch(`/api/discord/users/${discordId}/participation`, {
+    await apiFetch('/api/discord/users/' + discordId + '/participation', {
       method: 'PATCH',
       body: JSON.stringify({ participating: e.target.checked })
     });
     userProfile.team_participating_next = e.target.checked;
     renderProfile();
-    showToast(e.target.checked ? 'Du bist dabei! 🏆' : 'Teilnahme zurückgezogen');
+    showToast(e.target.checked ? 'Du bist dabei!' : 'Teilnahme zur\u00fcckgezogen');
   } catch (err) {
     e.target.checked = !e.target.checked;
     showToast(err.message, 'error');
   }
 });
 
-document.getElementById('save-profile-btn').addEventListener('click', async () => {
-  const url = document.getElementById('profile-url').value.trim();
-  const btn = document.getElementById('save-profile-btn');
+document.getElementById('save-profile-btn').addEventListener('click', async function() {
+  var url = document.getElementById('profile-url').value.trim();
+  var btn = document.getElementById('save-profile-btn');
   btn.disabled = true;
-
   try {
-    await apiFetch(`/api/discord/users/${discordId}/profile`, {
+    await apiFetch('/api/discord/users/' + discordId + '/profile', {
       method: 'PATCH',
       body: JSON.stringify({ profile_url: url })
     });
     userProfile.profile_url = url;
-    showToast('Profil-URL gespeichert ✓');
+    showToast('Profil-URL gespeichert');
   } catch (err) {
     showToast(err.message, 'error');
   } finally {
@@ -373,137 +603,127 @@ document.getElementById('save-profile-btn').addEventListener('click', async () =
   }
 });
 
-document.getElementById('crest-file').addEventListener('change', async (e) => {
-  const file = e.target.files[0];
+document.getElementById('crest-file').addEventListener('change', async function(e) {
+  var file = e.target.files[0];
   if (!file) return;
-
-  if (file.size > 2 * 1024 * 1024) {
-    showToast('Datei zu groß (max. 2 MB)', 'error');
-    return;
-  }
-
-  const formData = new FormData();
+  if (file.size > 2 * 1024 * 1024) { showToast('Datei zu gro\u00df (max. 2 MB)', 'error'); return; }
+  var formData = new FormData();
   formData.append('file', file);
-
   try {
-    const result = await apiFetch('/api/upload/crest', {
-      method: 'POST',
-      body: formData
-    });
+    var result = await apiFetch('/api/upload/crest', { method: 'POST', body: formData });
     userProfile.crest_url = result.crest_url || result.url;
     sessionStorage.removeItem('biw_crests');
     renderCrest();
-    showToast('Wappen hochgeladen ✓');
-  } catch (err) {
-    showToast(err.message, 'error');
-  }
-
+    showToast('Wappen hochgeladen');
+  } catch (err) { showToast(err.message, 'error'); }
   e.target.value = '';
 });
 
-document.getElementById('delete-crest-btn').addEventListener('click', async () => {
-  if (!confirm('Wappen wirklich löschen?')) return;
-
+document.getElementById('delete-crest-btn').addEventListener('click', async function() {
+  if (!confirm('Wappen wirklich l\u00f6schen?')) return;
   try {
     await apiFetch('/api/upload/crest', { method: 'DELETE' });
     userProfile.crest_url = null;
     sessionStorage.removeItem('biw_crests');
     renderCrest();
-    showToast('Wappen gelöscht');
-  } catch (err) {
-    showToast(err.message, 'error');
-  }
+    showToast('Wappen gel\u00f6scht');
+  } catch (err) { showToast(err.message, 'error'); }
 });
 
-let searchTimeout;
-document.getElementById('team-search').addEventListener('input', (e) => {
+var searchTimeout;
+document.getElementById('team-search').addEventListener('input', function(e) {
   clearTimeout(searchTimeout);
-  const query = e.target.value.trim();
-  const resultsEl = document.getElementById('team-search-results');
-
-  if (query.length < 2) {
-    resultsEl.classList.remove('visible');
-    return;
-  }
-
-  searchTimeout = setTimeout(async () => {
+  var query = e.target.value.trim();
+  var resultsEl = document.getElementById('team-search-results');
+  if (query.length < 2) { resultsEl.classList.remove('visible'); return; }
+  searchTimeout = setTimeout(async function() {
     try {
-      const teams = await apiFetch(`/api/teams/search?name=${encodeURIComponent(query)}`);
-      resultsEl.innerHTML = '';
-
+      var teams = await apiFetch('/api/teams/search?name=' + encodeURIComponent(query));
+      resultsEl.textContent = '';
       if (teams.length === 0) {
-        resultsEl.innerHTML = '<div class="team-result" style="color:var(--muted)">Kein Team gefunden</div>';
+        var nf = document.createElement('div');
+        nf.className = 'team-result';
+        nf.style.color = 'var(--text-secondary)';
+        nf.textContent = 'Kein Team gefunden';
+        resultsEl.appendChild(nf);
       } else {
-        teams.forEach(t => {
-          const div = document.createElement('div');
+        teams.forEach(function(t) {
+          var div = document.createElement('div');
           div.className = 'team-result';
           div.textContent = t.name;
-          div.addEventListener('click', () => claimTeam(t.id, t.name));
+          div.addEventListener('click', function() { claimTeam(t.id, t.name); });
           resultsEl.appendChild(div);
         });
       }
       resultsEl.classList.add('visible');
     } catch (err) {
-      resultsEl.innerHTML = '<div class="team-result" style="color:var(--danger)">Fehler bei der Suche</div>';
+      resultsEl.textContent = '';
+      var errDiv = document.createElement('div');
+      errDiv.className = 'team-result';
+      errDiv.style.color = 'var(--danger)';
+      errDiv.textContent = 'Fehler bei der Suche';
+      resultsEl.appendChild(errDiv);
       resultsEl.classList.add('visible');
     }
   }, 300);
 });
 
-document.addEventListener('click', (e) => {
+document.addEventListener('click', function(e) {
   if (!e.target.closest('#team-search') && !e.target.closest('#team-search-results')) {
     document.getElementById('team-search-results').classList.remove('visible');
   }
 });
 
-async function claimTeam(teamId, teamName) {
-  if (!confirm(`Team "${teamName}" mit deinem Profil verknüpfen?`)) return;
-
+async function claimTeam(teamId, teamNameVal) {
+  if (!confirm('Team "' + teamNameVal + '" mit deinem Profil verkn\u00fcpfen?')) return;
   try {
-    await apiFetch(`/api/discord/users/${discordId}/claim-team`, {
+    await apiFetch('/api/discord/users/' + discordId + '/claim-team', {
       method: 'POST',
       body: JSON.stringify({ team_id: teamId })
     });
     userProfile.team_id = teamId;
-    userProfile.team_name = teamName;
+    userProfile.team_name = teamNameVal;
     document.getElementById('team-search').value = '';
     document.getElementById('team-search-results').classList.remove('visible');
     renderProfile();
-    showToast(`Team "${teamName}" verknüpft ✓`);
-  } catch (err) {
-    showToast(err.message, 'error');
-  }
+    showToast('Team "' + teamNameVal + '" verkn\u00fcpft');
+  } catch (err) { showToast(err.message, 'error'); }
 }
 
-document.getElementById('logout-btn').addEventListener('click', () => {
+document.getElementById('logout-btn').addEventListener('click', function() {
   localStorage.removeItem('biw_dashboard_token');
-  jwt = null;
-  discordId = null;
-  userProfile = null;
+  jwt = null; discordId = null; userProfile = null;
   showLogin();
   showToast('Abgemeldet');
 });
 
-// ── Init ──
+// --- Init ---
 async function init() {
-  const hasToken = initOAuth();
-
+  var hasToken = initOAuth();
   if (hasToken) {
     try {
       await loadProfile();
-      setBackendStatus(true);
+      document.getElementById('backend-dot').classList.remove('offline');
+      document.getElementById('backend-text').textContent = 'Online';
     } catch (e) {
-      setBackendStatus(false);
+      document.getElementById('backend-dot').classList.add('offline');
+      document.getElementById('backend-text').textContent = 'Offline';
     }
   } else {
     showLogin();
   }
 }
-
 init();
 
+fetch(API + '/api/version').then(function(r) { return r.json(); }).then(function(d) {
+  if (d.version) document.getElementById('app-version').textContent = 'v' + d.version;
+}).catch(function() {});
 
+fetch(API + '/api/track', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ page: 'dashboard', referrer: document.referrer || '' })
+}).catch(function() {});
 </script>
-  </fts-layout>
 </body>
 </html>

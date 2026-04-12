@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <link rel="icon" type="image/png" href="img/logo_comic.png">
+  <title>Team-Profil – BIW Pokal</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <script src="js/themes.js"></script>
+  <script type="module" src="js/background.js"></script>
+  <script type="module" src="js/fts-layout.js"></script>
+  <link rel="stylesheet" href="css/shared.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    /* Overrides: flat header */
+    header{background:var(--card);border-bottom:1px solid var(--border);box-shadow:none}
+    main{max-width:900px}
+    a{text-decoration:none}
+    a:hover{text-decoration:underline;opacity:1}
+    .back-link{display:inline-flex;align-items:center;gap:.5rem;color:var(--muted);font-size:.9rem;margin-bottom:1.5rem}
+    .back-link:hover{color:var(--primary)}
+    /* Team Header */
+    .team-header{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:2rem;margin-bottom:2rem;display:flex;flex-direction:column;align-items:center;gap:1rem;text-align:center}
+    .team-logo{width:160px;height:160px;border-radius:12px;background:color-mix(in srgb,var(--primary) 10%,var(--card));display:flex;align-items:center;justify-content:center;font-size:4rem;font-weight:700;color:var(--primary);flex-shrink:0;border:1px solid var(--border)}
+    .team-logo img{width:100%;height:100%;object-fit:cover;border-radius:10px}
+    .team-name{font-size:2rem;font-weight:700;margin:0}
+    .team-buttons{display:flex;gap:.5rem;justify-content:center}
+    .team-buttons button,.team-buttons a{padding:.5rem 1rem;border-radius:8px;text-decoration:none;font-weight:600;font-size:.9rem}
+    .team-meta{display:flex;gap:1rem;color:var(--muted);font-size:.9rem}
+    .team-meta a{color:var(--primary);text-decoration:none}
+    .team-meta a:hover{text-decoration:underline}
+    /* Stats Cards */
+    .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:1rem;margin-bottom:2rem}
+    .stat-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:1rem;text-align:center}
+    .stat-value{font-size:1.8rem;font-weight:700;font-family:'Outfit',sans-serif;color:var(--primary)}
+    .stat-label{font-size:.8rem;color:var(--muted);margin-top:.25rem}
+    /* Override: flat cards */
+    .card{background:var(--card);border-top:1px solid var(--border);border-top-left-radius:12px;border-top-right-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,.04)}
+    .card h2{margin:0 0 1rem;font-size:1.2rem}
+    /* Match List */
+    .match-list{display:flex;flex-direction:column;gap:.75rem}
+    .match-item{background:var(--card-alt);border:1px solid var(--border);border-radius:10px;padding:1rem;display:flex;justify-content:space-between;align-items:center}
+    .match-item.win{border-left:4px solid var(--success)}
+    .match-item.loss{border-left:4px solid var(--danger)}
+    .match-item.draw{border-left:4px solid var(--warning)}
+    .match-item.scheduled{border-left:4px solid var(--muted)}
+    .match-teams{flex:1}
+    /* Override: inverted match-score */
+    .match-score{background:var(--card-alt);color:var(--primary);box-shadow:none}
+    .match-result{font-size:1.2rem;font-weight:700;min-width:60px;text-align:center}
+    .match-result.win{color:var(--success)}
+    .match-result.loss{color:var(--danger)}
+    .match-result.draw{color:var(--warning)}
+    .match-badge{font-size:.75rem;color:var(--muted);margin-top:.25rem}
+    .opponent-link{color:var(--primary);text-decoration:none;font-weight:600}
+    .opponent-link:hover{text-decoration:underline}
+  </style>
+</head>
+<body>
+  <fts-layout page-title="/ Team">
+    <a href="javascript:history.back()" class="back-link">← Zurück</a>
+
+    <div id="team-content" class="loading">
+      <em>Lade Team-Profil...</em>
+    </div>
+
+<script type="module">
+import { API_URL } from './js/config.js';
+import { setBackendStatus } from './js/shared-ui.js';
+const API = API_URL;
+
+// Get team ID from URL
+const urlParams = new URLSearchParams(window.location.search);
+const teamId = urlParams.get('id');
+
+if (!teamId) {
+  document.getElementById('team-content').innerHTML = '<div class="empty-state">Keine Team-ID angegeben</div>';
+} else {
+  loadTeamProfile(teamId);
+}
+
+async function loadTeamProfile(teamId) {
+  const container = document.getElementById('team-content');
+
+  try {
+    const team = await fetch(`${API}/api/teams/${teamId}`).then(r => {
+      if (!r.ok) throw new Error('Team nicht gefunden');
+      return r.json();
+    });
+    setBackendStatus(true);
+
+    const logoHTML = team.logo_url
+      ? `<img src="${team.logo_url}" alt="${team.name} Logo">`
+      : team.name.substring(0, 2).toUpperCase();
+
+    const onlineligaLink = team.onlineliga_url
+      ? `<a href="${team.onlineliga_url}" target="_blank" rel="noopener" style="background:var(--primary);color:white;border:none;cursor:pointer">🔗 Onlineliga-Profil</a>`
+      : '';
+
+    const discordStatus = team.discord_claimed
+      ? `<button style="background:#2563eb;color:white;border:none;cursor:default" disabled>✅ Discord geclaimt</button>`
+      : `<button style="background:#dc2626;color:white;border:none;cursor:default" disabled>✘ Nicht geclaimt</button>`;
+
+    let html = `
+      <div class="team-header">
+        <div class="team-logo">${logoHTML}</div>
+        <h1 class="team-name">${team.name}</h1>
+        <div class="team-buttons">
+          ${onlineligaLink}
+          ${discordStatus}
+        </div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-value">${team.stats.played}</div>
+          <div class="stat-label">Gespielt</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" style="color:var(--success)">${team.stats.wins}</div>
+          <div class="stat-label">Siege</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" style="color:var(--warning)">${team.stats.draws}</div>
+          <div class="stat-label">Unentschieden</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" style="color:var(--danger)">${team.stats.losses}</div>
+          <div class="stat-label">Niederlagen</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Letzte Spiele</h2>
+    `;
+
+    if (team.recent_matches.length === 0) {
+      html += '<div class="empty-state">Noch keine Spiele ausgetragen</div>';
+    } else {
+      html += '<div class="match-list">';
+
+      team.recent_matches.forEach(match => {
+        const resultClass = match.result;
+        const resultText = match.result === 'scheduled'
+          ? '-:-'
+          : `${match.own_goals}:${match.opponent_goals}`;
+
+        const homeAway = match.is_home ? '🏠 Heim' : '✈️ Auswärts';
+        const vs = match.is_home ? 'vs' : '@';
+
+        html += `
+          <div class="match-item ${resultClass}">
+            <div class="match-teams">
+              <div><strong>${vs} <a href="team.html?id=${match.opponent_id}" class="opponent-link">${match.opponent_name}</a></strong></div>
+              <div class="match-badge">${match.season_name} • ${homeAway}</div>
+            </div>
+            <div class="match-result ${resultClass}">${resultText}</div>
+          </div>
+        `;
+      });
+
+      html += '</div>';
+    }
+
+    html += '</div>';
+
+    container.innerHTML = html;
+  } catch (e) {
+    setBackendStatus(false);
+    container.innerHTML = `<div class="empty-state" style="color:var(--danger)">Fehler: ${e.message}</div>`;
+  }
+}
+</script>
+  </fts-layout>
+</body>
+</html>
