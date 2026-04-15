@@ -144,6 +144,9 @@
     .team-btn-link:hover { opacity: 0.85; text-decoration: none; }
     .team-btn-claimed { background: #2563eb; color: #fff; }
     .team-btn-unclaimed { background: var(--surface-hover); color: var(--text-secondary); border: 1px solid var(--border); }
+    .discord-badge { background: color-mix(in srgb, #5865F2 12%, var(--card, #fff)); color: #5865F2; border: 1px solid color-mix(in srgb, #5865F2 30%, transparent); }
+    .discord-badge svg { flex-shrink: 0; }
+    .discord-badge-unclaimed { background: var(--surface-hover); color: var(--text-secondary); border: 1px solid var(--border); }
 
     /* Stats Grid */
     .stats-grid {
@@ -369,8 +372,22 @@ async function loadTeamProfile(teamId) {
       btnsWrap.appendChild(olLink);
     }
     var claimBtn = document.createElement('span');
-    claimBtn.className = 'team-btn ' + (team.discord_claimed ? 'team-btn-claimed' : 'team-btn-unclaimed');
-    claimBtn.textContent = team.discord_claimed ? 'Discord geclaimt' : 'Nicht geclaimt';
+    claimBtn.className = 'team-btn ' + (team.discord_claimed ? 'discord-badge' : 'discord-badge-unclaimed');
+    if (team.discord_claimed) {
+      var svgNS = 'http://www.w3.org/2000/svg';
+      var svg = document.createElementNS(svgNS, 'svg');
+      svg.setAttribute('width', '16'); svg.setAttribute('height', '12');
+      svg.setAttribute('viewBox', '0 0 71 55'); svg.setAttribute('fill', 'none');
+      svg.setAttribute('aria-hidden', 'true');
+      var path = document.createElementNS(svgNS, 'path');
+      path.setAttribute('d', 'M60.105 4.898A58.55 58.55 0 0 0 45.062.04a40.24 40.24 0 0 0-1.896 3.765 54.324 54.324 0 0 0-16.344 0A40.316 40.316 0 0 0 24.924.04 58.606 58.606 0 0 0 9.87 4.908C1.421 17.52-0.868 29.81.27 41.938c5.985 4.322 11.784 6.948 17.487 8.671a44.2 44.2 0 0 0 3.853-6.158 38.257 38.257 0 0 1-6.064-2.868c.509-.366 1.007-.745 1.49-1.134 11.659 5.277 24.271 5.277 35.79 0 .484.389.983.768 1.49 1.134a38.328 38.328 0 0 1-6.074 2.873 44.08 44.08 0 0 0 3.853 6.153c5.708-1.718 11.512-4.344 17.497-8.671C71.263 28.056 68.189 15.806 60.105 4.898ZM23.725 34.288c-3.525 0-6.43-3.175-6.43-7.083 0-3.907 2.845-7.087 6.43-7.087 3.584 0 6.489 3.18 6.43 7.087.005 3.908-2.845 7.083-6.43 7.083Zm23.55 0c-3.525 0-6.43-3.175-6.43-7.083 0-3.907 2.845-7.087 6.43-7.087 3.584 0 6.489 3.18 6.43 7.087 0 3.908-2.845 7.083-6.43 7.083Z');
+      path.setAttribute('fill', 'currentColor');
+      svg.appendChild(path);
+      claimBtn.appendChild(svg);
+      claimBtn.appendChild(document.createTextNode(' ' + (team.discord_username || 'Discord geclaimt')));
+    } else {
+      claimBtn.textContent = 'Nicht verknüpft';
+    }
     btnsWrap.appendChild(claimBtn);
     headerCard.appendChild(btnsWrap);
     container.appendChild(headerCard);
