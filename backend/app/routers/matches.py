@@ -473,12 +473,20 @@ def get_matches_batch(match_ids: str, db: Session = Depends(get_db)):
 
     matches = db.query(models.Match).filter(models.Match.id.in_(ids)).all()
 
+    team_ids = set()
+    for m in matches:
+        team_ids.add(m.home_team_id)
+        team_ids.add(m.away_team_id)
+    teams = {t.id: t.name for t in db.query(models.Team).filter(models.Team.id.in_(team_ids)).all()}
+
     result = []
     for match in matches:
         result.append({
             "id": match.id,
             "home_team_id": match.home_team_id,
             "away_team_id": match.away_team_id,
+            "home_team_name": teams.get(match.home_team_id, f"Team {match.home_team_id}"),
+            "away_team_name": teams.get(match.away_team_id, f"Team {match.away_team_id}"),
             "home_goals": match.home_goals,
             "away_goals": match.away_goals,
             "status": match.status
