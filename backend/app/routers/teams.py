@@ -269,9 +269,10 @@ def get_team_detail(team_id: int, db: Session = Depends(get_db)):
 
     recent_matches = all_matches_sorted[:5]
 
-    discord_claimed = db.query(models.UserProfile).filter(
-        models.UserProfile.team_id == team_id
-    ).first() is not None
+    discord_profile = db.query(models.UserProfile).filter(
+        models.UserProfile.team_id == team_id,
+        models.UserProfile.is_active == True
+    ).first()
 
     return schemas.TeamDetail(
         id=team.id,
@@ -279,7 +280,8 @@ def get_team_detail(team_id: int, db: Session = Depends(get_db)):
         logo_url=team.logo_url,
         onlineliga_url=team.onlineliga_url,
         is_active=team.is_active,
-        discord_claimed=discord_claimed,
+        discord_claimed=discord_profile is not None,
+        discord_username=discord_profile.discord_username if discord_profile else None,
         recent_matches=recent_matches,
         stats={
             "played": wins + draws + losses,
