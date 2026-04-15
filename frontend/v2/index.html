@@ -1744,9 +1744,10 @@ async function loadAndRenderParticipants() {
   try {
     var responses = await Promise.all([
       fetch(API + '/api/teams?participating=true').then(function(r) { return r.json(); }),
-      loadCrests()
+      fetch(API + '/api/teams/crests').then(function(r) { return r.json(); }).catch(function() { return {}; })
     ]);
     var teams = responses[0];
+    var crestMap = responses[1];
 
     if (!teams.length) {
       ergebnisseContent.textContent = 'Noch keine Anmeldungen.';
@@ -1774,8 +1775,9 @@ async function loadAndRenderParticipants() {
       var card = document.createElement('div');
       card.className = 'participant-card';
 
-      if (team.logo_url) {
-        var src = team.logo_url.startsWith('http') ? team.logo_url : API + team.logo_url;
+      var rawUrl = crestMap[String(team.id)] || team.logo_url || null;
+      if (rawUrl) {
+        var src = rawUrl.startsWith('http') ? rawUrl : API + rawUrl;
         var img = document.createElement('img');
         img.src = src;
         img.alt = team.name;
