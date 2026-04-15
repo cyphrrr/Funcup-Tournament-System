@@ -46,3 +46,10 @@ export function registerTeams(groups) {
 export function registerTeam(id, name) {
   teamCache[id] = name;
 }
+
+export function registerTeamWithLogo(id, name, logo_url) {
+  teamCache[id] = name;
+  if (logo_url) {
+    crestCache[String(id)] = logo_url;
+  }
+}

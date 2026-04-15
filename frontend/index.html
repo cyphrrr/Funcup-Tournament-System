@@ -1171,7 +1171,7 @@
 <!-- ========== SCRIPTS ========== -->
 <script type="module">
 import { API_URL } from '../js/config.js';
-import { loadCrests, crestImg, teamName, registerTeams, registerTeam } from '../js/team-utils.js';
+import { loadCrests, crestImg, teamName, registerTeams, registerTeam, registerTeamWithLogo } from '../js/team-utils.js';
 const API = API_URL;
 
 const BRACKET_LABELS = { meister: 'Meister-Bracket', lucky_loser: 'Lucky Loser', loser: 'Trostpflaster' };
@@ -1643,8 +1643,8 @@ async function renderMatchesBlock(matchIds, isKO) {
     if (matches.length === 0) return '';
     var html = '<div class="matches-grid" style="margin:0.75rem 0">';
     matches.forEach(function(m) {
-      if (m.home_team_name) registerTeam(m.home_team_id, m.home_team_name);
-      if (m.away_team_name) registerTeam(m.away_team_id, m.away_team_name);
+      if (m.home_team_name) registerTeamWithLogo(m.home_team_id, m.home_team_name, m.home_team_logo);
+      if (m.away_team_name) registerTeamWithLogo(m.away_team_id, m.away_team_name, m.away_team_logo);
       html += buildMatchCard({
         home_team_id: m.home_team_id,
         away_team_id: m.away_team_id,
