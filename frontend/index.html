@@ -800,6 +800,7 @@
       color: var(--accent);
       font-weight: 700;
     }
+    .team-link-hover:hover { text-decoration: underline; color: var(--accent-text); }
     .ko-team-row .ko-score {
       font-family: var(--font-display);
       font-weight: 700;
@@ -854,6 +855,11 @@
     .participant-card:hover {
       border-color: var(--accent-glow);
       transform: translateY(-3px);
+    }
+    a.participant-card {
+      text-decoration: none;
+      color: inherit;
+      display: block;
     }
     .participant-card img {
       width: 52px;
@@ -1572,6 +1578,11 @@ async function renderGroupStandings() {
 
 // --- KO Bracket Sidebar ---
 
+function teamLinkOrText(name, id) {
+  if (!id) return name;
+  return '<a href="team.html?id=' + id + '" style="color:inherit;text-decoration:none;font-weight:inherit" class="team-link-hover">' + name + '</a>';
+}
+
 function renderMiniBracket() {
   var container = document.getElementById('standings-content');
   if (!koBrackets) {
@@ -1610,8 +1621,8 @@ function renderMiniBracket() {
         var winnerClass = function(id) { return m.winner_id && m.winner_id === id ? ' winner' : ''; };
 
         html += '<div class="ko-match-card">' +
-          '<div class="ko-team-row' + winnerClass(homeId) + '"><span>' + homeName + '</span><span class="ko-score">' + homeScore + '</span></div>' +
-          '<div class="ko-team-row' + winnerClass(awayId) + '"><span>' + awayName + '</span><span class="ko-score">' + awayScore + '</span></div>' +
+          '<div class="ko-team-row' + winnerClass(homeId) + '"><span>' + teamLinkOrText(homeName, homeId) + '</span><span class="ko-score">' + homeScore + '</span></div>' +
+          '<div class="ko-team-row' + winnerClass(awayId) + '"><span>' + teamLinkOrText(awayName, awayId) + '</span><span class="ko-score">' + awayScore + '</span></div>' +
         '</div>';
       });
       html += '</div>';
@@ -1772,8 +1783,9 @@ async function loadAndRenderParticipants() {
 
     for (var i = 0; i < teams.length; i++) {
       var team = teams[i];
-      var card = document.createElement('div');
+      var card = document.createElement('a');
       card.className = 'participant-card';
+      card.href = 'team.html?id=' + team.id;
 
       var rawUrl = crestMap[String(team.id)] || team.logo_url || null;
       if (rawUrl) {

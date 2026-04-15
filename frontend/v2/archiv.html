@@ -228,6 +228,7 @@
     .compact-table .leader td { color: var(--accent-text); font-weight: 600; }
     .compact-table .rank-cell { font-family: var(--font-display); font-weight: 700; color: var(--accent-text); }
     .team-cell { display: flex; align-items: center; gap: 0.4rem; }
+    .team-cell a:hover { color: var(--accent-text); text-decoration: underline; }
 
     /* KO Bracket Compact */
     .ko-scroll-wrapper { position: relative; }
@@ -442,9 +443,12 @@ async function loadSeasonDetails(seasonId) {
             teamWrap.className = 'team-cell';
             var crest = buildCrestEl(row.team_id);
             if (crest) teamWrap.appendChild(crest);
-            var nameSpan = document.createElement('span');
-            nameSpan.textContent = teamName(row.team_id);
-            teamWrap.appendChild(nameSpan);
+            var nameLink = document.createElement('a');
+            nameLink.href = 'team.html?id=' + row.team_id;
+            nameLink.textContent = teamName(row.team_id);
+            nameLink.style.color = 'inherit';
+            nameLink.style.textDecoration = 'none';
+            teamWrap.appendChild(nameLink);
             tdTeam.appendChild(teamWrap);
             tr.appendChild(tdTeam);
 
