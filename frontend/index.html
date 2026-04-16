@@ -1213,12 +1213,17 @@ document.getElementById('mode-toggle').addEventListener('click', function() {
 async function resolveActiveSeason() {
   var seasons = await fetch(API + '/api/seasons').then(function(r) { return r.json(); });
 
-  // 1. Geplante Saison = Anmeldephase (höchste Priorität)
+  // 1. Geplante Saison = Anmeldephase, aber nur wenn noch kein Spielplan existiert
   var planned = seasons.filter(function(s) { return s.status === 'planned'; });
   if (planned.length > 0) {
     planned.sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); });
-    isRegistrationPhase = true;
-    return planned[0];
+    var candidate = planned[0];
+    var gwt = await fetch(API + '/api/seasons/' + candidate.id + '/groups-with-teams').then(function(r) { return r.json(); });
+    var hasMatches = gwt.some(function(g) { return g.matches && g.matches.length > 0; });
+    if (!hasMatches) {
+      isRegistrationPhase = true;
+    }
+    return candidate;
   }
 
   // 2. Aktive Saison
