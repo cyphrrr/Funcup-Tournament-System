@@ -6,9 +6,7 @@
   <title>Datenschutz – BIW Pokal</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="robots" content="noindex, nofollow" />
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=Lexend:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="css/fonts.css">
   <script>
     (function() {
       var stored = localStorage.getItem('biw_v2_mode');
@@ -408,19 +406,27 @@
 
       <h2>Erhebung und Verarbeitung von Daten</h2>
       <p>
-        Diese Website erhebt keine personenbezogenen Daten. Es werden weder
-        Tracking-Tools noch Analyse-Software eingesetzt. Es gibt keine Cookies.
+        Diese Website erhebt keine personenbezogenen Daten im Sinne der DSGVO.
+        Es gibt keine Cookies. Zur anonymen Analyse der Besucherzahlen werden
+        Seitenaufrufe erfasst. Dabei wird keine IP-Adresse gespeichert &ndash;
+        stattdessen wird ein nicht r&uuml;ckf&uuml;hrbarer Tages-Hash aus IP-Adresse,
+        User-Agent und aktuellem Datum gebildet. Eine Identifikation einzelner
+        Personen ist technisch nicht m&ouml;glich.
       </p>
 
-      <h2>Lokaler Browserspeicher (localStorage)</h2>
+      <h2>Lokaler Browserspeicher (localStorage / sessionStorage)</h2>
       <p>
-        Die Website speichert ausschlie&szlig;lich folgende Daten lokal im Browser
-        des Nutzers (localStorage). Diese Daten verlassen niemals den Browser
-        und werden nicht an den Server &uuml;bertragen:
+        Die Website speichert folgende Daten lokal im Browser des Nutzers.
+        Diese Daten verlassen niemals den Browser und werden nicht an den
+        Server &uuml;bertragen:
       </p>
       <ul>
         <li><strong>biw_v2_mode</strong> &ndash; Farbschema-Einstellung (hell/dunkel)</li>
-        <li><strong>biw_token</strong> &ndash; Tempor&auml;rer Login-Token f&uuml;r Administratoren</li>
+        <li><strong>biw_theme</strong> &ndash; Ausgew&auml;hltes Farbthema</li>
+        <li><strong>biw_dark_mode</strong> &ndash; Dark-Mode-Pr&auml;ferenz</li>
+        <li><strong>biw_dashboard_token</strong> &ndash; Login-Token f&uuml;r das Teilnehmer-Dashboard (wird beim Abmelden gel&ouml;scht)</li>
+        <li><strong>biw_token</strong> / <strong>biw_user</strong> &ndash; Login-Daten f&uuml;r Administratoren (werden beim Abmelden gel&ouml;scht)</li>
+        <li><strong>biw_crests</strong> (sessionStorage) &ndash; Tempor&auml;rer Cache f&uuml;r Team-Wappen (l&auml;uft nach 10 Minuten ab, wird beim Tab-Schlie&szlig;en gel&ouml;scht)</li>
       </ul>
       <p>
         Diese Daten k&ouml;nnen jederzeit im Browser gel&ouml;scht werden
@@ -434,12 +440,24 @@
         ausschlie&szlig;lich zur Fehleranalyse genutzt und nicht an Dritte weitergegeben.
       </p>
 
-      <h2>Externe Links</h2>
+      <h2>Externe Dienste</h2>
       <p>
         Diese Website enth&auml;lt Links zum Discord-Server des BIW Pokal.
         Beim Klick auf einen solchen Link verl&auml;sst du diese Website.
         F&uuml;r die Datenschutzpraktiken von Discord ist deren eigene
-        Datenschutzerkl&auml;rung ma&szlig;geblich.
+        <a href="https://discord.com/privacy" target="_blank" rel="noopener noreferrer">Datenschutzrichtlinie</a>
+        ma&szlig;geblich.
+      </p>
+      <p>
+        Das Teilnehmer-Dashboard bietet eine optionale Anmeldung &uuml;ber Discord an.
+        Die Nutzung ist freiwillig. Beim Discord-Login werden Discord-Name und
+        Discord-ID an unseren Server &uuml;bertragen und gespeichert.
+        Kernfunktionen der Website (Turnierstand, Tabellen, News) sind ohne
+        Anmeldung vollst&auml;ndig zug&auml;nglich.
+      </p>
+      <p>
+        Schriftarten werden lokal ausgeliefert. Es findet keine Verbindung zu
+        externen Font-Diensten (z.&nbsp;B. Google Fonts) statt.
       </p>
 
       <h2>Rechte der betroffenen Personen</h2>
