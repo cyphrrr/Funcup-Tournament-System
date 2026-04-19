@@ -18,29 +18,29 @@
     /* === Design Tokens === */
     :root,
     [data-theme="dark"] {
-      --bg: #06090f;
-      --bg-elevated: #0c1018;
-      --surface: #111822;
-      --surface-hover: #172030;
-      --border: #1e2a3a;
-      --border-glow: #2dd4bf33;
-      --text: #e8edf4;
-      --text-secondary: #7b8fa8;
-      --accent: #0d9488;
-      --accent-dim: #0d948822;
-      --accent-glow: #0d948844;
-      --accent-text: #2dd4bf;
-      --gold: #fbbf24;
-      --silver: #94a3b8;
-      --bronze: #d97706;
-      --danger: #f87171;
-      --success: #34d399;
+      --bg: #03060d;
+      --bg-elevated: #080f1c;
+      --surface: #0e1a2e;
+      --surface-hover: #152540;
+      --border: #1f3a5f;
+      --border-glow: #00edca33;
+      --text: #eef4ff;
+      --text-secondary: #80a8d0;
+      --accent: #00b899;
+      --accent-dim: #00b89922;
+      --accent-glow: #00b89944;
+      --accent-text: #00edca;
+      --gold: #ffd700;
+      --silver: #a8c0d8;
+      --bronze: #e89010;
+      --danger: #ff6060;
+      --success: #00e094;
       --shadow-alpha: 0.3;
-      --header-bg: rgba(6, 9, 15, 0.85);
+      --header-bg: rgba(3, 6, 13, 0.85);
       --noise-opacity: 0.04;
-      --connector-color: #1e2a3a;
-      --connector-played: #0d9488;
-      --match-glow: rgba(13, 148, 136, 0.12);
+      --connector-color: #1f3a5f;
+      --connector-played: #00b899;
+      --match-glow: rgba(0, 184, 153, 0.12);
       --font-display: 'Chakra Petch', sans-serif;
       --font-body: 'Lexend', sans-serif;
     }
@@ -50,24 +50,24 @@
       --surface: #ffffff;
       --surface-hover: #f5f7fa;
       --border: #d1d5de;
-      --border-glow: #0d948833;
+      --border-glow: #00b89933;
       --text: #111827;
       --text-secondary: #5b6577;
-      --accent: #0d9488;
-      --accent-dim: #0d948815;
-      --accent-glow: #0d948830;
-      --accent-text: #0d9488;
-      --gold: #b8860b;
+      --accent: #00b899;
+      --accent-dim: #00b89915;
+      --accent-glow: #00b89930;
+      --accent-text: #00b899;
+      --gold: #cc9900;
       --silver: #64748b;
       --bronze: #a0630a;
-      --danger: #dc2626;
-      --success: #059669;
+      --danger: #e52020;
+      --success: #00a86b;
       --shadow-alpha: 0.08;
       --header-bg: rgba(240, 242, 245, 0.88);
       --noise-opacity: 0.025;
       --connector-color: #d1d5de;
-      --connector-played: #0d9488;
-      --match-glow: rgba(13, 148, 136, 0.06);
+      --connector-played: #00b899;
+      --match-glow: rgba(0, 184, 153, 0.06);
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -428,7 +428,7 @@
       flex-shrink: 0;
     }
     .ko-round-header.finale-header {
-      background: linear-gradient(135deg, rgba(251, 191, 36, 0.1), rgba(13, 148, 136, 0.1));
+      background: linear-gradient(135deg, rgba(251, 191, 36, 0.1), rgba(0, 184, 153, 0.1));
       border-color: var(--gold);
       color: var(--gold);
     }
@@ -622,13 +622,13 @@
       text-align: center;
       padding: 1.5rem 1rem;
       margin-bottom: 1.5rem;
-      background: linear-gradient(135deg, rgba(251, 191, 36, 0.06), rgba(13, 148, 136, 0.06));
+      background: linear-gradient(135deg, rgba(251, 191, 36, 0.06), rgba(0, 184, 153, 0.06));
       border: 1px solid rgba(251, 191, 36, 0.2);
       border-radius: 14px;
       animation: scaleIn 0.5s ease-out;
     }
     [data-theme="light"] .winner-banner {
-      background: linear-gradient(135deg, rgba(184, 134, 11, 0.06), rgba(13, 148, 136, 0.04));
+      background: linear-gradient(135deg, rgba(184, 134, 11, 0.06), rgba(0, 184, 153, 0.04));
       border-color: rgba(184, 134, 11, 0.2);
     }
     .winner-banner-trophy {
