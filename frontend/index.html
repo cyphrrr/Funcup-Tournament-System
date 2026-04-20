@@ -1437,30 +1437,28 @@ function renderGroupErgebnisse() {
   }
 
   var info = deriveCurrentMatchday();
-  var matchdays = Array.from(new Set(allMatches.map(function(m) { return m.matchday; }))).sort(function(a, b) { return b - a; });
+  var matchdays = Array.from(new Set(allMatches.map(function(m) { return m.matchday; }))).sort(function(a, b) { return a - b; });
 
   var html = '';
   matchdays.forEach(function(md, idx) {
     var mdMatches = allMatches.filter(function(m) { return m.matchday === md; });
-    var showExpanded = idx < 2;
+    var playedCount = mdMatches.filter(function(m) { return m.status === 'played'; }).length;
+    var totalCount = mdMatches.length;
+    var isLast = idx === matchdays.length - 1;
 
-    html += '<div class="matchday-divider">Spieltag ' + md + '</div>';
-
-    if (showExpanded) {
-      html += '<div class="matches-grid">';
-      mdMatches.forEach(function(m) {
-        html += buildMatchCard(m, 'Gruppe ' + m.groupName);
-      });
-      html += '</div>';
-    } else {
-      var playedCount = mdMatches.filter(function(m) { return m.status === 'played'; }).length;
-      html += '<details><summary style="background:none;border:none;color:var(--text-secondary);font-family:var(--font-display);font-size:0.75rem;cursor:pointer;padding:0.25rem 0;letter-spacing:0.04em;list-style:none">\u25B8 ' + playedCount + ' Spiele anzeigen</summary>';
-      html += '<div class="matches-grid">';
-      mdMatches.forEach(function(m) {
-        html += buildMatchCard(m, 'Gruppe ' + m.groupName);
-      });
-      html += '</div></details>';
+    html += '<details class="matchday-accordion"' + (isLast ? ' open' : '') + '>';
+    html += '<summary class="matchday-divider" style="cursor:pointer;list-style:none">';
+    html += 'Spieltag ' + md;
+    if (!isLast) {
+      html += ' <span style="color:var(--text-secondary);font-size:0.8em">(' + playedCount + '/' + totalCount + ')</span>';
     }
+    html += '</summary>';
+    html += '<div class="matches-grid">';
+    mdMatches.forEach(function(m) {
+      html += buildMatchCard(m, 'Gruppe ' + m.groupName);
+    });
+    html += '</div>';
+    html += '</details>';
   });
 
   container.innerHTML = html;
