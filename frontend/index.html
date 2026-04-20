@@ -1438,18 +1438,19 @@ function renderGroupErgebnisse() {
 
   var info = deriveCurrentMatchday();
   var matchdays = Array.from(new Set(allMatches.map(function(m) { return m.matchday; }))).sort(function(a, b) { return a - b; });
+  var currentMd = info.current > 0 ? info.current : matchdays[matchdays.length - 1];
 
   var html = '';
   matchdays.forEach(function(md, idx) {
     var mdMatches = allMatches.filter(function(m) { return m.matchday === md; });
     var playedCount = mdMatches.filter(function(m) { return m.status === 'played'; }).length;
     var totalCount = mdMatches.length;
-    var isLast = idx === matchdays.length - 1;
+    var isCurrent = md === currentMd;
 
-    html += '<details class="matchday-accordion"' + (isLast ? ' open' : '') + '>';
+    html += '<details class="matchday-accordion"' + (isCurrent ? ' open' : '') + '>';
     html += '<summary class="matchday-divider" style="cursor:pointer;list-style:none">';
     html += 'Spieltag ' + md;
-    if (!isLast) {
+    if (!isCurrent) {
       html += ' <span style="color:var(--text-secondary);font-size:0.8em">(' + playedCount + '/' + totalCount + ')</span>';
     }
     html += '</summary>';
