@@ -200,12 +200,24 @@ function renderKOPreview(preview, container) {
     html += `<h3>${KO_TAB_LABELS[type] || type} (${bracket.size} Teams, ${bracket.rounds} Runden)</h3>`;
     html += `<div style="font-size:.8rem;color:var(--text-muted);margin-top:.25rem">inkl. Spiel um Platz 3</div>`;
 
+    // V3: Info-Banner wenn Vierte als Fallback herangezogen wurden
+    if (bracket.vierte_fallback && bracket.vierte_fallback.length > 0) {
+      html += `<div style="background:color-mix(in srgb,var(--accent) 12%,var(--bg-section));border:1px solid var(--accent);border-radius:8px;padding:.6rem .75rem;margin-bottom:.75rem;font-size:.82rem;color:var(--accent)">
+        ⚡ ${bracket.vierte_fallback.length} Viertplatzierte als Fallback-Aufrücker (nach Pokal-Leistung)
+      </div>`;
+    }
+
     // Team pills with promoted badges
     html += '<div class="ko-preview-teams">';
     bracket.teams.forEach((teamId, idx) => {
       const name = teamNames[teamId] || '?';
+      const isVierterFallback = bracket.vierte_fallback && bracket.vierte_fallback.includes(teamId);
       const isPromoted = bracket.aufruecker.includes(teamId);
-      const badge = isPromoted ? ' <span class="ko-promoted-badge">↑ Aufrücker</span>' : '';
+      const badge = isVierterFallback
+        ? ' <span class="ko-promoted-badge" style="background:color-mix(in srgb,var(--accent) 20%,transparent);color:var(--accent);border-color:var(--accent)">↑ Fallback</span>'
+        : isPromoted
+          ? ' <span class="ko-promoted-badge">↑ Aufrücker</span>'
+          : '';
       html += `<div class="ko-team-pill">${name}${badge}</div>`;
     });
     html += '</div>';

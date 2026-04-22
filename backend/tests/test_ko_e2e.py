@@ -26,7 +26,7 @@ from datetime import datetime
 
 from app.db import Base
 from app import models
-from app.ko_bracket_generator import generate_ko_brackets_v2, preview_ko_brackets
+from app.ko_bracket_generator import generate_ko_brackets_v2, preview_ko_brackets, get_qualified_teams_v2
 import app.ranking_service as ranking_svc
 
 
@@ -337,7 +337,7 @@ def test_20_teams_meister_8():
 # ============================================================
 
 def test_32_teams():
-    """8G×4T: Meister 16 (8E+8Z), LL 8 (0Z+8D), Loser nicht generiert."""
+    """8G×4T: Meister 16 (8E+8Z), LL 16 (V3: 0Z+8D+8V), Loser nicht generiert."""
     mock_ranking_sheet()
     db = create_test_db()
     season_id, _, _ = setup_season(db, 8, 4)
@@ -350,14 +350,16 @@ def test_32_teams():
     assert m["aufruecker_count"] == 8, f"Meister: erwartet 8 Aufrücker, got {m['aufruecker_count']}"
     assert m["rounds"] == 4, f"Meister: erwartet 4 Runden (AF), got {m['rounds']}"
 
+    # V3: 0 Zweite + 8 Dritte + 8 Vierte (Fallback) = 16
     ll = result["lucky_loser"]
     assert ll["bracket_id"] is not None, "Lucky Loser sollte generiert sein"
-    assert ll["teams_count"] == 8, f"Lucky Loser: erwartet 8, got {ll['teams_count']}"
-    assert ll["aufruecker_count"] == 8, f"Lucky Loser: erwartet 8 Aufrücker (alle Dritten), got {ll['aufruecker_count']}"
-    assert ll["rounds"] == 3, f"Lucky Loser: erwartet 3 Runden (VF), got {ll['rounds']}"
+    assert ll["teams_count"] == 16, f"Lucky Loser: erwartet 16 (V3 Fallback), got {ll['teams_count']}"
+    assert ll["aufruecker_count"] == 16, f"Lucky Loser: erwartet 16 Aufrücker (8D+8V), got {ll['aufruecker_count']}"
+    assert ll["rounds"] == 4, f"Lucky Loser: erwartet 4 Runden (AF), got {ll['rounds']}"
 
+    # Loser: 0 Dritte + 0 Vierte = 0 (alle Vierte im V3-Fallback)
     lo = result["loser"]
-    assert lo["bracket_id"] is None, "Loser sollte nicht generiert sein (0D+8V<16)"
+    assert lo["bracket_id"] is None, "Loser sollte nicht generiert sein (0D+0V nach V3-Fallback)"
 
     db.close()
     print("✓ test_32_teams bestanden")
@@ -650,27 +652,209 @@ def test_ranking_sortierung_bestimmt_aufruecker():
     assert m["teams_count"] == 16, f"Meister: erwartet 16, got {m['teams_count']}"
     assert m["aufruecker_count"] == 6, f"Meister: erwartet 6 Aufrücker, got {m['aufruecker_count']}"
 
-    # Lucky Loser: 4 übrige Zweite + 4 beste Dritte = 8 Teams (Fallback)
-    # (weil 4 + 10 Dritte = 14 < 16, Fallback auf 8)
+    # V3: 4 übrige Zweite + 10 Dritte + 2 Vierte (Fallback) = 16
+    # (4 + 10 = 14 < 16 → V3: +2 Vierte = 16)
     ll = result["lucky_loser"]
     assert ll["bracket_id"] is not None, "Lucky Loser sollte generiert sein"
-    assert ll["teams_count"] == 8, f"Lucky Loser: erwartet 8 Teams (Fallback), got {ll['teams_count']}"
-    assert ll["rounds"] == 3, f"Lucky Loser: erwartet 3 Runden (VF), got {ll['rounds']}"
-    # Lucky Loser hat: 4 übrige Zweite + 4 beste Dritte = 8
-    assert ll["aufruecker_count"] == 4, f"Lucky Loser: erwartet 4 Dritte-Aufrücker, got {ll['aufruecker_count']}"
+    assert ll["teams_count"] == 16, f"Lucky Loser: erwartet 16 (V3 Fallback), got {ll['teams_count']}"
+    assert ll["rounds"] == 4, f"Lucky Loser: erwartet 4 Runden (AF), got {ll['rounds']}"
+    # Lucky Loser hat: 10 Dritte + 2 Vierte = 12 Aufrücker
+    assert ll["aufruecker_count"] == 12, f"Lucky Loser: erwartet 12 Aufrücker (10D+2V), got {ll['aufruecker_count']}"
 
-    # Loser: 6 übrige Dritte + 10 Vierte = 16 oder None?
-    # 6 + 10 = 16 ≥ 16 → SOLLTE generiert werden
+    # Loser: 0 Dritte (alle in LL) + 8 Vierte (übrig) = 8 < 16 → NICHT generiert
     lo = result["loser"]
-    # Das hängt davon ab wie viele Dritte aufgerückt sind
-    # Mit den Rankings sollten 4 beste Dritte in Lucky Loser sein
-    # Es bleiben 10 - 4 = 6 Dritte
-    # 6 + 10 Vierte = 16 ≥ 16 → Loser SOLLTE generiert werden
-    assert lo["bracket_id"] is not None, "Loser sollte generiert sein (6 Dritte + 10 Vierte = 16)"
-    assert lo["teams_count"] == 16, f"Loser: erwartet 16, got {lo['teams_count']}"
+    assert lo["bracket_id"] is None, "Loser sollte NICHT generiert sein (0D + 8V = 8 < 16)"
 
     db.close()
     print("✓ test_ranking_sortierung_bestimmt_aufruecker bestanden")
+
+
+# ============================================================
+# TEST 10: 38 Teams (10 Gruppen: 8×4 + 2×3) — V3-Fallback mit Sortierverifikation
+# ============================================================
+
+def test_38_teams_v3_fallback():
+    """
+    10 Gruppen: 8×4 + 2×3 = 38 Teams.
+    E=10, Z=10, D=10, V=8
+
+    V3-Fallback: 4Z + 10D = 14 < 16 → +2 beste Vierte = 16.
+    Gruppe A (Vierter 3GF) und Gruppe B (Vierter 2GF) sind die 2 besten.
+    """
+    mock_ranking_sheet()
+    db = create_test_db()
+
+    season = models.Season(name="Test 38 Teams V3", participant_count=38, status="active")
+    db.add(season)
+    db.flush()
+
+    group_names = list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+    gruppe_a_platz4_id = None
+    gruppe_b_platz4_id = None
+
+    # 8×4er-Gruppen, Vierte mit unterschiedlichen GF für Sortierverifikation
+    vierte_gf = [3, 2, 0, 0, 0, 0, 0, 0]
+    for g_idx, gf in enumerate(vierte_gf):
+        group = models.Group(season_id=season.id, name=group_names[g_idx], sort_order=g_idx)
+        db.add(group)
+        db.flush()
+
+        t_ids = []
+        for t_idx in range(4):
+            t = models.Team(name=f"Gruppe_{group_names[g_idx]}_Platz{t_idx + 1}")
+            db.add(t)
+            db.flush()
+            db.add(models.SeasonTeam(season_id=season.id, team_id=t.id, group_id=group.id))
+            t_ids.append(t.id)
+
+        if g_idx == 0:
+            gruppe_a_platz4_id = t_ids[3]
+        elif g_idx == 1:
+            gruppe_b_platz4_id = t_ids[3]
+
+        t = t_ids
+        # P1 schlägt alle; P4 erzielt `gf` Tore gegen P1
+        db.add(models.Match(season_id=season.id, group_id=group.id, home_team_id=t[0], away_team_id=t[1], home_goals=3, away_goals=0, status="played"))
+        db.add(models.Match(season_id=season.id, group_id=group.id, home_team_id=t[0], away_team_id=t[2], home_goals=2, away_goals=0, status="played"))
+        db.add(models.Match(season_id=season.id, group_id=group.id, home_team_id=t[0], away_team_id=t[3], home_goals=5, away_goals=gf, status="played"))
+        db.add(models.Match(season_id=season.id, group_id=group.id, home_team_id=t[1], away_team_id=t[2], home_goals=1, away_goals=0, status="played"))
+        db.add(models.Match(season_id=season.id, group_id=group.id, home_team_id=t[1], away_team_id=t[3], home_goals=3, away_goals=0, status="played"))
+        db.add(models.Match(season_id=season.id, group_id=group.id, home_team_id=t[2], away_team_id=t[3], home_goals=2, away_goals=0, status="played"))
+
+    # 2×3er-Gruppen (I, J) — kein Vierter
+    for g_idx in range(8, 10):
+        group = models.Group(season_id=season.id, name=group_names[g_idx], sort_order=g_idx)
+        db.add(group)
+        db.flush()
+        t_ids = []
+        for t_idx in range(3):
+            t = models.Team(name=f"Gruppe_{group_names[g_idx]}_Platz{t_idx + 1}")
+            db.add(t)
+            db.flush()
+            db.add(models.SeasonTeam(season_id=season.id, team_id=t.id, group_id=group.id))
+            t_ids.append(t.id)
+        t = t_ids
+        db.add(models.Match(season_id=season.id, group_id=group.id, home_team_id=t[0], away_team_id=t[1], home_goals=3, away_goals=0, status="played"))
+        db.add(models.Match(season_id=season.id, group_id=group.id, home_team_id=t[0], away_team_id=t[2], home_goals=2, away_goals=0, status="played"))
+        db.add(models.Match(season_id=season.id, group_id=group.id, home_team_id=t[1], away_team_id=t[2], home_goals=1, away_goals=0, status="played"))
+
+    db.commit()
+
+    # Verifiziere Fallback-Auswahl VOR Bracket-Generierung
+    qualified = get_qualified_teams_v2(season.id, db, require_completed=False)
+    vierte_fallback = qualified["aufruecker_info"]["lucky_loser_vierte_fallback"]
+    assert len(vierte_fallback) == 2, f"Erwartet 2 Vierte-Fallback, got {len(vierte_fallback)}"
+    assert gruppe_a_platz4_id in vierte_fallback, "Gruppe A Platz4 (3GF) sollte Fallback-Aufrücker sein"
+    assert gruppe_b_platz4_id in vierte_fallback, "Gruppe B Platz4 (2GF) sollte Fallback-Aufrücker sein"
+
+    result = generate_ko_brackets_v2(season.id, db)
+
+    m = result["meister"]
+    assert m["bracket_id"] is not None
+    assert m["teams_count"] == 16, f"Meister: erwartet 16, got {m['teams_count']}"
+    assert m["aufruecker_count"] == 6
+
+    ll = result["lucky_loser"]
+    assert ll["bracket_id"] is not None, "Lucky Loser sollte generiert sein"
+    assert ll["teams_count"] == 16, f"Lucky Loser: erwartet 16 (V3), got {ll['teams_count']}"
+    assert ll["aufruecker_count"] == 12, f"Lucky Loser: erwartet 12 Aufrücker (10D+2V), got {ll['aufruecker_count']}"
+    assert ll["rounds"] == 4
+
+    lo = result["loser"]
+    assert lo["bracket_id"] is None, "Loser sollte NICHT generiert sein (0D+6V<16)"
+
+    all_matches = db.query(models.KOMatch).filter(models.KOMatch.season_id == season.id).all()
+    assert len([m for m in all_matches if m.is_bye == 1]) == 0
+
+    db.close()
+    print("✓ test_38_teams_v3_fallback bestanden")
+
+
+# ============================================================
+# TEST 11: 32 Teams (8 Gruppen à 4) — V3-Fallback (alle Vierte in LL)
+# ============================================================
+
+def test_32_teams_v3_fallback():
+    """
+    8 Gruppen à 4 = 32 Teams.
+    E=8, Z=8, D=8, V=8
+
+    V3-Fallback: 0Z + 8D = 8 < 16 → +8 Vierte = 16 (alle Vierte in Lucky Loser).
+    Loser: NICHT GENERIERT (0D + 0V nach Fallback).
+    """
+    mock_ranking_sheet()
+    db = create_test_db()
+    season_id, _, _ = setup_season(db, 8, 4)
+    db.commit()
+
+    qualified = get_qualified_teams_v2(season_id, db, require_completed=False)
+    vierte_fallback = qualified["aufruecker_info"]["lucky_loser_vierte_fallback"]
+    assert len(vierte_fallback) == 8, f"Alle 8 Vierte sollten Fallback-Aufrücker sein, got {len(vierte_fallback)}"
+
+    result = generate_ko_brackets_v2(season_id, db)
+
+    m = result["meister"]
+    assert m["teams_count"] == 16
+    assert m["aufruecker_count"] == 8
+
+    ll = result["lucky_loser"]
+    assert ll["bracket_id"] is not None
+    assert ll["teams_count"] == 16, f"Lucky Loser: erwartet 16 (V3), got {ll['teams_count']}"
+    assert ll["aufruecker_count"] == 16, f"Lucky Loser: erwartet 16 Aufrücker (8D+8V), got {ll['aufruecker_count']}"
+    assert ll["rounds"] == 4
+
+    lo = result["loser"]
+    assert lo["bracket_id"] is None, "Loser sollte NICHT generiert sein"
+
+    all_matches = db.query(models.KOMatch).filter(models.KOMatch.season_id == season_id).all()
+    assert len([m for m in all_matches if m.is_bye == 1]) == 0
+
+    db.close()
+    print("✓ test_32_teams_v3_fallback bestanden")
+
+
+# ============================================================
+# TEST 12: 24 Teams (6 Gruppen à 4) — V3-Fallback (alle Vierte in LL)
+# ============================================================
+
+def test_24_teams_v3_fallback():
+    """
+    6 Gruppen à 4 = 24 Teams.
+    E=6, Z=6, D=6, V=6
+
+    Meister: 8er-Fallback (6E+2Z=8).
+    Lucky Loser V3: 4Z + 6D + 6V = 16 (alle Vierte in Fallback).
+    Loser: NICHT GENERIERT.
+    """
+    mock_ranking_sheet()
+    db = create_test_db()
+    season_id, _, _ = setup_season(db, 6, 4)
+    db.commit()
+
+    qualified = get_qualified_teams_v2(season_id, db, require_completed=False)
+    vierte_fallback = qualified["aufruecker_info"]["lucky_loser_vierte_fallback"]
+    assert len(vierte_fallback) == 6, f"Alle 6 Vierte sollten Fallback-Aufrücker sein, got {len(vierte_fallback)}"
+
+    result = generate_ko_brackets_v2(season_id, db)
+
+    m = result["meister"]
+    assert m["teams_count"] == 8, f"Meister: erwartet 8 (Fallback), got {m['teams_count']}"
+    assert m["aufruecker_count"] == 2
+
+    ll = result["lucky_loser"]
+    assert ll["bracket_id"] is not None
+    assert ll["teams_count"] == 16, f"Lucky Loser: erwartet 16 (V3), got {ll['teams_count']}"
+    assert ll["aufruecker_count"] == 12, f"Lucky Loser: erwartet 12 Aufrücker (6D+6V), got {ll['aufruecker_count']}"
+    assert ll["rounds"] == 4
+
+    lo = result["loser"]
+    assert lo["bracket_id"] is None, "Loser sollte NICHT generiert sein"
+
+    all_matches = db.query(models.KOMatch).filter(models.KOMatch.season_id == season_id).all()
+    assert len([m for m in all_matches if m.is_bye == 1]) == 0
+
+    db.close()
+    print("✓ test_24_teams_v3_fallback bestanden")
 
 
 # ============================================================
@@ -679,7 +863,7 @@ def test_ranking_sortierung_bestimmt_aufruecker():
 
 if __name__ == "__main__":
     print("=" * 70)
-    print("KO-BRACKET-SYSTEM v2 — END-TO-END TESTS")
+    print("KO-BRACKET-SYSTEM v3 — END-TO-END TESTS")
     print("=" * 70)
 
     tests = [
@@ -692,6 +876,9 @@ if __name__ == "__main__":
         ("test_keine_freilose", test_keine_freilose),
         ("test_41_teams_gemischte_gruppen", test_41_teams_gemischte_gruppen),
         ("test_ranking_sortierung_bestimmt_aufruecker", test_ranking_sortierung_bestimmt_aufruecker),
+        ("test_38_teams_v3_fallback", test_38_teams_v3_fallback),
+        ("test_32_teams_v3_fallback", test_32_teams_v3_fallback),
+        ("test_24_teams_v3_fallback", test_24_teams_v3_fallback),
     ]
 
     failed = []

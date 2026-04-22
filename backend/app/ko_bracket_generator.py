@@ -125,6 +125,36 @@ def _rank_promotable_teams(
     return [tid for _, tid in scored]
 
 
+def _sort_vierte_by_pokal_leistung(
+    vierte_ids: List[int],
+    db: Session,
+    season_id: int
+) -> List[int]:
+    """
+    Sortiert Viertplatzierte nach Pokal-Leistung in der Gruppenphase.
+    Sortierkriterien: Punkte DESC, Tordifferenz DESC, Erzielte Tore DESC, Gegentore ASC.
+    Nicht normalisiert — Vierte kommen nur aus 4er-Gruppen.
+    """
+    scored = []
+    for team_id in vierte_ids:
+        st = db.query(models.SeasonTeam).filter(
+            models.SeasonTeam.team_id == team_id,
+            models.SeasonTeam.season_id == season_id
+        ).first()
+        if st is None:
+            continue
+        standings = _calculate_group_standings(st.group_id, db)
+        stats = next((s for s in standings if s["team_id"] == team_id), None)
+        if stats is None:
+            scored.append(((0, 0, 0, 0), team_id))
+            continue
+        td = stats["goals_for"] - stats["goals_against"]
+        key = (-stats["points"], -td, -stats["goals_for"], stats["goals_against"])
+        scored.append((key, team_id))
+    scored.sort(key=lambda x: x[0])
+    return [tid for _, tid in scored]
+
+
 def get_qualified_teams_v2(season_id: int, db: Session, require_completed: bool = True) -> Dict:
     """
     Ermittelt Team-Pools für alle drei Brackets nach v3-Logik.
@@ -255,34 +285,52 @@ def get_qualified_teams_v2(season_id: int, db: Session, require_completed: bool 
                         f"{len(erste_ids) + len(zweite_sorted)}"
                     )
 
-    # 6. SCHRITT 2 — Lucky Loser
+    # 6. SCHRITT 2 — Lucky Loser (V3: Vierte als Fallback-Aufrücker)
     lucky_loser_aufruecker = []
     dritte_fuer_loser = dritte_sorted
+    vierte_aufruecker = []
     lucky_loser_teams = None
 
     bedarf_16_ll = 16 - len(zweite_fuer_lucky)
 
     if len(zweite_fuer_lucky) + len(dritte_sorted) >= 16:
+        # Normalfall: Dritte reichen für 16
         lucky_loser_aufruecker = dritte_sorted[:bedarf_16_ll]
         lucky_loser_teams = zweite_fuer_lucky + lucky_loser_aufruecker
         dritte_fuer_loser = dritte_sorted[bedarf_16_ll:]
     else:
-        # FALLBACK auf 8er-Bracket
-        bedarf_8_ll = 8 - len(zweite_fuer_lucky)
-        if bedarf_8_ll <= 0:
-            lucky_loser_teams = zweite_fuer_lucky[:8]
-            dritte_fuer_loser = dritte_sorted
-        elif bedarf_8_ll <= len(dritte_sorted):
-            lucky_loser_aufruecker = dritte_sorted[:bedarf_8_ll]
-            lucky_loser_teams = zweite_fuer_lucky + lucky_loser_aufruecker
-            dritte_fuer_loser = dritte_sorted[bedarf_8_ll:]
+        # V3: Prüfe ob Vierte als Fallback auf 16 auffüllen können
+        alle_verfuegbar = zweite_fuer_lucky + dritte_sorted
+        rest_bedarf = 16 - len(alle_verfuegbar)
+
+        vierte_nach_pokal = _sort_vierte_by_pokal_leistung(vierte, db, season_id)
+
+        if rest_bedarf > 0 and len(vierte_nach_pokal) >= rest_bedarf:
+            # V3-Fallback: Vierte füllen auf 16 auf
+            vierte_aufruecker = vierte_nach_pokal[:rest_bedarf]
+            lucky_loser_aufruecker = dritte_sorted + vierte_aufruecker
+            lucky_loser_teams = zweite_fuer_lucky + dritte_sorted + vierte_aufruecker
+            dritte_fuer_loser = []
         else:
-            # Nicht genug für 8er-Bracket → nicht generiert
-            lucky_loser_teams = None
-            dritte_fuer_loser = dritte_sorted
+            # 8er-Fallback (wie V2)
+            bedarf_8_ll = 8 - len(zweite_fuer_lucky)
+            if bedarf_8_ll <= 0:
+                lucky_loser_teams = zweite_fuer_lucky[:8]
+                dritte_fuer_loser = dritte_sorted
+            elif bedarf_8_ll <= len(dritte_sorted):
+                lucky_loser_aufruecker = dritte_sorted[:bedarf_8_ll]
+                lucky_loser_teams = zweite_fuer_lucky + lucky_loser_aufruecker
+                dritte_fuer_loser = dritte_sorted[bedarf_8_ll:]
+            else:
+                # Nicht genug für 8er-Bracket → nicht generiert
+                lucky_loser_teams = None
+                dritte_fuer_loser = dritte_sorted
 
     # 7. SCHRITT 3 — Loser (NUR 16, KEIN 8er-Fallback)
-    vierte_sorted = sort_by_ranking(vierte)
+    # Nur Vierte die NICHT bereits als Fallback im Lucky Loser sind
+    vierte_used_in_ll = set(vierte_aufruecker)
+    vierte_remaining = [v for v in vierte if v not in vierte_used_in_ll]
+    vierte_sorted = sort_by_ranking(vierte_remaining)
     loser_aufruecker = []
     loser_teams = None
 
@@ -300,6 +348,7 @@ def get_qualified_teams_v2(season_id: int, db: Session, require_completed: bool 
             "meister": meister_aufruecker,
             "lucky_loser": lucky_loser_aufruecker,
             "loser": loser_aufruecker,
+            "lucky_loser_vierte_fallback": vierte_aufruecker,
         }
     }
 
@@ -666,7 +715,7 @@ def preview_ko_brackets(season_id: int, db: Session) -> Dict:
             continue
 
         pairs = seed_teams(teams)
-        result[bracket_type] = {
+        bracket_result = {
             "teams": teams,
             "size": len(teams),
             "rounds": int(math.log2(len(teams))),
@@ -675,6 +724,11 @@ def preview_ko_brackets(season_id: int, db: Session) -> Dict:
                 {"home": h, "away": a} for h, a in pairs
             ]
         }
+        if bracket_type == "lucky_loser":
+            bracket_result["vierte_fallback"] = qualified["aufruecker_info"].get(
+                "lucky_loser_vierte_fallback", []
+            )
+        result[bracket_type] = bracket_result
 
     result["team_names"] = team_names
     if warning:

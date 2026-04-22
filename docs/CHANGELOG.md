@@ -4,6 +4,20 @@
 
 ---
 
+## 2026-04-22 — KO-Logik V3 (Lucky Loser Vierte-Fallback)
+
+- Lucky Loser kann nun im Fallback-Fall mit den besten Viertplatzierten auf 16 aufgefüllt werden
+- Vierte werden nach Pokal-Leistung sortiert (Punkte → TD → Tore → Gegentore), nicht OL-Ranking
+- Greift nur wenn Zweite+Dritte < 16 aber +Vierte ≥ 16
+- Betroffene Szenarien: 38, 32, 24 Teams (deutlich höhere KO-Teilnahme)
+- Loser-Bracket berücksichtigt bereits vergebene Vierte (kein doppelter Einsatz)
+- Preview zeigt Fallback-Info-Banner und "↑ Fallback"-Badge für betroffene Teams
+- `aufruecker_info` enthält neues Feld `lucky_loser_vierte_fallback`
+- 3 neue E2E-Tests (38, 32, 24 Teams), 2 bestehende Tests aktualisiert
+- Spezifikation: `docs/KO_LOGIK_V3.md`
+
+---
+
 ## 2026-03-12 — Spiel um Platz 3
 
 - 3 neue Spalten auf `ko_matches`: `is_third_place`, `loser_next_match_id`, `loser_next_match_slot`
