@@ -619,7 +619,7 @@ def _assign_latecomer(db: Session, season_id: int, group_id: int, team_id: int):
     start_week = min(ingame_weeks) if ingame_weeks else None
     db.query(models.Match).filter(
         models.Match.group_id == group_id
-    ).delete(synchronize_session=False)
+    ).delete(synchronize_session="fetch")
     result = generate_round_robin(db, group_id, season_id, start_week=start_week)
 
     # 7. participant_count
