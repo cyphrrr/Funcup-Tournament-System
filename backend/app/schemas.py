@@ -66,6 +66,10 @@ class BulkTeamCreate(BaseModel):
     teams: list[str]
 
 
+class AssignLatecomerPayload(BaseModel):
+    team_id: int
+
+
 class BulkRegisterPayload(BaseModel):
     teams: list[str]
 

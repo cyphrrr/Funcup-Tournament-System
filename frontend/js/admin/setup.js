@@ -599,33 +599,71 @@ async function loadScheduleForSeason() {
       return;
     }
 
+    // Anmelde-Pool laden (public Endpoint) und bereits zugewiesene Teams herausfiltern
+    let availablePool = [];
+    try {
+      const poolRes = await fetch(`${API_URL}/api/teams?participating=true`);
+      if (!poolRes.ok) throw new Error(poolRes.status);
+      const pool = await poolRes.json();
+      const assignedIds = new Set(groups.flatMap(g => (g.teams || []).map(t => t.id)));
+      availablePool = pool.filter(t => !assignedIds.has(t.id));
+    } catch (_) { availablePool = []; }
+
+    // Saisonweite Sperre: irgendein Match nicht mehr 'scheduled'
+    const seasonLocked = groups.some(g => (g.matches || []).some(m => m.status !== 'scheduled'));
+
     container.innerHTML = groups.map(g => {
+      const grp = g.group || g;            // {id, name}
+      const teams = g.teams || [];
       const matches = g.matches || [];
       const matchRows = matches.length
         ? matches.map(m => `
             <tr>
               <td>${m.matchday || '-'}</td>
-              <td style="text-align:right">${m.home_team_name || m.home_team_id}</td>
+              <td style="text-align:right">${escapeHtml(m.home_team_name || String(m.home_team_id))}</td>
               <td style="text-align:center;font-weight:600;color:var(--primary)">
                 ${m.home_goals != null ? `${m.home_goals}:${m.away_goals}` : '–:–'}
               </td>
-              <td>${m.away_team_name || m.away_team_id}</td>
+              <td>${escapeHtml(m.away_team_name || String(m.away_team_id))}</td>
               <td><span class="match-status ${m.status}">${m.status === 'played' ? '✅' : '🕐'}</span></td>
             </tr>`).join('')
         : '<tr><td colspan="5" style="color:var(--text-muted)">Kein Spielplan vorhanden</td></tr>';
 
+      // Zuweis-UI nur bei unvollständiger Gruppe, ungesperrter Saison und verfügbarem Pool
+      let assignUI = '';
+      if (!seasonLocked && teams.length < 4 && availablePool.length) {
+        const selId = `latecomer-select-${grp.id}`;
+        const options = availablePool
+          .map(t => `<option value="${t.id}">${escapeHtml(t.name)}</option>`)
+          .join('');
+        assignUI = `
+          <div style="margin-top:.75rem;display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+            <select id="${selId}" style="padding:.3rem .5rem;border-radius:4px">
+              <option value="">Nachzügler wählen…</option>
+              ${options}
+            </select>
+            <button class="btn" onclick="assignLatecomer('${grp.id}', '${selId}')">Zuweisen</button>
+          </div>`;
+      }
+
       return `
         <div class="card">
-          <h2>Gruppe ${g.name}</h2>
+          <h2>Gruppe ${escapeHtml(grp.name)}</h2>
           <div style="margin-bottom:.75rem;display:flex;gap:.5rem;flex-wrap:wrap">
-            ${(g.teams || []).map(t => `<span style="background:var(--bg-elevated);padding:.2rem .6rem;border-radius:4px;font-size:.85rem">${t.name}</span>`).join('')}
+            ${teams.map(t => `<span style="background:var(--bg-elevated);padding:.2rem .6rem;border-radius:4px;font-size:.85rem">${escapeHtml(t.name)}</span>`).join('')}
           </div>
           <table>
             <thead><tr><th>ST</th><th style="text-align:right">Heim</th><th style="text-align:center">Ergebnis</th><th>Gast</th><th>Status</th></tr></thead>
             <tbody>${matchRows}</tbody>
           </table>
+          ${assignUI}
         </div>`;
     }).join('');
+
+    if (seasonLocked) {
+      container.insertAdjacentHTML('afterbegin',
+        '<div style="background:var(--bg-elevated);color:var(--text-muted);padding:.5rem .75rem;border-radius:4px;margin-bottom:.75rem;font-size:.85rem">🔒 Spieltag läuft bereits — Nachzügler-Zuweisung gesperrt.</div>');
+    }
   } catch (e) {
     container.innerHTML = `<div style="color:var(--danger);padding:1rem">Fehler: ${e.message}</div>`;
   }
@@ -651,6 +689,30 @@ async function generateScheduleForSeason() {
     }
 
     toast(`Spielplan generiert: ${ok} Gruppen OK, ${fail} Fehler`);
+    loadScheduleForSeason();
+  } catch (e) {
+    toast(`Fehler: ${e.message}`, 'error');
+  }
+}
+
+async function assignLatecomer(groupId, selectId) {
+  const seasonId = document.getElementById('schedule-season-select').value;
+  const sel = document.getElementById(selectId);
+  const teamId = sel ? sel.value : '';
+  if (!teamId) { toast('Bitte ein Team wählen', 'error'); return; }
+
+  try {
+    const res = await authFetch(`${API_URL}/api/seasons/${seasonId}/groups/${groupId}/assign-latecomer`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ team_id: parseInt(teamId, 10) }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      toast(`Fehler: ${err.detail || res.status}`, 'error');
+      return;
+    }
+    toast('Team zugewiesen, Spielplan neu generiert');
     loadScheduleForSeason();
   } catch (e) {
     toast(`Fehler: ${e.message}`, 'error');

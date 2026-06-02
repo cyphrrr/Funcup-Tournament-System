@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from .. import models, schemas
 from ..db import get_db
 from ..auth import get_current_user
+from .matches import generate_round_robin
 
 router = APIRouter()
 
@@ -563,3 +564,91 @@ def bulk_add_teams(season_id: int, payload: schemas.BulkTeamCreate, db: Session 
         "created": created,
         "count": len(created)
     }
+
+
+def _assign_latecomer(db: Session, season_id: int, group_id: int, team_id: int):
+    """Weist ein Pool-Team einer unvollständigen Gruppe zu und regeneriert
+    den Spielplan dieser Gruppe. Wirft HTTPException bei Verstößen.
+    Saisonweite Sperre: kein Match der Saison darf bereits gespielt sein.
+    """
+    # 1. Saison existiert + saisonweite Sperre
+    season = db.get(models.Season, season_id)
+    if not season:
+        raise HTTPException(status_code=404, detail="SAISON_NICHT_GEFUNDEN")
+    locked = db.query(models.Match).filter(
+        models.Match.season_id == season_id,
+        models.Match.status != "scheduled",
+    ).first()
+    if locked:
+        raise HTTPException(status_code=409, detail="SAISON_GESPERRT")
+
+    # 2. Gruppe gehört zur Saison
+    group = db.query(models.Group).filter(
+        models.Group.id == group_id,
+        models.Group.season_id == season_id,
+    ).first()
+    if not group:
+        raise HTTPException(status_code=404, detail="GRUPPE_NICHT_GEFUNDEN")
+
+    # 3. Kapazität (< 4)
+    count = db.query(models.SeasonTeam).filter(
+        models.SeasonTeam.group_id == group_id
+    ).count()
+    if count >= 4:
+        raise HTTPException(status_code=409, detail="GRUPPE_VOLL")
+
+    # 4. Team aus Anmelde-Pool, noch nicht in Saison
+    team = db.get(models.Team, team_id)
+    if not team or not team.participating_next:
+        raise HTTPException(status_code=400, detail="TEAM_UNGUELTIG")
+    existing_st = db.query(models.SeasonTeam).filter_by(
+        season_id=season_id, team_id=team_id
+    ).first()
+    if existing_st:
+        raise HTTPException(status_code=400, detail="TEAM_BEREITS_IN_SAISON")
+
+    # 5. Zuweisen
+    db.add(models.SeasonTeam(season_id=season_id, team_id=team_id, group_id=group_id))
+    db.flush()
+
+    # 6. Spielplan nur dieser Gruppe regenerieren, Ingame-Startwoche erhalten
+    existing_matches = db.query(models.Match).filter(
+        models.Match.group_id == group_id
+    ).all()
+    ingame_weeks = [m.ingame_week for m in existing_matches if m.ingame_week is not None]
+    start_week = min(ingame_weeks) if ingame_weeks else None
+    db.query(models.Match).filter(
+        models.Match.group_id == group_id
+    ).delete(synchronize_session="fetch")
+    result = generate_round_robin(db, group_id, season_id, start_week=start_week)
+
+    # 7. participant_count
+    season.participant_count = (season.participant_count or 0) + 1
+
+    db.commit()
+
+    teams = (
+        db.query(models.Team)
+        .join(models.SeasonTeam, models.SeasonTeam.team_id == models.Team.id)
+        .filter(models.SeasonTeam.group_id == group_id)
+        .all()
+    )
+    return {
+        "group_id": group_id,
+        "teams": [{"id": t.id, "name": t.name} for t in teams],
+        "matches_created": result["matches_created"],
+    }
+
+
+@router.post("/seasons/{season_id}/groups/{group_id}/assign-latecomer")
+def assign_latecomer(
+    season_id: int,
+    group_id: int,
+    payload: schemas.AssignLatecomerPayload,
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_user),
+):
+    """Weist ein Pool-Team (participating_next) einer unvollständigen Gruppe zu,
+    solange die Saison noch nicht gespielt wurde. Regeneriert den Gruppen-Spielplan.
+    """
+    return _assign_latecomer(db, season_id, group_id, payload.team_id)
