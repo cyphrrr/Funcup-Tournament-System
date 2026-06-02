@@ -603,6 +603,7 @@ async function loadScheduleForSeason() {
     let availablePool = [];
     try {
       const poolRes = await fetch(`${API_URL}/api/teams?participating=true`);
+      if (!poolRes.ok) throw new Error(poolRes.status);
       const pool = await poolRes.json();
       const assignedIds = new Set(groups.flatMap(g => (g.teams || []).map(t => t.id)));
       availablePool = pool.filter(t => !assignedIds.has(t.id));
@@ -619,11 +620,11 @@ async function loadScheduleForSeason() {
         ? matches.map(m => `
             <tr>
               <td>${m.matchday || '-'}</td>
-              <td style="text-align:right">${m.home_team_name || m.home_team_id}</td>
+              <td style="text-align:right">${escapeHtml(m.home_team_name || String(m.home_team_id))}</td>
               <td style="text-align:center;font-weight:600;color:var(--primary)">
                 ${m.home_goals != null ? `${m.home_goals}:${m.away_goals}` : '–:–'}
               </td>
-              <td>${m.away_team_name || m.away_team_id}</td>
+              <td>${escapeHtml(m.away_team_name || String(m.away_team_id))}</td>
               <td><span class="match-status ${m.status}">${m.status === 'played' ? '✅' : '🕐'}</span></td>
             </tr>`).join('')
         : '<tr><td colspan="5" style="color:var(--text-muted)">Kein Spielplan vorhanden</td></tr>';
@@ -633,7 +634,7 @@ async function loadScheduleForSeason() {
       if (!seasonLocked && teams.length < 4 && availablePool.length) {
         const selId = `latecomer-select-${grp.id}`;
         const options = availablePool
-          .map(t => `<option value="${t.id}">${t.name}</option>`)
+          .map(t => `<option value="${t.id}">${escapeHtml(t.name)}</option>`)
           .join('');
         assignUI = `
           <div style="margin-top:.75rem;display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
@@ -647,9 +648,9 @@ async function loadScheduleForSeason() {
 
       return `
         <div class="card">
-          <h2>Gruppe ${grp.name}</h2>
+          <h2>Gruppe ${escapeHtml(grp.name)}</h2>
           <div style="margin-bottom:.75rem;display:flex;gap:.5rem;flex-wrap:wrap">
-            ${teams.map(t => `<span style="background:var(--bg-elevated);padding:.2rem .6rem;border-radius:4px;font-size:.85rem">${t.name}</span>`).join('')}
+            ${teams.map(t => `<span style="background:var(--bg-elevated);padding:.2rem .6rem;border-radius:4px;font-size:.85rem">${escapeHtml(t.name)}</span>`).join('')}
           </div>
           <table>
             <thead><tr><th>ST</th><th style="text-align:right">Heim</th><th style="text-align:center">Ergebnis</th><th>Gast</th><th>Status</th></tr></thead>
