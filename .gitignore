@@ -45,6 +45,8 @@ ssl/*.crt
 # Backup files
 *.backup
 *.bak
+*.bak-*
+biw.db.bak*
 
 # Node modules (falls n8n lokal)
 node_modules/

@@ -109,6 +109,14 @@ Geschützte Endpoints verwenden `Depends(get_current_user)`.
 - Ranglisten
 - KO-Weiterkommen
 
+### Schema-Migrationen (additiv, automatisch)
+
+Beim Start ergänzt `run_auto_migrations(engine)` (`backend/app/migrations.py`, aufgerufen in `main.py` nach `create_all`) fehlende Modell-Spalten in bestehenden Tabellen per `ALTER TABLE ... ADD COLUMN`.
+
+- **Greift automatisch:** neue Spalte zu einem Modell hinzufügen → beim nächsten Start in der DB. Kein Alembic, kein manuelles `ALTER` nötig.
+- **Greift NICHT:** Spalten umbenennen/löschen, Typänderungen, neue Constraints/Indizes, Daten-Backfills. Solche strukturellen Änderungen weiterhin manuell migrieren oder DB neu erzeugen.
+- Spalten werden **nullable und ohne `server_default`** ergänzt (SQLite-`ALTER` kann keine non-konstanten Defaults wie `CURRENT_TIMESTAMP` setzen). Python-seitige `default=` greifen bei neuen Inserts; Bestandszeilen erhalten `NULL`.
+
 ## Versionierung
 
 Das Projekt nutzt Semantic Versioning (SemVer) mit Beta-Suffix.
