@@ -551,6 +551,21 @@
     }
     .matchday-divider:first-child { padding-top: 0; }
 
+    /* KO category heading (Meister-Bracket / Lucky Loser / Trostpflaster) */
+    .ko-category-heading {
+      font-family: var(--font-display);
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin: 2.5rem 0 1rem;
+      padding-left: 0.75rem;
+      border-left: 3px solid var(--accent);
+      line-height: 1.2;
+    }
+    .ko-category-heading:first-child { margin-top: 0; }
+
     /* ============================
        STANDINGS — Leaderboard style
        ============================ */
@@ -734,78 +749,8 @@
     }
 
     /* ============================
-       KO BRACKET — Mini visual
+       KO — "Zum Bracket"-Link
        ============================ */
-    .ko-section {
-      margin-top: 0.5rem;
-    }
-
-    .ko-bracket-group {
-      margin-bottom: 1.5rem;
-    }
-
-    .ko-bracket-label {
-      font-family: var(--font-display);
-      font-size: 0.85rem;
-      font-weight: 700;
-      color: var(--accent);
-      margin-bottom: 0.75rem;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-
-    .ko-round-label {
-      font-family: var(--font-display);
-      font-size: 0.65rem;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: var(--text-secondary);
-      font-weight: 600;
-      margin: 1rem 0 0.5rem;
-    }
-    .ko-round-label:first-child { margin-top: 0; }
-
-    .ko-matches-flow {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem;
-    }
-
-    .ko-match-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 0.5rem 0.75rem;
-      min-width: 180px;
-      flex: 1;
-      max-width: 260px;
-      transition: all 0.2s;
-    }
-    .ko-match-card:hover {
-      border-color: var(--accent-glow);
-      background: var(--surface-hover);
-    }
-
-    .ko-team-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 0.2rem 0;
-      font-size: 0.78rem;
-    }
-    .ko-team-row.winner {
-      color: var(--accent);
-      font-weight: 700;
-    }
-    .team-link-hover:hover { text-decoration: underline; color: var(--accent-text); }
-    .ko-team-row .ko-score {
-      font-family: var(--font-display);
-      font-weight: 700;
-      min-width: 16px;
-      text-align: right;
-    }
-
     .bracket-full-link {
       display: inline-flex;
       align-items: center;
@@ -1384,8 +1329,6 @@ function renderHero() {
     document.getElementById('stat-matchday').textContent = info.roundName;
     document.getElementById('ergebnisse-title').textContent = 'KO-Ergebnisse';
     document.getElementById('ergebnisse-tag').textContent = 'KO-Phase';
-    document.getElementById('standings-title').textContent = 'KO-Bracket';
-    document.getElementById('standings-tag').textContent = 'Bracket';
   } else {
     phaseEl.textContent = 'Gruppenphase';
     var md = deriveCurrentMatchday();
@@ -1497,7 +1440,7 @@ function renderKOErgebnisse() {
     var allEmpty = roundKeys.every(function(key) { return bracket.rounds[key].filter(function(m) { return !m.is_bye; }).length === 0; });
     if (allEmpty) return;
 
-    html += '<div style="margin-bottom:1rem;font-family:var(--font-display);font-weight:700;color:var(--accent);font-size:0.85rem">' + (BRACKET_LABELS[bracketType] || bracketType) + '</div>';
+    html += '<div class="ko-category-heading">' + (BRACKET_LABELS[bracketType] || bracketType) + '</div>';
 
     roundKeys.forEach(function(roundKey) {
       var roundMatches = bracket.rounds[roundKey].filter(function(m) { return !m.is_bye; });
@@ -1576,64 +1519,6 @@ async function renderGroupStandings() {
   } catch (e) {
     container.innerHTML = '<div class="error-box">Fehler beim Laden der Tabellen.</div>';
   }
-}
-
-// --- KO Bracket Sidebar ---
-
-function teamLinkOrText(name, id) {
-  if (!id) return name;
-  return '<a href="team.html?id=' + id + '" style="color:inherit;text-decoration:none;font-weight:inherit" class="team-link-hover">' + name + '</a>';
-}
-
-function renderMiniBracket() {
-  var container = document.getElementById('standings-content');
-  if (!koBrackets) {
-    container.innerHTML = '<div class="empty-state">KO-Bracket nicht verf\u00fcgbar.</div>';
-    return;
-  }
-  cacheKOTeamNames();
-
-  var html = '<div class="ko-section">';
-  Object.entries(koBrackets).forEach(function(entry) {
-    var bracketType = entry[0];
-    var bracket = entry[1];
-    if (!bracket || !bracket.rounds) return;
-    var roundKeys = Object.keys(bracket.rounds).sort();
-    var allEmpty = roundKeys.every(function(key) { return bracket.rounds[key].filter(function(m) { return !m.is_bye; }).length === 0; });
-    if (allEmpty) return;
-
-    html += '<div class="ko-bracket-group">' +
-      '<div class="ko-bracket-label">' + (BRACKET_LABELS[bracketType] || bracketType) + '</div>';
-
-    roundKeys.forEach(function(roundKey) {
-      var roundMatches = bracket.rounds[roundKey].filter(function(m) { return !m.is_bye; });
-      if (roundMatches.length === 0) return;
-      var roundLabel = roundMatches[0].round
-        ? roundMatches[0].round.charAt(0).toUpperCase() + roundMatches[0].round.slice(1) : roundKey;
-
-      html += '<div class="ko-round-label">' + roundLabel + '</div>';
-      html += '<div class="ko-matches-flow">';
-      roundMatches.forEach(function(m) {
-        var homeScore = m.status === 'played' ? m.home_goals : '-';
-        var awayScore = m.status === 'played' ? m.away_goals : '-';
-        var homeName = m.home_team ? m.home_team.name : '???';
-        var awayName = m.away_team ? m.away_team.name : '???';
-        var homeId = m.home_team ? m.home_team.id : null;
-        var awayId = m.away_team ? m.away_team.id : null;
-        var winnerClass = function(id) { return m.winner_id && m.winner_id === id ? ' winner' : ''; };
-
-        html += '<div class="ko-match-card">' +
-          '<div class="ko-team-row' + winnerClass(homeId) + '"><span>' + teamLinkOrText(homeName, homeId) + '</span><span class="ko-score">' + homeScore + '</span></div>' +
-          '<div class="ko-team-row' + winnerClass(awayId) + '"><span>' + teamLinkOrText(awayName, awayId) + '</span><span class="ko-score">' + awayScore + '</span></div>' +
-        '</div>';
-      });
-      html += '</div>';
-    });
-    html += '</div>';
-  });
-  html += '<a href="ko.html" class="bracket-full-link">Vollst\u00e4ndiges Bracket ansehen <span>\u2192</span></a>';
-  html += '</div>';
-  container.innerHTML = html;
 }
 
 // --- News ---
@@ -1897,7 +1782,9 @@ async function loadAndRenderParticipants() {
   if (results[0].status === 'fulfilled') {
     if (isKOPhase || isTournamentCompleted) {
       renderKOErgebnisse();
-      renderMiniBracket();
+      // Mini-Bracket entfernt: das vollständige Bracket ist auf ko.html besser sichtbar.
+      var standingsSection = document.getElementById('section-standings');
+      if (standingsSection) standingsSection.style.display = 'none';
     } else {
       renderGroupErgebnisse();
       renderGroupStandings();
