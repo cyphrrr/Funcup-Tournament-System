@@ -29,6 +29,15 @@ def _get_round_name(round_num: int, total_rounds: int) -> str:
         return f"runde_{round_num}"
 
 
+_ROUND_ABBR = {1: "F", 2: "HF", 3: "VF", 4: "AF"}
+
+
+def _round_abbr(round_num: int, total_rounds: int) -> str:
+    """Kürzel der Runde relativ zur Bracket-Tiefe (F/HF/VF/AF, sonst R<n>)."""
+    remaining = total_rounds - round_num + 1
+    return _ROUND_ABBR.get(remaining, f"R{round_num}")
+
+
 @router.get("/seasons/{season_id}/ko-plan", response_model=schemas.KOPlan)
 def ko_plan(season_id: int, db: Session = Depends(get_db)):
     """
@@ -305,6 +314,29 @@ def get_season_ko_brackets(season_id: int, db: Session = Depends(get_db)):
             if match.away_team_id: _ko_team_ids.add(match.away_team_id)
         _ko_teams_map = {t.id: t for t in db.query(models.Team).filter(models.Team.id.in_(_ko_team_ids)).all()} if _ko_team_ids else {}
 
+        total_rounds = max(m.round for m in matches)
+
+        # Reverse-Map: (Ziel-Match-ID, Slot) -> (Quell-Match, Präfix).
+        # Sieger-Weiterleitung (next_match) -> "Sieger", Verlierer-Weiterleitung
+        # (loser_next_match, z.B. Spiel um Platz 3) -> "Verlierer". So lässt sich
+        # ein noch leerer Slot mit "Sieger HF1" / "Verlierer HF1" beschriften
+        # statt mit "Team null".
+        source_by_slot = {}
+        for src in matches:
+            if src.next_match_id and src.next_match_slot:
+                source_by_slot[(src.next_match_id, src.next_match_slot)] = (src, "Sieger")
+            if src.loser_next_match_id and src.loser_next_match_slot:
+                source_by_slot.setdefault(
+                    (src.loser_next_match_id, src.loser_next_match_slot), (src, "Verlierer")
+                )
+
+        def _slot_source_label(target_id, slot):
+            entry = source_by_slot.get((target_id, slot))
+            if not entry:
+                return None
+            src, prefix = entry
+            return f"{prefix} {_round_abbr(src.round, total_rounds)}{src.position}"
+
         rounds_dict = {}
         for match in matches:
             round_key = f"runde_{match.round}"
@@ -331,7 +363,6 @@ def get_season_ko_brackets(season_id: int, db: Session = Depends(get_db)):
                 elif match.away_goals > match.home_goals:
                     winner_id = match.away_team_id
 
-            total_rounds = max(m.round for m in matches)
             round_name = _get_round_name(match.round, total_rounds)
 
             rounds_dict[round_key].append({
@@ -339,6 +370,8 @@ def get_season_ko_brackets(season_id: int, db: Session = Depends(get_db)):
                 "round": round_name,
                 "home_team": home_team,
                 "away_team": away_team,
+                "home_source": _slot_source_label(match.id, "home") if home_team is None else None,
+                "away_source": _slot_source_label(match.id, "away") if away_team is None else None,
                 "home_goals": match.home_goals,
                 "away_goals": match.away_goals,
                 "winner_id": winner_id,

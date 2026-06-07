@@ -1345,8 +1345,8 @@ function renderHero() {
 // --- Match Card Rendering ---
 
 function buildMatchCard(m, meta) {
-  var home = teamName(m.home_team_id);
-  var away = teamName(m.away_team_id);
+  var home = m.home_team_id ? teamName(m.home_team_id) : (m.home_source || 'Ausstehend');
+  var away = m.away_team_id ? teamName(m.away_team_id) : (m.away_source || 'Ausstehend');
   var isPlayed = m.status === 'played';
 
   var scoreHTML;
@@ -1454,6 +1454,8 @@ function renderKOErgebnisse() {
         var converted = {
           home_team_id: m.home_team ? m.home_team.id : null,
           away_team_id: m.away_team ? m.away_team.id : null,
+          home_source: m.home_source,
+          away_source: m.away_source,
           home_goals: m.home_goals,
           away_goals: m.away_goals,
           status: m.status

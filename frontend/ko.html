@@ -937,7 +937,7 @@ function renderMatch(m, isFinale) {
     badge.textContent = 'FREILOS';
     card.appendChild(badge);
 
-  } else if (!m.home_team && !m.away_team) {
+  } else if (!m.home_team && !m.away_team && !m.home_source && !m.away_source) {
     card.className = 'ko-match';
     var tbd = document.createElement('div');
     tbd.className = 'ko-match-tbd';
@@ -962,7 +962,7 @@ function renderMatch(m, isFinale) {
     if (homeCrest) homeName.appendChild(homeCrest);
     var homeNameText = document.createElement('span');
     homeNameText.className = 'team-name-text';
-    homeNameText.textContent = m.home_team ? m.home_team.name : '?';
+    homeNameText.textContent = m.home_team ? m.home_team.name : (m.home_source || 'Ausstehend');
     homeName.appendChild(homeNameText);
     homeRow.appendChild(homeName);
     var homeScore = document.createElement('span');
@@ -983,7 +983,7 @@ function renderMatch(m, isFinale) {
     if (awayCrest) awayName.appendChild(awayCrest);
     var awayNameText = document.createElement('span');
     awayNameText.className = 'team-name-text';
-    awayNameText.textContent = m.away_team ? m.away_team.name : '?';
+    awayNameText.textContent = m.away_team ? m.away_team.name : (m.away_source || 'Ausstehend');
     awayName.appendChild(awayNameText);
     awayRow.appendChild(awayName);
     var awayScore = document.createElement('span');
