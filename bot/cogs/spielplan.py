@@ -205,19 +205,28 @@ class SpielplanSelect(discord.ui.Select):
 
     async def callback(self, interaction: discord.Interaction):
         selection = self.values[0]
+        embeds = build_spielplan_embeds(
+            self.season, self.groups_data, selection, interaction.user
+        )
+
+        # Menü schließen / bestätigen. Interaction-Response braucht keine
+        # channel.send-Rechte.
+        await interaction.response.edit_message(
+            content="✅ Spielplan gepostet!", view=None
+        )
+
+        # Öffentlich posten via Interaction-Followup statt channel.send:
+        # Followups laufen über den Interaction-Webhook und funktionieren auch
+        # in Channels, in denen der Bot keine normalen "Send Messages"-Rechte
+        # hat (verhindert 403 Missing Access).
         try:
-            embeds = build_spielplan_embeds(
-                self.season, self.groups_data, selection, interaction.user
-            )
             for embed in embeds:
-                await interaction.channel.send(embed=embed)
-            await interaction.response.edit_message(
-                content="✅ Spielplan gepostet!", view=None
-            )
+                await interaction.followup.send(embed=embed)
         except Exception as e:
-            logger.error(f"❌ Fehler beim Posten: {e}", exc_info=e)
-            await interaction.response.edit_message(
-                content=f"❌ Fehler: {e}", view=None
+            logger.error(f"❌ Fehler beim Posten des Spielplans: {e}", exc_info=e)
+            await interaction.followup.send(
+                content=f"❌ Konnte den Spielplan nicht posten: {e}",
+                ephemeral=True
             )
 
 

@@ -13,6 +13,7 @@
 - Erste Bot-Unit-Tests unter `bot/tests/` (13 Tests für die reinen Helfer)
 - Design: `docs/superpowers/specs/2026-07-14-bot-gruppen-spielplan-design.md`
 - Fix: `/spielplan` „Alle Gruppen" verteilt den Spielplan jetzt auf mehrere Embeds, statt an Discords 25-Field-Limit zu scheitern (`400 Invalid Form Body`)
+- Fix: `/spielplan` postet den Spielplan jetzt via Interaction-Followup statt `channel.send`; funktioniert damit auch ohne „Send Messages"-Recht des Bots im Channel (verhindert `403 Missing Access`)
 
 ---
 
