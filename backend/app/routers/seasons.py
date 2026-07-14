@@ -59,6 +59,10 @@ def update_season(season_id: int, update: schemas.SeasonUpdate, db: Session = De
     if not season:
         raise HTTPException(status_code=404, detail="Season not found")
 
+    # Ursprungsstatus vor jeder Mutation merken, damit der Namens-Guard unten
+    # nicht den bereits umgesetzten Status prüft (z.B. active → archived).
+    original_status = season.status
+
     if update.status is not None and update.status != season.status:
         valid_transitions = {
             "planned": ["active"],
@@ -74,8 +78,9 @@ def update_season(season_id: int, update: schemas.SeasonUpdate, db: Session = De
         season.status = update.status
 
     if update.name is not None:
-        # Name-Änderung erlauben wenn Status gleichzeitig wechselt (z.B. archived → active)
-        if season.status == "archived" and (update.status is None or update.status == "archived"):
+        # Reine Bearbeitung einer archivierten Saison verbieten - aber Archivieren
+        # (active → archived) und Reaktivieren (archived → active) mit Namen erlauben.
+        if original_status == "archived" and season.status == "archived":
             raise HTTPException(status_code=400, detail="Archivierte Saisons können nicht bearbeitet werden")
         season.name = update.name
 
