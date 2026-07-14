@@ -4,6 +4,17 @@
 
 ---
 
+## 2026-07-14 — Discord-Bot: `/gruppen` und `/spielplan`
+
+- Neuer Befehl `/gruppen`: postet die Gruppen-Zusammensetzung (Gruppen + Teams) der aktiven, sonst geplanten Saison öffentlich im Channel — gedacht für den Überblick nach der Auslosung
+- Neuer Befehl `/spielplan`: zeigt ein Auswahlmenü (jede Gruppe einzeln + „Alle Gruppen") und postet den nach Spieltagen gruppierten Spielplan öffentlich
+- Beide Befehle nur für Rollen „Organisation"/„Teilnehmer" (konsistent mit `/spieltag`), keine Backend-Änderung (nutzen `GET /api/seasons/{id}/groups-with-teams`)
+- Eigenständige Cogs `bot/cogs/gruppen.py` und `bot/cogs/spielplan.py`; `spieltag.py` unverändert
+- Erste Bot-Unit-Tests unter `bot/tests/` (12 Tests für die reinen Helfer)
+- Design: `docs/superpowers/specs/2026-07-14-bot-gruppen-spielplan-design.md`
+
+---
+
 ## 2026-04-22 — KO-Logik V3 (Lucky Loser Vierte-Fallback)
 
 - Lucky Loser kann nun im Fallback-Fall mit den besten Viertplatzierten auf 16 aufgefüllt werden

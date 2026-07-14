@@ -25,6 +25,8 @@ Discord Bot für das BIW Pokal Turniersystem mit Slash Commands für Teilnahme-M
 | `/status` | - | Zeigt eigene Daten (Teilnahme, Team, Profil-URL) |
 | `/profil` | `url: string` | Onlineliga Profil-URL speichern |
 | `/wappen` | - | Link zum Web-Dashboard für Wappen-Upload |
+| `/gruppen` | - | Zeigt alle Gruppen der aktuellen/geplanten Saison mit ihren Teams (Rollen: Organisation/Teilnehmer) |
+| `/spielplan` | - | Auswahlmenü (je Gruppe + „Alle Gruppen"), postet den Spielplan öffentlich (Rollen: Organisation/Teilnehmer) |
 
 ## Environment Variables
 
