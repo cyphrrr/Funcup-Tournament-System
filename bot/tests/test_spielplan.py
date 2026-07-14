@@ -63,33 +63,63 @@ def test_group_options_one_per_group_with_group_name_value():
     assert "B" in values
 
 
-# --- build_spielplan_embed ---
+# --- build_spielplan_embeds ---
 
-def test_spielplan_single_group_groups_matches_by_matchday():
-    embed = spielplan.build_spielplan_embed(_season(), _groups(), "A", _User())
-    field_names = [f.name for f in embed.fields]
+def _all_fields(embeds):
+    return [f for e in embeds for f in e.fields]
+
+
+def test_spielplan_single_group_returns_single_embed_grouped_by_matchday():
+    embeds = spielplan.build_spielplan_embeds(_season(), _groups(), "A", _User())
+    assert len(embeds) == 1
+    field_names = [f.name for f in embeds[0].fields]
 
     # Spieltag 1 und Spieltag 2 der Gruppe A
     assert any("Spieltag 1" in n for n in field_names)
     assert any("Spieltag 2" in n for n in field_names)
     # Nur Gruppe A -> Gruppe B Team taucht nicht auf
-    joined = " ".join(f.value for f in embed.fields)
+    joined = " ".join(f.value for f in embeds[0].fields)
     assert "Alpha" in joined
     assert "Gamma" not in joined
 
 
 def test_spielplan_single_group_marks_unplayed_match():
-    embed = spielplan.build_spielplan_embed(_season(), _groups(), "A", _User())
-    joined = " ".join(f.value for f in embed.fields)
+    embeds = spielplan.build_spielplan_embeds(_season(), _groups(), "A", _User())
+    joined = " ".join(f.value for f in _all_fields(embeds))
     assert "⏳" in joined
 
 
 def test_spielplan_all_groups_includes_every_group():
-    embed = spielplan.build_spielplan_embed(_season(), _groups(), "__all__", _User())
-    field_names = [f.name for f in embed.fields]
-    joined_names = " ".join(field_names)
+    embeds = spielplan.build_spielplan_embeds(_season(), _groups(), "__all__", _User())
+    joined_names = " ".join(f.name for f in _all_fields(embeds))
     assert "Gruppe A" in joined_names
     assert "Gruppe B" in joined_names
-    joined_values = " ".join(f.value for f in embed.fields)
+    joined_values = " ".join(f.value for f in _all_fields(embeds))
     assert "Alpha" in joined_values
     assert "Gamma" in joined_values
+
+
+def test_spielplan_all_groups_paginates_when_over_25_fields():
+    # 9 Gruppen x 3 Spieltage = 27 Felder -> muss ueber mehrere Embeds verteilt werden
+    groups = []
+    for i in range(9):
+        name = chr(ord("A") + i)
+        matches = [
+            {"home_team_name": f"H{name}{md}", "away_team_name": f"G{name}{md}",
+             "home_goals": 1, "away_goals": 0, "status": "played", "matchday": md}
+            for md in (1, 2, 3)
+        ]
+        groups.append({"group": {"id": i, "name": name},
+                       "teams": [], "matches": matches})
+
+    embeds = spielplan.build_spielplan_embeds(_season(), groups, "__all__", _User())
+
+    assert len(embeds) >= 2
+    # Discord-Hardlimit: kein Embed darf mehr als 25 Felder haben
+    for e in embeds:
+        assert len(e.fields) <= 25
+        # und der 6000-Zeichen-Gesamtrahmen darf nicht gesprengt werden
+        total = len(e.title or "") + sum(len(f.name) + len(f.value) for f in e.fields)
+        assert total <= 6000
+    # alle 27 Felder sind erhalten geblieben
+    assert len(_all_fields(embeds)) == 27

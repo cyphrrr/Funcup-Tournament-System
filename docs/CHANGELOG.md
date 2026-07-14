@@ -10,8 +10,9 @@
 - Neuer Befehl `/spielplan`: zeigt ein Auswahlmenü (jede Gruppe einzeln + „Alle Gruppen") und postet den nach Spieltagen gruppierten Spielplan öffentlich
 - Beide Befehle nur für Rollen „Organisation"/„Teilnehmer" (konsistent mit `/spieltag`), keine Backend-Änderung (nutzen `GET /api/seasons/{id}/groups-with-teams`)
 - Eigenständige Cogs `bot/cogs/gruppen.py` und `bot/cogs/spielplan.py`; `spieltag.py` unverändert
-- Erste Bot-Unit-Tests unter `bot/tests/` (12 Tests für die reinen Helfer)
+- Erste Bot-Unit-Tests unter `bot/tests/` (13 Tests für die reinen Helfer)
 - Design: `docs/superpowers/specs/2026-07-14-bot-gruppen-spielplan-design.md`
+- Fix: `/spielplan` „Alle Gruppen" verteilt den Spielplan jetzt auf mehrere Embeds, statt an Discords 25-Field-Limit zu scheitern (`400 Invalid Form Body`)
 
 ---
 

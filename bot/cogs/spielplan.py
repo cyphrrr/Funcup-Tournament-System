@@ -19,8 +19,10 @@ ALLOWED_ROLES = {"organisation", "teilnehmer"}
 # Sentinel-Value für die "Alle Gruppen"-Option im Select-Menü
 ALL_GROUPS = "__all__"
 
-# Discord-Limit für Field-Werte
-FIELD_LIMIT = 1024
+# Discord-Limits
+FIELD_LIMIT = 1024          # max. Zeichen pro Field-Value
+MAX_FIELDS = 25             # max. Fields pro Embed
+EMBED_CHAR_LIMIT = 5500     # Puffer unter Discords 6000-Gesamtlimit
 
 
 def has_permission(member: discord.Member) -> bool:
@@ -92,8 +94,11 @@ def _matchday_lines(matches: list) -> dict:
     return by_matchday
 
 
-def _add_lines_field(embed: discord.Embed, name: str, lines: list) -> None:
-    """Fügt ein Monospace-Field hinzu und splittet bei Überlänge."""
+def _split_field(name: str, lines: list) -> list[tuple[str, str]]:
+    """
+    Wandelt Zeilen in ein oder mehrere (name, value)-Fields um und splittet
+    bei Überlänge (> FIELD_LIMIT Zeichen).
+    """
     chunks = []
     current = ""
     for line in lines:
@@ -107,51 +112,81 @@ def _add_lines_field(embed: discord.Embed, name: str, lines: list) -> None:
     if current:
         chunks.append(current)
 
+    fields = []
     for i, chunk in enumerate(chunks, 1):
         field_name = name if len(chunks) == 1 else f"{name} ({i}/{len(chunks)})"
-        embed.add_field(name=field_name, value="```\n" + chunk + "\n```", inline=False)
+        fields.append((field_name, "```\n" + chunk + "\n```"))
+    return fields
 
 
-def build_spielplan_embed(season: dict, groups_data: list, selection: str,
-                          user: discord.Member) -> discord.Embed:
+def build_spielplan_embeds(season: dict, groups_data: list, selection: str,
+                           user: discord.Member) -> list[discord.Embed]:
     """
-    Baut ein Discord Embed mit dem Spielplan.
+    Baut ein oder mehrere Discord Embeds mit dem Spielplan.
+
+    Ein Embed hat harte Grenzen (max. 25 Fields, max. 6000 Zeichen). Bei
+    „Alle Gruppen" werden die Fields daher auf mehrere Embeds verteilt.
 
     Args:
         season: Season-Dict mit name, id
         groups_data: Response von /groups-with-teams
         selection: Gruppenname oder ALL_GROUPS ("__all__")
         user: Discord Member der den Command ausgelöst hat
+
+    Returns:
+        Liste von Embeds (mind. eines).
     """
     all_groups = selection == ALL_GROUPS
     title_suffix = "" if all_groups else f" · Gruppe {selection}"
-    embed = discord.Embed(
-        title=f"🏆 BIW Pokal — {season['name']} · Spielplan{title_suffix}",
-        color=discord.Color.gold()
-    )
+    base_title = f"🏆 BIW Pokal — {season['name']} · Spielplan{title_suffix}"
+    footer = f"Angefordert von {user.display_name} via /spielplan"
 
     if all_groups:
         selected = sorted(groups_data, key=lambda g: g["group"]["name"])
     else:
         selected = [g for g in groups_data if g["group"]["name"] == selection]
 
-    has_matches = False
+    # 1) Flache Field-Liste (name, value) bauen
+    fields: list[tuple[str, str]] = []
     for group in selected:
         group_name = group["group"]["name"]
         by_matchday = _matchday_lines(group.get("matches", []))
         for md in sorted(by_matchday.keys()):
-            has_matches = True
             if all_groups:
                 field_name = f"📋 Gruppe {group_name} · Spieltag {md}"
             else:
                 field_name = f"Spieltag {md}"
-            _add_lines_field(embed, field_name, by_matchday[md])
+            fields.extend(_split_field(field_name, by_matchday[md]))
 
-    if not has_matches:
+    if not fields:
+        embed = discord.Embed(title=base_title, color=discord.Color.gold())
         embed.description = "Für diese Auswahl ist noch kein Spielplan vorhanden."
+        embed.set_footer(text=footer)
+        return [embed]
 
-    embed.set_footer(text=f"Angefordert von {user.display_name} via /spielplan")
-    return embed
+    # 2) Fields in Embeds packen (Field-Anzahl UND Zeichen-Gesamtlimit beachten)
+    embeds: list[discord.Embed] = []
+    current: discord.Embed | None = None
+    current_chars = 0
+    for name, value in fields:
+        cost = len(name) + len(value)
+        if (current is None
+                or len(current.fields) >= MAX_FIELDS
+                or current_chars + cost > EMBED_CHAR_LIMIT):
+            current = discord.Embed(title=base_title, color=discord.Color.gold())
+            embeds.append(current)
+            current_chars = len(base_title)
+        current.add_field(name=name, value=value, inline=False)
+        current_chars += cost
+
+    # 3) Seitenzahl (nur bei mehreren) + Footer setzen
+    total = len(embeds)
+    for i, embed in enumerate(embeds, 1):
+        if total > 1:
+            embed.title = f"{base_title} ({i}/{total})"
+        embed.set_footer(text=footer)
+
+    return embeds
 
 
 class SpielplanSelect(discord.ui.Select):
@@ -171,10 +206,11 @@ class SpielplanSelect(discord.ui.Select):
     async def callback(self, interaction: discord.Interaction):
         selection = self.values[0]
         try:
-            embed = build_spielplan_embed(
+            embeds = build_spielplan_embeds(
                 self.season, self.groups_data, selection, interaction.user
             )
-            await interaction.channel.send(embed=embed)
+            for embed in embeds:
+                await interaction.channel.send(embed=embed)
             await interaction.response.edit_message(
                 content="✅ Spielplan gepostet!", view=None
             )
