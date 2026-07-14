@@ -357,19 +357,29 @@ class SpieltageSelect(discord.ui.Select):
                     content="❌ Ungültige Auswahl.", view=None
                 )
                 return
-
-            # ÖFFENTLICH im Channel posten
-            await interaction.channel.send(embed=embed)
-
-            # Ephemeral-Nachricht updaten
-            await interaction.response.edit_message(
-                content="✅ Spieltag gepostet!", view=None
-            )
-
         except Exception as e:
-            logger.error(f"❌ Fehler beim Posten: {e}", exc_info=e)
+            logger.error(f"❌ Fehler beim Aufbereiten: {e}", exc_info=e)
             await interaction.response.edit_message(
                 content=f"❌ Fehler: {e}", view=None
+            )
+            return
+
+        # Menü schließen / bestätigen (Interaction-Response, braucht keine
+        # channel.send-Rechte).
+        await interaction.response.edit_message(
+            content="✅ Spieltag gepostet!", view=None
+        )
+
+        # Öffentlich posten via Interaction-Followup statt channel.send:
+        # funktioniert auch ohne "Send Messages"-Recht des Bots im Channel
+        # (verhindert 403 Missing Access).
+        try:
+            await interaction.followup.send(embed=embed)
+        except Exception as e:
+            logger.error(f"❌ Fehler beim Posten des Spieltags: {e}", exc_info=e)
+            await interaction.followup.send(
+                content=f"❌ Konnte den Spieltag nicht posten: {e}",
+                ephemeral=True
             )
 
 
