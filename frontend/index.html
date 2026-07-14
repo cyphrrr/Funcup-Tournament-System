@@ -1219,10 +1219,17 @@ function deriveCurrentMatchday() {
   if (allMatches.length === 0) return { current: 0, total: 0 };
   var matchdays = Array.from(new Set(allMatches.map(function(m) { return m.matchday; }))).sort(function(a, b) { return a - b; });
   var total = matchdays.length > 0 ? Math.max.apply(null, matchdays) : 0;
-  var playedMatchdays = matchdays.filter(function(md) {
-    return allMatches.some(function(m) { return m.matchday === md && m.status === 'played'; });
-  });
-  var current = playedMatchdays.length > 0 ? Math.max.apply(null, playedMatchdays) : 0;
+  // Aktueller Spieltag = niedrigster Spieltag, der noch nicht komplett gespielt ist.
+  // Erst wenn ALLE Spiele eines Spieltags eingetragen sind, rueckt der naechste Spieltag nach.
+  var current = 0;
+  for (var i = 0; i < matchdays.length; i++) {
+    var md = matchdays[i];
+    var mdMatches = allMatches.filter(function(m) { return m.matchday === md; });
+    var allPlayed = mdMatches.length > 0 && mdMatches.every(function(m) { return m.status === 'played'; });
+    if (!allPlayed) { current = md; break; }
+  }
+  // Alle Spieltage komplett -> beim letzten Spieltag bleiben.
+  if (current === 0 && matchdays.length > 0) current = matchdays[matchdays.length - 1];
   return { current: current, total: total };
 }
 
