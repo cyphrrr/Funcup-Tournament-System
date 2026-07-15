@@ -4,6 +4,15 @@
 
 ---
 
+## 2026-07-15 — Fix: Team-Wappen (logo_url) im Admin-Panel entfernbar
+
+- `PATCH /api/teams/{id}` konnte ein per URL verlinktes Wappen (`Team.logo_url`) nicht mehr löschen: Der Guard `if update.logo_url is not None` ignorierte das vom Frontend beim Leeren gesendete `logo_url: null`, der Link blieb dauerhaft in der DB (überstand Speichern/Reload/Re-Login)
+- Fix: `logo_url` wird jetzt über `model_fields_set` behandelt — wird das Feld mitgeschickt (auch `null`/`""`), wird es gesetzt; Leerstring wird zu `None` normalisiert, damit `/teams/crests` es nicht als leeres Wappen ausliefert
+- Weggelassene Felder bleiben unangetastet (echtes PATCH-Verhalten für partielle Updates)
+- Regressionstests: `backend/tests/test_update_team.py` (4 Tests: null-Clear, Leerstring-Clear, Weglassen erhält, Neu-Setzen)
+
+---
+
 ## 2026-07-14 — Discord-Bot: `/gruppen` und `/spielplan`
 
 - Neuer Befehl `/gruppen`: postet die Gruppen-Zusammensetzung (Gruppen + Teams) der aktiven, sonst geplanten Saison öffentlich im Channel — gedacht für den Überblick nach der Auslosung

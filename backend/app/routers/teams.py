@@ -300,10 +300,15 @@ def update_team(team_id: int, update: schemas.TeamUpdate, db: Session = Depends(
     if not team:
         raise HTTPException(status_code=404, detail="Team not found")
 
+    fields_set = update.model_fields_set
+
     if update.name is not None:
         team.name = update.name
-    if update.logo_url is not None:
-        team.logo_url = update.logo_url
+    # logo_url ist explizit löschbar: wird das Feld mitgeschickt (auch als
+    # null/""), setzen wir es. Leerstring -> None, damit /teams/crests
+    # (Filter logo_url IS NOT NULL) es nicht als leeres Wappen ausliefert.
+    if "logo_url" in fields_set:
+        team.logo_url = update.logo_url or None
     if update.onlineliga_url is not None:
         team.onlineliga_url = update.onlineliga_url
     if update.participating_next is not None:
