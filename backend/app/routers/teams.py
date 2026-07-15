@@ -187,13 +187,16 @@ def get_team_crests(db: Session = Depends(get_db)):
     for t in teams_with_logo:
         crests[str(t.id)] = t.logo_url
 
-    # 2. UserProfile.crest_url überschreibt (höhere Priorität)
+    # 2. UserProfile.crest_url überschreibt (höhere Priorität).
+    # Nur aktive Profile (konsistent mit get_team_detail): ein soft-gelöschtes
+    # Profil darf kein bereits entferntes Wappen wieder einblenden.
     profiles = db.query(
         models.UserProfile.team_id,
         models.UserProfile.crest_url
     ).filter(
         models.UserProfile.team_id.isnot(None),
-        models.UserProfile.crest_url.isnot(None)
+        models.UserProfile.crest_url.isnot(None),
+        models.UserProfile.is_active == True
     ).all()
     for p in profiles:
         crests[str(p.team_id)] = p.crest_url

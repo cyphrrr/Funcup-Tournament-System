@@ -4,6 +4,12 @@
 
 ---
 
+## 2026-07-15 — Fix: Wappen-Änderungen sofort sichtbar + Konsistenz
+
+- Frontend-Wappen-Cache (`sessionStorage`, 10 Min TTL) entfernt: er überlebte Reloads inkl. Hard-Refresh und zeigte bis zu 10 Min veraltete Wappen. Jeder Seitenaufruf lädt jetzt frisch (In-Memory-Guard gegen Doppel-Fetch pro Seite)
+- `GET /api/teams/crests` filtert jetzt auf `UserProfile.is_active` (konsistent mit dem Team-Profil): ein soft-gelöschtes Profil kann kein bereits entferntes Wappen wieder einblenden
+- Test: `test_crests_ignores_inactive_profile_override`
+
 ## 2026-07-15 — Admin-Wappenverwaltung (hochgeladene Wappen)
 
 - Admins können das per Discord-Owner hochgeladene Wappen (`UserProfile.crest_url`) eines Teams jetzt im Team-Edit-Modal **sehen, per URL/Datei ersetzen und löschen** — bisher konnte nur der Owner selbst sein Wappen ändern

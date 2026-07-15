@@ -2,26 +2,16 @@ import { API_URL } from './config.js';
 
 let crestCache = {};
 const teamCache = {};
-const CREST_CACHE_KEY = 'biw_crests';
-const CREST_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+let crestsLoaded = false; // In-Memory-Guard: einmal pro Seitenaufruf laden
 
 export async function loadCrests() {
-  // Check sessionStorage first
-  try {
-    const cached = sessionStorage.getItem(CREST_CACHE_KEY);
-    if (cached) {
-      const { data, ts } = JSON.parse(cached);
-      if (Date.now() - ts < CREST_CACHE_TTL) {
-        crestCache = data;
-        return;
-      }
-    }
-  } catch (e) { /* ignore parse errors */ }
-
-  // Cache miss or expired — fetch
+  // Bewusst KEIN sessionStorage: das überlebte Reloads (auch Hard-Refresh) und
+  // zeigte bis zu 10 Min veraltete Wappen. Jeder Seitenaufruf lädt jetzt frisch;
+  // der In-Memory-Guard verhindert nur Doppel-Fetches innerhalb derselben Seite.
+  if (crestsLoaded) return;
   try {
     crestCache = await fetch(`${API_URL}/api/teams/crests`).then(r => r.json());
-    sessionStorage.setItem(CREST_CACHE_KEY, JSON.stringify({ data: crestCache, ts: Date.now() }));
+    crestsLoaded = true;
   } catch (e) {
     console.warn('Crests konnten nicht geladen werden:', e);
   }

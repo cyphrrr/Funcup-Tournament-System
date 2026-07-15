@@ -138,6 +138,17 @@ def test_delete_crest_falls_back_to_logo_url():
     assert crests[str(team.id)] == "https://biw-pokal.de/ahrem.png"
 
 
+def test_crests_ignores_inactive_profile_override():
+    """Ein soft-gelöschtes (inaktives) Profil darf kein Wappen einblenden."""
+    db = create_test_db()
+    team = make_team(db, logo_url="https://biw-pokal.de/ahrem.png")
+    make_profile(db, team.id, discord_id="inaktiv",
+                 crest_url="https://example.com/alt-falsch.png", is_active=False)
+
+    crests = get_team_crests(db=db)
+    assert crests[str(team.id)] == "https://biw-pokal.de/ahrem.png"
+
+
 def test_delete_crest_without_any_404():
     db = create_test_db()
     team = make_team(db)
