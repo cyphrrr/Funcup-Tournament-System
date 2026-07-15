@@ -535,7 +535,7 @@ function renderCrest() {
   preview.textContent = '';
   if (userProfile.crest_url) {
     var img = document.createElement('img');
-    img.src = API + userProfile.crest_url;
+    img.src = (userProfile.crest_url.startsWith('http') ? userProfile.crest_url : API + userProfile.crest_url);
     img.alt = 'Wappen';
     preview.appendChild(img);
     deleteBtn.style.display = '';
@@ -556,7 +556,7 @@ function renderTeam() {
     document.getElementById('team-current-info').textContent = 'Dein verkn\u00fcpftes Team';
     var logoEl = document.getElementById('team-current-logo');
     if (userProfile.crest_url) {
-      logoEl.src = API + userProfile.crest_url;
+      logoEl.src = (userProfile.crest_url.startsWith('http') ? userProfile.crest_url : API + userProfile.crest_url);
       logoEl.style.display = '';
     } else {
       logoEl.src = '';

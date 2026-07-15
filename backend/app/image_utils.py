@@ -5,11 +5,44 @@ Verwendet Pillow für Resize, Format-Konvertierung und Validierung
 
 import os
 import io
+import hashlib
+import aiofiles
 from typing import Tuple
 from PIL import Image
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+def crests_dir() -> str:
+    """Upload-Verzeichnis für Wappen (env, zur Laufzeit gelesen -> testbar)."""
+    upload_dir = os.getenv("UPLOAD_DIR", "/app/uploads")
+    d = os.path.join(upload_dir, "crests")
+    os.makedirs(d, exist_ok=True)
+    return d
+
+
+async def save_crest_webp(processed: bytes, key: str) -> str:
+    """Schreibt verarbeitetes WebP als ``{key}.webp`` und gibt die versionierte
+    URL (``?v=<hash8>``) zurück. Der Content-Hash bustet Browser-/CDN-Cache."""
+    filename = f"{key}.webp"
+    filepath = os.path.join(crests_dir(), filename)
+    async with aiofiles.open(filepath, "wb") as f:
+        await f.write(processed)
+    version = hashlib.sha256(processed).hexdigest()[:8]
+    return f"/uploads/crests/{filename}?v={version}"
+
+
+def delete_crest_file(url: str | None) -> None:
+    """Entfernt die lokale Upload-Datei zu einer Wappen-URL. Externe URLs
+    (http/https) und leere Werte sind No-ops."""
+    if not url:
+        return
+    path_part = url.split("?", 1)[0]
+    if path_part.startswith("/uploads/crests/"):
+        filepath = os.path.join(crests_dir(), os.path.basename(path_part))
+        if os.path.exists(filepath):
+            os.remove(filepath)
 
 # Erlaubte Dateiformate
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "webp", "gif"}

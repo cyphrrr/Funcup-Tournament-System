@@ -344,7 +344,7 @@ async function loadTeamProfile(teamId) {
     logoWrap.className = 'team-logo-wrap';
     if (team.logo_url) {
       var logoImg = document.createElement('img');
-      logoImg.src = team.logo_url;
+      logoImg.src = team.logo_url.startsWith('http') ? team.logo_url : API + team.logo_url;
       logoImg.alt = '';
       logoImg.addEventListener('error', function() { logoWrap.textContent = team.name.substring(0, 2).toUpperCase(); });
       logoWrap.appendChild(logoImg);

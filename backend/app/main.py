@@ -6,12 +6,14 @@ from fastapi.staticfiles import StaticFiles
 from .routers import router
 from .db import engine
 from . import models
-from .migrations import run_auto_migrations
+from .migrations import run_auto_migrations, backfill_crest_to_logo
 
 # DB-Tabellen erstellen
 models.Base.metadata.create_all(bind=engine)
 # Fehlende Spalten in bestehenden Tabellen additiv ergänzen (Modell-Drift)
 run_auto_migrations(engine)
+# Wappen-Konsolidierung: UserProfile.crest_url -> Team.logo_url (idempotent)
+backfill_crest_to_logo(engine)
 
 # Version aus VERSION-Datei lesen (Single Source of Truth)
 _version_file = pathlib.Path("/VERSION")

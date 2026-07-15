@@ -50,3 +50,42 @@ def run_auto_migrations(engine):
     else:
         logger.info("Auto-Migration: keine fehlenden Spalten.")
     return added
+
+
+def backfill_crest_to_logo(engine) -> int:
+    """Einmal-Backfill der Wappen-Konsolidierung.
+
+    Kopiert das per Discord-Owner gesetzte ``UserProfile.crest_url`` (bislang der
+    Override in ``/teams/crests``) in ``Team.logo_url`` und legt ``crest_url``
+    danach als Wappen-Quelle still (NULL). So bleibt der aktuelle Anzeigezustand
+    erhalten, während künftig nur noch ``Team.logo_url`` maßgeblich ist.
+
+    Idempotent: nach dem ersten Lauf ist ``crest_url`` überall NULL → No-op.
+    Gibt die Anzahl übernommener Team-Wappen zurück.
+    """
+    from sqlalchemy.orm import Session
+
+    from . import models
+
+    migrated = 0
+    with Session(engine) as session:
+        # Aktive Profile gewinnen (konsistent mit bisheriger Anzeige-Priorität).
+        rows = session.query(models.UserProfile).filter(
+            models.UserProfile.crest_url.isnot(None),
+            models.UserProfile.team_id.isnot(None),
+            models.UserProfile.is_active == True,
+        ).all()
+        for p in rows:
+            team = session.get(models.Team, p.team_id)
+            if team:
+                team.logo_url = p.crest_url
+                migrated += 1
+        # crest_url als Wappen-Quelle stilllegen (auch inaktive Profile).
+        session.query(models.UserProfile).filter(
+            models.UserProfile.crest_url.isnot(None)
+        ).update({models.UserProfile.crest_url: None}, synchronize_session=False)
+        session.commit()
+
+    if migrated:
+        logger.warning("Wappen-Backfill: %d Team-Wappen aus crest_url übernommen.", migrated)
+    return migrated

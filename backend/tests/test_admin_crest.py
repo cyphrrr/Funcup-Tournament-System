@@ -1,11 +1,11 @@
 """
-Tests für Admin-Wappenverwaltung (UserProfile.crest_url).
+Tests für Wappen nach der Konsolidierung: einzige Quelle ist Team.logo_url.
 
-Ansatz A: Admin kann das per-Owner hochgeladene Wappen (crest_url, das
-Team.logo_url in /teams/crests überschreibt) per URL/Upload setzen und löschen.
+- Admin-Upload schreibt Team.logo_url (kein UserProfile nötig, jedes Team).
+- /teams/crests liefert nur noch Team.logo_url (kein crest_url-Override mehr).
+- URL-Validierung (validate_crest_url) greift auch beim Setzen via update_team.
 
-Läuft gegen In-Memory SQLite (kein Server nötig); testet die Router-Funktionen
-direkt. Datei-Uploads schreiben in ein temporäres UPLOAD_DIR (env, pro Prozess).
+Läuft gegen In-Memory SQLite; Uploads schreiben in ein temporäres UPLOAD_DIR.
 """
 
 import sys
@@ -25,11 +25,10 @@ from PIL import Image
 from app.db import Base
 from app import models, schemas
 from app.routers.teams import (
-    admin_set_team_crest_url,
-    admin_delete_team_crest,
     admin_upload_team_crest,
     validate_crest_url,
     get_team_crests,
+    update_team,
 )
 
 
@@ -48,17 +47,13 @@ def make_team(db, name="RW Ahrem", logo_url="https://biw-pokal.de/ahrem.png"):
     return team
 
 
-def make_profile(db, team_id, discord_id="12345", crest_url="/uploads/crests/12345.webp", is_active=True):
+def make_profile(db, team_id, discord_id="12345", crest_url=None, is_active=True):
     p = models.UserProfile(
-        discord_id=discord_id,
-        discord_username="daniel_022941#0",
-        team_id=team_id,
-        crest_url=crest_url,
-        is_active=is_active,
+        discord_id=discord_id, discord_username="daniel#0", team_id=team_id,
+        crest_url=crest_url, is_active=is_active,
     )
     db.add(p)
     db.commit()
-    db.refresh(p)
     return p
 
 
@@ -69,121 +64,70 @@ def make_png_upload(filename="wappen.png", content_type="image/png"):
     return UploadFile(filename=filename, file=buf, headers=Headers({"content-type": content_type}))
 
 
-# ---------- Set per URL ----------
+# ---------- /teams/crests: nur noch Team.logo_url ----------
 
-def test_set_crest_url_updates_profile():
+def test_crests_uses_only_logo_url():
     db = create_test_db()
-    team = make_team(db)
-    make_profile(db, team.id, crest_url="/uploads/crests/old.webp")
-
-    body = schemas.AdminCrestUrlSet(crest_url="https://example.com/neu.png")
-    result = admin_set_team_crest_url(team.id, body, db=db, _="admin")
-
-    assert result.crest_url == "https://example.com/neu.png"
-    p = db.query(models.UserProfile).filter_by(team_id=team.id).first()
-    assert p.crest_url == "https://example.com/neu.png"
+    team = make_team(db, logo_url="https://biw-pokal.de/ahrem.png")
+    crests = get_team_crests(db=db)
+    assert crests[str(team.id)] == "https://biw-pokal.de/ahrem.png"
 
 
-def test_set_crest_url_without_profile_400():
+def test_crests_ignores_legacy_crest_url_override():
+    """Ein (dormantes) UserProfile.crest_url darf das Wappen NICHT mehr beeinflussen."""
     db = create_test_db()
-    team = make_team(db)  # kein UserProfile
+    team = make_team(db, logo_url="https://biw-pokal.de/ahrem.png")
+    make_profile(db, team.id, crest_url="https://example.com/ALT-FALSCH.png")
 
-    body = schemas.AdminCrestUrlSet(crest_url="https://example.com/neu.png")
+    crests = get_team_crests(db=db)
+    assert crests[str(team.id)] == "https://biw-pokal.de/ahrem.png"
+
+
+def test_crests_omits_team_without_logo():
+    db = create_test_db()
+    team = make_team(db, logo_url=None)
+    assert str(team.id) not in get_team_crests(db=db)
+
+
+# ---------- Admin-Upload -> Team.logo_url ----------
+
+def test_admin_upload_sets_team_logo_url(tmp_path):
+    os.environ["UPLOAD_DIR"] = str(tmp_path)
+    db = create_test_db()
+    team = make_team(db, logo_url=None)  # ohne Discord-User
+
+    result = asyncio.run(admin_upload_team_crest(team.id, make_png_upload(), db=db, _="admin"))
+
+    assert result.crest_url.startswith(f"/uploads/crests/team-{team.id}.webp?v=")
+    db.refresh(team)
+    assert team.logo_url == result.crest_url
+    assert (tmp_path / "crests" / f"team-{team.id}.webp").exists()
+
+
+def test_admin_upload_missing_team_404(tmp_path):
+    os.environ["UPLOAD_DIR"] = str(tmp_path)
+    db = create_test_db()
     with pytest.raises(HTTPException) as exc:
-        admin_set_team_crest_url(team.id, body, db=db, _="admin")
-    assert exc.value.status_code == 400
+        asyncio.run(admin_upload_team_crest(9999, make_png_upload(), db=db, _="admin"))
+    assert exc.value.status_code == 404
 
+
+# ---------- URL-Validierung beim Setzen via update_team ----------
 
 @pytest.mark.parametrize("bad", [
-    'https://x.com/a".png',        # Anführungszeichen -> Attribut-Ausbruch
-    "https://x.com/a'.png",
-    "https://x.com/<script>",
-    "javascript:alert(1)",         # falsches Schema
-    "ftp://x.com/a.png",
-    "https://x.com/a b.png",       # Whitespace
-    "  ",                          # leer
+    'https://x.com/a".png', "https://x.com/a'.png", "https://x.com/<script>",
+    "javascript:alert(1)", "ftp://x.com/a.png", "https://x.com/a b.png",
 ])
-def test_set_crest_url_rejects_unsafe(bad):
+def test_update_team_rejects_unsafe_logo_url(bad):
     db = create_test_db()
     team = make_team(db)
-    make_profile(db, team.id)
-
-    body = schemas.AdminCrestUrlSet(crest_url=bad)
     with pytest.raises(HTTPException) as exc:
-        admin_set_team_crest_url(team.id, body, db=db, _="admin")
+        update_team(team.id, schemas.TeamUpdate(logo_url=bad), db=db, _="admin")
     assert exc.value.status_code == 400
 
 
 @pytest.mark.parametrize("ok", [
-    "https://biw-pokal.de/wappen.png",
-    "http://example.com/x.webp",
-    "/uploads/crests/12345.webp",
+    "https://biw-pokal.de/wappen.png", "http://example.com/x.webp", "/uploads/crests/12345.webp",
 ])
 def test_validate_crest_url_accepts_valid(ok):
     validate_crest_url(ok)  # darf nicht werfen
-
-
-# ---------- Delete ----------
-
-def test_delete_crest_falls_back_to_logo_url():
-    db = create_test_db()
-    team = make_team(db, logo_url="https://biw-pokal.de/ahrem.png")
-    make_profile(db, team.id, crest_url="https://example.com/falsch.png")
-
-    result = admin_delete_team_crest(team.id, db=db, _="admin")
-    assert result.crest_url is None
-
-    crests = get_team_crests(db=db)
-    # /teams/crests fällt jetzt auf Team.logo_url zurück
-    assert crests[str(team.id)] == "https://biw-pokal.de/ahrem.png"
-
-
-def test_crests_ignores_inactive_profile_override():
-    """Ein soft-gelöschtes (inaktives) Profil darf kein Wappen einblenden."""
-    db = create_test_db()
-    team = make_team(db, logo_url="https://biw-pokal.de/ahrem.png")
-    make_profile(db, team.id, discord_id="inaktiv",
-                 crest_url="https://example.com/alt-falsch.png", is_active=False)
-
-    crests = get_team_crests(db=db)
-    assert crests[str(team.id)] == "https://biw-pokal.de/ahrem.png"
-
-
-def test_delete_crest_without_any_404():
-    db = create_test_db()
-    team = make_team(db)
-    make_profile(db, team.id, crest_url=None)
-
-    with pytest.raises(HTTPException) as exc:
-        admin_delete_team_crest(team.id, db=db, _="admin")
-    assert exc.value.status_code == 404
-
-
-# ---------- Upload ----------
-
-def test_upload_crest_sets_versioned_url_and_writes_file(tmp_path):
-    os.environ["UPLOAD_DIR"] = str(tmp_path)
-    db = create_test_db()
-    team = make_team(db)
-    make_profile(db, team.id, discord_id="999", crest_url=None)
-
-    upload = make_png_upload()
-    result = asyncio.run(admin_upload_team_crest(team.id, upload, db=db, _="admin"))
-
-    assert result.crest_url.startswith("/uploads/crests/999.webp?v=")
-    written = tmp_path / "crests" / "999.webp"
-    assert written.exists() and written.stat().st_size > 0
-
-    p = db.query(models.UserProfile).filter_by(team_id=team.id).first()
-    assert p.crest_url == result.crest_url
-
-
-def test_upload_crest_without_profile_400(tmp_path):
-    os.environ["UPLOAD_DIR"] = str(tmp_path)
-    db = create_test_db()
-    team = make_team(db)  # kein Profil
-
-    upload = make_png_upload()
-    with pytest.raises(HTTPException) as exc:
-        asyncio.run(admin_upload_team_crest(team.id, upload, db=db, _="admin"))
-    assert exc.value.status_code == 400

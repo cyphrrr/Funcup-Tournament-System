@@ -4,6 +4,19 @@
 
 ---
 
+## 2026-07-15 — Wappen-Konsolidierung: eine Quelle (Team.logo_url)
+
+- **Strukturfix:** Team-Wappen wurden an zwei Stellen gespeichert (`Team.logo_url` + `UserProfile.crest_url`), mit Override-Priorität und getrennten Lesepfaden — Admin-Änderungen wirkten nicht auf die Tabellen. Jetzt ist **`Team.logo_url` die einzige Quelle**; egal ob per URL oder Upload gesetzt, alle Funktionen lesen von dort
+- `GET /api/teams/crests` liefert nur noch `Team.logo_url` (kein `crest_url`-Override mehr)
+- Owner-Self-Service (`POST/DELETE /api/upload/crest`) und Admin-Upload (`POST /api/admin/teams/{id}/crest`) schreiben beide `Team.logo_url`; Setzen/Löschen per URL über `PATCH /api/teams/{id}`. Owner **und** Admin nutzen dasselbe Feld
+- Einmal-Migration (idempotent, beim Start): `UserProfile.crest_url` → `Team.logo_url` (aktueller Anzeigezustand bleibt erhalten), danach `crest_url` stillgelegt
+- Admin-Modal: **eine** Wappen-Steuerung (URL/Upload/Entfernen), separates Logo-URL-Feld entfernt
+- URL-Validierung beim Setzen (`PATCH`) + `crestImg`-Escaping; Dashboards/Team-Profil rendern relative Upload-Pfade und externe URLs korrekt
+- Uploads unter `team-{id}.webp?v=<hash>` (Cache-Busting); alte Admin-Endpoints `PUT`/`DELETE .../crest` entfernt (durch `PATCH` abgedeckt)
+- Tests: `test_admin_crest.py` (angepasst), neues `test_crest_backfill.py`; Design: `docs/superpowers/specs/2026-07-15-wappen-konsolidierung-design.md`
+
+---
+
 ## 2026-07-15 — Fix: Wappen-Änderungen sofort sichtbar + Konsistenz
 
 - Frontend-Wappen-Cache (`sessionStorage`, 10 Min TTL) entfernt: er überlebte Reloads inkl. Hard-Refresh und zeigte bis zu 10 Min veraltete Wappen. Jeder Seitenaufruf lädt jetzt frisch (In-Memory-Guard gegen Doppel-Fetch pro Seite)

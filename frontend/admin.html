@@ -326,10 +326,6 @@ tr.row-inactive td:first-child   { border-left:3px solid #d1d5db; }
               <input type="text" id="edit-team-name" placeholder="z.B. FC Schalke 04">
             </div>
             <div class="form-group" style="margin-bottom:1rem">
-              <label>Logo-URL</label>
-              <input type="text" id="edit-team-logo" placeholder="https://example.com/logo.png">
-            </div>
-            <div class="form-group" style="margin-bottom:1rem">
               <label>Onlineliga-Link</label>
               <input type="text" id="edit-team-onlineliga" placeholder="https://onlineliga.de/team/...">
             </div>
@@ -341,25 +337,21 @@ tr.row-inactive td:first-child   { border-left:3px solid #d1d5db; }
               </div>
             </div>
             <div class="form-group" style="margin-bottom:1rem">
-              <label>Wappen (angezeigt in Tabellen)</label>
-              <!-- Hinweis, wenn kein Discord-User verknüpft ist -->
-              <div id="edit-team-crest-nouser" style="display:none;padding:.5rem;background:var(--bg-elevated);border-radius:6px;font-size:.85rem;color:var(--text-muted)">
-                Kein Discord-User verknüpft — Wappen über die Logo-URL oben setzen.
-              </div>
-              <!-- Wappen-Verwaltung (nur bei verknüpftem Discord-User) -->
-              <div id="edit-team-crest-manage" style="display:none;padding:.6rem;background:var(--bg-elevated);border-radius:6px">
+              <label>Wappen</label>
+              <!-- Einzige Wappen-Quelle: Team.logo_url (URL ODER Upload). Wirkt sofort, unabhängig von „Speichern". -->
+              <div id="edit-team-crest-manage" style="padding:.6rem;background:var(--bg-elevated);border-radius:6px">
                 <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.6rem">
                   <img id="edit-team-crest-thumb" src="" alt="" style="width:44px;height:44px;object-fit:contain;border-radius:4px;background:var(--bg-section);flex-shrink:0" onerror="this.style.visibility='hidden'">
                   <span id="edit-team-crest-status" style="font-size:.85rem;color:var(--text-muted)"></span>
                 </div>
                 <div style="display:flex;gap:.4rem;margin-bottom:.5rem">
-                  <input type="text" id="edit-team-crest-url" placeholder="https://… (Direkt-URL)" style="flex:1">
-                  <button class="btn btn-sm btn-secondary" onclick="setTeamCrestUrl()">URL setzen</button>
+                  <input type="text" id="edit-team-crest-url" placeholder="https://… (Bild-URL)" style="flex:1">
+                  <button class="btn btn-sm btn-secondary" onclick="saveTeamLogoUrl()">URL speichern</button>
                 </div>
                 <div style="display:flex;gap:.4rem;align-items:center">
                   <input type="file" id="edit-team-crest-file" accept="image/*" style="flex:1;font-size:.8rem">
                   <button class="btn btn-sm btn-secondary" onclick="uploadTeamCrest()">⬆️ Hochladen</button>
-                  <button class="btn btn-sm btn-danger" id="edit-team-crest-delete" onclick="deleteTeamCrest()" style="display:none">🗑️ Löschen</button>
+                  <button class="btn btn-sm btn-danger" id="edit-team-crest-delete" onclick="removeTeamLogo()" style="display:none">🗑️ Entfernen</button>
                 </div>
               </div>
             </div>

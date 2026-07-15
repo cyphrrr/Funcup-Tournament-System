@@ -307,7 +307,7 @@ function renderCrest() {
   const deleteBtn = document.getElementById('delete-crest-btn');
 
   if (userProfile.crest_url) {
-    preview.innerHTML = `<img src="${API}${userProfile.crest_url}" alt="Wappen">`;
+    preview.innerHTML = `<img src="${userProfile.crest_url.startsWith('http') ? userProfile.crest_url : API + userProfile.crest_url}" alt="Wappen">`;
     deleteBtn.style.display = '';
   } else {
     preview.innerHTML = '<div class="placeholder">Kein Wappen</div>';
@@ -325,7 +325,7 @@ function renderTeam() {
 
     const logoEl = document.getElementById('team-current-logo');
     if (userProfile.crest_url) {
-      logoEl.src = `${API}${userProfile.crest_url}`;
+      logoEl.src = `${userProfile.crest_url.startsWith('http') ? userProfile.crest_url : API + userProfile.crest_url}`;
     } else {
       logoEl.src = '';
       logoEl.style.display = 'none';

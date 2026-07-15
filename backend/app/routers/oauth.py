@@ -109,11 +109,13 @@ async def discord_callback(
 
     team_name = None
     team_participating_next = False
+    team_crest = None
     if user.team_id:
         team = db.query(models.Team).filter(models.Team.id == user.team_id).first()
         if team:
             team_name = team.name
             team_participating_next = team.participating_next
+            team_crest = team.logo_url  # Wappen ist jetzt Team.logo_url
 
     user_response = schemas.UserProfileResponse(
         id=user.id,
@@ -125,7 +127,7 @@ async def discord_callback(
         profile_url=user.profile_url,
         is_active=user.is_active,
         team_participating_next=team_participating_next,
-        crest_url=user.crest_url,
+        crest_url=team_crest,
         created_at=user.created_at,
         updated_at=user.updated_at
     )

@@ -131,7 +131,6 @@ async function editTeam(teamId) {
 
   document.getElementById('edit-team-id').value = team.id;
   document.getElementById('edit-team-name').value = team.name;
-  document.getElementById('edit-team-logo').value = team.logo_url || '';
   document.getElementById('edit-team-onlineliga').value = team.onlineliga_url || '';
 
   const discordNameEl = document.getElementById('edit-team-discord-name');
@@ -155,37 +154,28 @@ async function editTeam(teamId) {
 
 // Wappen-Sektion im Team-Edit-Modal befüllen.
 // crest_url (Upload/Admin-URL) überschreibt in den Tabellen die logo_url.
+// Wappen-Sektion: einzige Quelle ist Team.logo_url (URL oder Upload-Pfad).
 function populateCrestSection(team) {
   const manage = document.getElementById('edit-team-crest-manage');
-  const noUser = document.getElementById('edit-team-crest-nouser');
-  if (!manage || !noUser) return;
-
-  if (!team.discord_user) {
-    manage.style.display = 'none';
-    noUser.style.display = '';
-    return;
-  }
-  noUser.style.display = 'none';
+  if (!manage) return;
   manage.style.display = '';
 
-  const override = team.discord_user.crest_url;      // gesetztes/hochgeladenes Wappen
-  const effective = override || team.logo_url || '';
+  const logo = team.logo_url || '';
   const thumb = document.getElementById('edit-team-crest-thumb');
   const status = document.getElementById('edit-team-crest-status');
   const urlInput = document.getElementById('edit-team-crest-url');
-  const deleteBtn = document.getElementById('edit-team-crest-delete');
+  const removeBtn = document.getElementById('edit-team-crest-delete');
 
-  thumb.src = effective ? (effective.startsWith('http') ? effective : API_URL + effective) : '';
-  thumb.style.visibility = effective ? 'visible' : 'hidden';
+  thumb.src = logo ? (logo.startsWith('http') ? logo : API_URL + logo) : '';
+  thumb.style.visibility = logo ? 'visible' : 'hidden';
+  urlInput.value = logo.startsWith('http') ? logo : '';
 
-  if (override) {
-    status.textContent = 'Hochgeladenes Wappen — überschreibt die Logo-URL.';
-    deleteBtn.style.display = '';
-    urlInput.value = override.startsWith('http') ? override : '';
+  if (logo) {
+    status.textContent = logo.startsWith('/uploads/') ? 'Hochgeladenes Wappen.' : 'Wappen per URL.';
+    removeBtn.style.display = '';
   } else {
-    status.textContent = 'Kein Upload — Tabellen nutzen die Logo-URL.';
-    deleteBtn.style.display = 'none';
-    urlInput.value = '';
+    status.textContent = 'Kein Wappen gesetzt.';
+    removeBtn.style.display = 'none';
   }
   document.getElementById('edit-team-crest-file').value = '';
 }
@@ -195,36 +185,43 @@ function currentEditTeam() {
   return allTeamsData.find(t => t.id === parseInt(teamId));
 }
 
-// Public-Crest-Cache verwerfen, damit Tabellen die Änderung sehen.
-function invalidateCrestCache() {
-  try { sessionStorage.removeItem('biw_crests'); } catch (e) { /* ignore */ }
-}
-
 async function refreshEditTeamModal(teamId) {
-  invalidateCrestCache();
   await loadAllTeams();
   editTeam(teamId);
 }
 
-async function setTeamCrestUrl() {
-  const team = currentEditTeam();
-  if (!team) return;
-  const url = document.getElementById('edit-team-crest-url').value.trim();
-  if (!url) { toast('Bitte eine Bild-URL eingeben', 'error'); return; }
+// Wappen per URL setzen bzw. entfernen → beides schreibt Team.logo_url via PATCH.
+async function patchTeamLogo(team, logo_url, msg) {
   try {
-    const res = await authFetch(`${API_URL}/api/admin/teams/${team.id}/crest`, {
-      method: 'PUT',
+    const res = await authFetch(`${API_URL}/api/teams/${team.id}`, {
+      method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ crest_url: url })
+      body: JSON.stringify({ logo_url })
     });
     if (!res.ok) throw new Error(await res.text().catch(() => `HTTP ${res.status}`));
-    toast('Wappen gesetzt!');
+    toast(msg);
     await refreshEditTeamModal(team.id);
   } catch (e) {
     toast('Fehler: ' + e.message, 'error');
   }
 }
 
+async function saveTeamLogoUrl() {
+  const team = currentEditTeam();
+  if (!team) return;
+  const url = document.getElementById('edit-team-crest-url').value.trim();
+  if (!url) { toast('Bitte eine Bild-URL eingeben (oder „Entfernen")', 'error'); return; }
+  await patchTeamLogo(team, url, 'Wappen gesetzt!');
+}
+
+async function removeTeamLogo() {
+  const team = currentEditTeam();
+  if (!team) return;
+  if (!confirm(`Wappen für "${team.name}" entfernen?`)) return;
+  await patchTeamLogo(team, null, 'Wappen entfernt');
+}
+
+// Datei-Upload → POST /admin/teams/{id}/crest schreibt ebenfalls Team.logo_url.
 async function uploadTeamCrest() {
   const team = currentEditTeam();
   if (!team) return;
@@ -245,20 +242,6 @@ async function uploadTeamCrest() {
   }
 }
 
-async function deleteTeamCrest() {
-  const team = currentEditTeam();
-  if (!team) return;
-  if (!confirm(`Hochgeladenes Wappen für "${team.name}" löschen?\n\nDie Tabellen nutzen danach die Logo-URL.`)) return;
-  try {
-    const res = await authFetch(`${API_URL}/api/admin/teams/${team.id}/crest`, { method: 'DELETE' });
-    if (!res.ok) throw new Error(await res.text().catch(() => `HTTP ${res.status}`));
-    toast('Wappen gelöscht');
-    await refreshEditTeamModal(team.id);
-  } catch (e) {
-    toast('Fehler: ' + e.message, 'error');
-  }
-}
-
 function closeEditTeamModal() {
   document.getElementById('edit-team-modal').style.display = 'none';
 }
@@ -266,7 +249,6 @@ function closeEditTeamModal() {
 async function saveTeamEdit() {
   const teamId = document.getElementById('edit-team-id').value;
   const name = document.getElementById('edit-team-name').value.trim();
-  const logo_url = document.getElementById('edit-team-logo').value.trim() || null;
   const onlineliga_url = document.getElementById('edit-team-onlineliga').value.trim() || null;
 
   if (!name) {
@@ -274,11 +256,13 @@ async function saveTeamEdit() {
     return;
   }
 
+  // Hinweis: Das Wappen (logo_url) wird separat über die Wappen-Sektion
+  // gesetzt/entfernt und ist hier bewusst NICHT Teil des Speicherns.
   try {
     await authFetch(`${API_URL}/api/teams/${teamId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, logo_url, onlineliga_url })
+      body: JSON.stringify({ name, onlineliga_url })
     });
 
     toast('Team aktualisiert!');
