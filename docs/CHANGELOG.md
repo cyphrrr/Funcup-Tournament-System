@@ -4,6 +4,18 @@
 
 ---
 
+## 2026-07-15 — Admin-Wappenverwaltung (hochgeladene Wappen)
+
+- Admins können das per Discord-Owner hochgeladene Wappen (`UserProfile.crest_url`) eines Teams jetzt im Team-Edit-Modal **sehen, per URL/Datei ersetzen und löschen** — bisher konnte nur der Owner selbst sein Wappen ändern
+- Hintergrund: `crest_url` überschreibt in den Tabellen (`/teams/crests`) die admin-verwaltete `Team.logo_url`. Bei einem falschen/missbräuchlichen Upload war das über die UI nicht korrigierbar
+- Neue admin-geschützte Endpoints: `PUT /api/admin/teams/{id}/crest` (Direkt-URL), `POST …/crest` (Datei-Upload → WebP), `DELETE …/crest` (→ Fallback auf `logo_url`)
+- URL-Validierung server-seitig (nur `http(s)://` / `/uploads/…`, keine attributsprengenden Zeichen); `crestImg` escaped die URL zusätzlich (Härtung gegen Attribut-Injection)
+- Upload hängt einen Content-Hash als `?v=` an die crest_url → Austausch ist **sofort sichtbar** (kein Browser-/CDN-Cache-Problem mehr)
+- Ohne verknüpften Discord-User: Crest-Sektion ausgeblendet, Hinweis auf die Logo-URL
+- Tests: `backend/tests/test_admin_crest.py` (16); Design: `docs/superpowers/specs/2026-07-15-admin-crest-management-design.md`
+
+---
+
 ## 2026-07-15 — Fix: Team-Wappen (logo_url) im Admin-Panel entfernbar
 
 - `PATCH /api/teams/{id}` konnte ein per URL verlinktes Wappen (`Team.logo_url`) nicht mehr löschen: Der Guard `if update.logo_url is not None` ignorierte das vom Frontend beim Leeren gesendete `logo_url: null`, der Link blieb dauerhaft in der DB (überstand Speichern/Reload/Re-Login)

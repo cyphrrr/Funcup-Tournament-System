@@ -1,14 +1,65 @@
+import os
 import random
+import hashlib
+import aiofiles
 from math import ceil
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 from .. import models, schemas
 from ..db import get_db
 from ..auth import get_current_user
+from ..image_utils import validate_image_file, process_crest_image
 from .matches import generate_round_robin
 
 router = APIRouter()
+
+
+def _crests_dir() -> str:
+    """Upload-Verzeichnis für Wappen (env, zur Laufzeit gelesen -> testbar)."""
+    upload_dir = os.getenv("UPLOAD_DIR", "/app/uploads")
+    crests_dir = os.path.join(upload_dir, "crests")
+    os.makedirs(crests_dir, exist_ok=True)
+    return crests_dir
+
+
+# Zeichen, die aus einem HTML-Attributwert ausbrechen könnten.
+_CREST_URL_FORBIDDEN = set('"\'<>`')
+
+
+def validate_crest_url(url: str) -> None:
+    """Validiert eine vom Admin gesetzte Wappen-URL.
+
+    Nur http(s):// oder /uploads/… erlaubt; keine Zeichen, die aus dem
+    <img src>-Attribut ausbrechen (crestImg interpoliert ungeescaped).
+    Wirft HTTPException(400) bei ungültigem Wert.
+    """
+    value = (url or "").strip()
+    if not value:
+        raise HTTPException(status_code=400, detail="Leere Wappen-URL; zum Entfernen DELETE nutzen")
+    if any(c in _CREST_URL_FORBIDDEN for c in value):
+        raise HTTPException(status_code=400, detail="Wappen-URL enthält unerlaubte Zeichen")
+    if any(c.isspace() for c in value):
+        raise HTTPException(status_code=400, detail="Wappen-URL darf keine Leerzeichen enthalten")
+    if not (value.startswith("http://") or value.startswith("https://") or value.startswith("/uploads/")):
+        raise HTTPException(
+            status_code=400,
+            detail="Wappen-URL muss mit http://, https:// oder /uploads/ beginnen",
+        )
+
+
+def _get_team_or_404(db: Session, team_id: int) -> models.Team:
+    team = db.query(models.Team).filter(models.Team.id == team_id).first()
+    if not team:
+        raise HTTPException(status_code=404, detail="Team not found")
+    return team
+
+
+def _active_profile_for_team(db: Session, team_id: int) -> Optional[models.UserProfile]:
+    return db.query(models.UserProfile).filter(
+        models.UserProfile.team_id == team_id,
+        models.UserProfile.is_active == True,
+    ).first()
 
 
 @router.get("/teams")
@@ -79,6 +130,7 @@ def list_all_teams(
             "discord_user": {
                 "discord_id": profile.discord_id,
                 "discord_username": profile.discord_username,
+                "crest_url": profile.crest_url,
             } if profile else None,
             "seasons": seasons_map.get(t.id, []),
         })
@@ -321,6 +373,106 @@ def update_team(team_id: int, update: schemas.TeamUpdate, db: Session = Depends(
     db.commit()
     db.refresh(team)
     return team
+
+
+# ---------- Admin-Wappenverwaltung (UserProfile.crest_url) ----------
+# Das per-Owner hochgeladene Wappen überschreibt in /teams/crests die
+# Team.logo_url. Diese Endpoints geben dem Admin Kontrolle darüber, um
+# falsche/missbräuchliche Uploads zu korrigieren.
+
+@router.put("/admin/teams/{team_id}/crest", response_model=schemas.AdminCrestResponse)
+def admin_set_team_crest_url(
+    team_id: int,
+    body: schemas.AdminCrestUrlSet,
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_user),
+):
+    """Setzt das Wappen eines Teams per Direkt-URL (auf der aktiven UserProfile)."""
+    _get_team_or_404(db, team_id)
+    validate_crest_url(body.crest_url)
+
+    profile = _active_profile_for_team(db, team_id)
+    if not profile:
+        raise HTTPException(
+            status_code=400,
+            detail="Kein verknüpfter Discord-User; nutze stattdessen die Logo-URL des Teams",
+        )
+
+    profile.crest_url = body.crest_url.strip()
+    db.commit()
+    return schemas.AdminCrestResponse(crest_url=profile.crest_url, message="Wappen gesetzt")
+
+
+@router.post("/admin/teams/{team_id}/crest", response_model=schemas.AdminCrestResponse)
+async def admin_upload_team_crest(
+    team_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_user),
+):
+    """Lädt ein Wappen für ein Team hoch (verarbeitet zu WebP, auf aktiver UserProfile)."""
+    _get_team_or_404(db, team_id)
+
+    profile = _active_profile_for_team(db, team_id)
+    if not profile:
+        raise HTTPException(
+            status_code=400,
+            detail="Kein verknüpfter Discord-User; nutze stattdessen die Logo-URL des Teams",
+        )
+
+    file_content = await file.read()
+    is_valid, error_msg = validate_image_file(file.filename, file.content_type, len(file_content))
+    if not is_valid:
+        raise HTTPException(status_code=400, detail=error_msg)
+
+    try:
+        processed = await process_crest_image(file_content)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    filename = f"{profile.discord_id}.webp"
+    filepath = os.path.join(_crests_dir(), filename)
+    async with aiofiles.open(filepath, "wb") as f:
+        await f.write(processed)
+
+    # Cache-Busting: Content-Hash als ?v=, damit der Austausch sofort sichtbar
+    # ist (gleicher Dateiname würde sonst aus Browser-/CDN-Cache kommen).
+    version = hashlib.sha256(processed).hexdigest()[:8]
+    profile.crest_url = f"/uploads/crests/{filename}?v={version}"
+    db.commit()
+    return schemas.AdminCrestResponse(crest_url=profile.crest_url, message="Wappen hochgeladen")
+
+
+@router.delete("/admin/teams/{team_id}/crest", response_model=schemas.AdminCrestResponse)
+def admin_delete_team_crest(
+    team_id: int,
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_user),
+):
+    """Löscht das hochgeladene Wappen eines Teams -> Fallback auf Team.logo_url."""
+    _get_team_or_404(db, team_id)
+
+    # Anzeige/Löschen darf auch eine inaktive Profile mit crest_url treffen
+    # (verwaiste Overrides bleiben entfernbar).
+    profile = _active_profile_for_team(db, team_id)
+    if not profile or not profile.crest_url:
+        profile = db.query(models.UserProfile).filter(
+            models.UserProfile.team_id == team_id,
+            models.UserProfile.crest_url.isnot(None),
+        ).first()
+    if not profile or not profile.crest_url:
+        raise HTTPException(status_code=404, detail="Kein Wappen vorhanden")
+
+    # Lokale Upload-Datei mitentfernen (externe URLs: nur DB-Feld leeren).
+    path_part = profile.crest_url.split("?", 1)[0]
+    if path_part.startswith("/uploads/crests/"):
+        filepath = os.path.join(_crests_dir(), os.path.basename(path_part))
+        if os.path.exists(filepath):
+            os.remove(filepath)
+
+    profile.crest_url = None
+    db.commit()
+    return schemas.AdminCrestResponse(crest_url=None, message="Wappen gelöscht")
 
 
 @router.put("/seasons/{season_id}/teams/sync")

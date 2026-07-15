@@ -148,7 +148,115 @@ async function editTeam(teamId) {
     }
   }
 
+  populateCrestSection(team);
+
   document.getElementById('edit-team-modal').style.display = 'flex';
+}
+
+// Wappen-Sektion im Team-Edit-Modal befüllen.
+// crest_url (Upload/Admin-URL) überschreibt in den Tabellen die logo_url.
+function populateCrestSection(team) {
+  const manage = document.getElementById('edit-team-crest-manage');
+  const noUser = document.getElementById('edit-team-crest-nouser');
+  if (!manage || !noUser) return;
+
+  if (!team.discord_user) {
+    manage.style.display = 'none';
+    noUser.style.display = '';
+    return;
+  }
+  noUser.style.display = 'none';
+  manage.style.display = '';
+
+  const override = team.discord_user.crest_url;      // gesetztes/hochgeladenes Wappen
+  const effective = override || team.logo_url || '';
+  const thumb = document.getElementById('edit-team-crest-thumb');
+  const status = document.getElementById('edit-team-crest-status');
+  const urlInput = document.getElementById('edit-team-crest-url');
+  const deleteBtn = document.getElementById('edit-team-crest-delete');
+
+  thumb.src = effective ? (effective.startsWith('http') ? effective : API_URL + effective) : '';
+  thumb.style.visibility = effective ? 'visible' : 'hidden';
+
+  if (override) {
+    status.textContent = 'Hochgeladenes Wappen — überschreibt die Logo-URL.';
+    deleteBtn.style.display = '';
+    urlInput.value = override.startsWith('http') ? override : '';
+  } else {
+    status.textContent = 'Kein Upload — Tabellen nutzen die Logo-URL.';
+    deleteBtn.style.display = 'none';
+    urlInput.value = '';
+  }
+  document.getElementById('edit-team-crest-file').value = '';
+}
+
+function currentEditTeam() {
+  const teamId = document.getElementById('edit-team-id').value;
+  return allTeamsData.find(t => t.id === parseInt(teamId));
+}
+
+// Public-Crest-Cache verwerfen, damit Tabellen die Änderung sehen.
+function invalidateCrestCache() {
+  try { sessionStorage.removeItem('biw_crests'); } catch (e) { /* ignore */ }
+}
+
+async function refreshEditTeamModal(teamId) {
+  invalidateCrestCache();
+  await loadAllTeams();
+  editTeam(teamId);
+}
+
+async function setTeamCrestUrl() {
+  const team = currentEditTeam();
+  if (!team) return;
+  const url = document.getElementById('edit-team-crest-url').value.trim();
+  if (!url) { toast('Bitte eine Bild-URL eingeben', 'error'); return; }
+  try {
+    const res = await authFetch(`${API_URL}/api/admin/teams/${team.id}/crest`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ crest_url: url })
+    });
+    if (!res.ok) throw new Error(await res.text().catch(() => `HTTP ${res.status}`));
+    toast('Wappen gesetzt!');
+    await refreshEditTeamModal(team.id);
+  } catch (e) {
+    toast('Fehler: ' + e.message, 'error');
+  }
+}
+
+async function uploadTeamCrest() {
+  const team = currentEditTeam();
+  if (!team) return;
+  const file = document.getElementById('edit-team-crest-file').files[0];
+  if (!file) { toast('Bitte eine Datei auswählen', 'error'); return; }
+  const fd = new FormData();
+  fd.append('file', file);
+  try {
+    const res = await authFetch(`${API_URL}/api/admin/teams/${team.id}/crest`, {
+      method: 'POST',
+      body: fd
+    });
+    if (!res.ok) throw new Error(await res.text().catch(() => `HTTP ${res.status}`));
+    toast('Wappen hochgeladen!');
+    await refreshEditTeamModal(team.id);
+  } catch (e) {
+    toast('Fehler: ' + e.message, 'error');
+  }
+}
+
+async function deleteTeamCrest() {
+  const team = currentEditTeam();
+  if (!team) return;
+  if (!confirm(`Hochgeladenes Wappen für "${team.name}" löschen?\n\nDie Tabellen nutzen danach die Logo-URL.`)) return;
+  try {
+    const res = await authFetch(`${API_URL}/api/admin/teams/${team.id}/crest`, { method: 'DELETE' });
+    if (!res.ok) throw new Error(await res.text().catch(() => `HTTP ${res.status}`));
+    toast('Wappen gelöscht');
+    await refreshEditTeamModal(team.id);
+  } catch (e) {
+    toast('Fehler: ' + e.message, 'error');
+  }
 }
 
 function closeEditTeamModal() {

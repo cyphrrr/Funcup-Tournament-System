@@ -364,6 +364,17 @@ class CrestDeleteResponse(BaseModel):
     message: str = "Wappen erfolgreich gelöscht"
 
 
+class AdminCrestUrlSet(BaseModel):
+    """Admin setzt das Wappen eines Teams per Direkt-URL."""
+    crest_url: str
+
+
+class AdminCrestResponse(BaseModel):
+    """Response nach Admin-Wappen-Aktion (setzen/upload/löschen)."""
+    crest_url: str | None
+    message: str
+
+
 # ============================================================
 # KO-Match Typed Request Schemas
 # ============================================================

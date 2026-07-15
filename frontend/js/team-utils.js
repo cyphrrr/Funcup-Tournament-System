@@ -27,11 +27,20 @@ export async function loadCrests() {
   }
 }
 
+function escapeAttr(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
 export function crestImg(teamId, size = 24) {
   if (!teamId) return '';
   const url = crestCache[String(teamId)];
   if (!url) return '';
-  const src = url.startsWith('http') ? url : `${API_URL}${url}`;
+  const src = escapeAttr(url.startsWith('http') ? url : `${API_URL}${url}`);
   return `<img src="${src}" alt="" loading="lazy" style="width:${size}px;height:${size}px;object-fit:contain;vertical-align:middle;margin-right:4px;border-radius:3px;flex-shrink:0" onerror="this.style.display='none'">`;
 }
 
