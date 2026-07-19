@@ -4,6 +4,14 @@
 
 ---
 
+## 2026-07-19 — KO-Auslosung: keine Same-Group-Paarungen in Runde 1
+
+- **Fix:** Teams aus derselben Gruppe konnten in Runde 1 direkt wieder aufeinandertreffen (Saison 54: JungeFohlen88 [E1] vs FC Wissel 2020 [E2], die am letzten Gruppenspieltag gegeneinander spielten). Ursache: `seed_teams()` spiegelt rein positionell ohne Gruppen-Trennung; ein Aufrücker konnte auf den eigenen Gruppensieger gelost werden
+- Neu: `resolve_same_group_conflicts()` läuft nach dem Seeding in **allen drei Brackets** (Generate + Preview). Bei Konflikt wird das Away-Team mit dem der nächstgelegenen Paarung getauscht — minimale Abweichung, nicht betroffene Paarungen bleiben unverändert. Nicht lösbare Konflikte (kein konfliktfreier Tauschpartner) bleiben bestehen
+- Tests: neues `test_ko_seeding.py` (7 Tests: Pure-Function + Generate/Preview-Integration im 9×4-Szenario)
+
+---
+
 ## 2026-07-15 — Wappen-Konsolidierung: eine Quelle (Team.logo_url)
 
 - **Strukturfix:** Team-Wappen wurden an zwei Stellen gespeichert (`Team.logo_url` + `UserProfile.crest_url`), mit Override-Priorität und getrennten Lesepfaden — Admin-Änderungen wirkten nicht auf die Tabellen. Jetzt ist **`Team.logo_url` die einzige Quelle**; egal ob per URL oder Upload gesetzt, alle Funktionen lesen von dort

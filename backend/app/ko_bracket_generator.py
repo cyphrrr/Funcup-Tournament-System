@@ -458,6 +458,66 @@ def seed_teams(teams: List[int]) -> List[Tuple[int, int]]:
     return pairs
 
 
+def resolve_same_group_conflicts(
+    pairs: List[Tuple[int, int]],
+    team_groups: Dict[int, int]
+) -> List[Tuple[int, int]]:
+    """
+    Löst Runde-1-Paarungen auf, in denen beide Teams aus derselben Gruppe kommen.
+
+    Bei einem Konflikt wird das Away-Team mit dem Away-Team der nächstgelegenen
+    Paarung getauscht, sofern der Tausch keinen neuen Konflikt erzeugt.
+    Dadurch bleiben möglichst viele Paarungen unverändert (minimale Abweichung
+    vom gespiegelten Seeding).
+
+    Nicht lösbare Konflikte (kein konfliktfreier Tauschpartner) bleiben bestehen.
+
+    Args:
+        pairs: Runde-1-Paarungen [(home_id, away_id), ...]
+        team_groups: Mapping team_id → group_id; Teams ohne Eintrag gelten
+                     als konfliktfrei
+
+    Returns:
+        Paarungsliste ohne Same-Group-Paarungen (soweit lösbar)
+    """
+    pairs = list(pairs)
+
+    def conflict(home_id: int, away_id: int) -> bool:
+        home_group = team_groups.get(home_id)
+        return home_group is not None and home_group == team_groups.get(away_id)
+
+    # Ein Tausch kann einen neuen Konflikt an anderer Stelle zwar nicht erzeugen
+    # (wird geprüft), aber mehrere Konflikte brauchen ggf. mehrere Durchläufe.
+    for _ in range(len(pairs)):
+        changed = False
+        for i, (home, away) in enumerate(pairs):
+            if not conflict(home, away):
+                continue
+            neighbours = sorted(
+                (j for j in range(len(pairs)) if j != i),
+                key=lambda j: abs(j - i)
+            )
+            for j in neighbours:
+                other_home, other_away = pairs[j]
+                if not conflict(home, other_away) and not conflict(other_home, away):
+                    pairs[i] = (home, other_away)
+                    pairs[j] = (other_home, away)
+                    changed = True
+                    break
+        if not changed:
+            break
+
+    return pairs
+
+
+def _team_group_map(season_id: int, db: Session) -> Dict[int, int]:
+    """Mapping team_id → group_id für alle Teams einer Saison."""
+    rows = db.query(models.SeasonTeam).filter(
+        models.SeasonTeam.season_id == season_id
+    ).all()
+    return {st.team_id: st.group_id for st in rows}
+
+
 def generate_rounds(
     pairs: List[Tuple[int, int]],
     bracket_id: int,
@@ -596,6 +656,7 @@ def generate_ko_brackets_v2(season_id: int, db: Session) -> Dict:
         ValueError: wenn Season archived oder Gruppen nicht abgeschlossen
     """
     qualified = get_qualified_teams_v2(season_id, db)  # prüft archived intern
+    team_groups = _team_group_map(season_id, db)
     result = {}
 
     for bracket_type in ["meister", "lucky_loser", "loser"]:
@@ -620,7 +681,7 @@ def generate_ko_brackets_v2(season_id: int, db: Session) -> Dict:
         db.add(bracket)
         db.flush()
 
-        pairs = seed_teams(teams)
+        pairs = resolve_same_group_conflicts(seed_teams(teams), team_groups)
         matches = generate_rounds(
             pairs=pairs,
             bracket_id=bracket.id,
@@ -696,6 +757,8 @@ def preview_ko_brackets(season_id: int, db: Session) -> Dict:
         if not all_completed:
             warning = "Gruppenphase noch nicht abgeschlossen — Vorschau basiert auf aktuellem Stand"
 
+    team_groups = _team_group_map(season_id, db)
+
     # Team-Namen für alle beteiligten IDs sammeln
     all_ids = set()
     for bt in ["meister", "lucky_loser", "loser"]:
@@ -714,7 +777,7 @@ def preview_ko_brackets(season_id: int, db: Session) -> Dict:
             result[bracket_type] = None
             continue
 
-        pairs = seed_teams(teams)
+        pairs = resolve_same_group_conflicts(seed_teams(teams), team_groups)
         bracket_result = {
             "teams": teams,
             "size": len(teams),
