@@ -1,5 +1,6 @@
 import math
 from datetime import datetime
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from .. import models, schemas, ranking_service
@@ -582,6 +583,52 @@ def reset_ko_brackets(
     db.query(models.KOBracket).filter(models.KOBracket.season_id == season_id).delete()
     db.commit()
     return {"deleted": True}
+
+
+@router.post("/seasons/{season_id}/ko-brackets/redraw", status_code=201)
+def redraw_season_ko_brackets(
+    season_id: int,
+    payload: Optional[schemas.KORedrawRequest] = None,
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_user)
+):
+    """
+    Lost die KO-Brackets einer Saison neu aus: löscht bestehende Brackets/Matches
+    und generiert sie in derselben Transaktion neu.
+
+    Guard: Sind bereits KO-Ergebnisse eingetragen (status='played'), antwortet
+    der Endpoint mit 409 — außer der Body enthält {"force": true}.
+    """
+    season = db.get(models.Season, season_id)
+    if not season:
+        raise HTTPException(status_code=404, detail="Saison nicht gefunden")
+    if season.status == "archived":
+        raise HTTPException(status_code=400, detail="Neuauslosung nicht für archivierte Saisons verfügbar")
+
+    force = bool(payload and payload.force)
+    played = db.query(models.KOMatch).filter(
+        models.KOMatch.season_id == season_id,
+        models.KOMatch.status == "played"
+    ).count()
+    if played > 0 and not force:
+        raise HTTPException(
+            status_code=409,
+            detail={"error": "results_exist", "played_matches": played}
+        )
+
+    # Löschen ohne Commit — der End-Commit von generate_ko_brackets_v2 schreibt
+    # Löschung und Neugenerierung atomar; bei Fehler bleibt das alte Bracket.
+    db.query(models.KOMatch).filter(models.KOMatch.season_id == season_id).delete()
+    db.query(models.KOBracket).filter(models.KOBracket.season_id == season_id).delete()
+    db.flush()
+
+    try:
+        result = generate_ko_brackets_v2(season_id, db)
+    except ValueError as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
+
+    return result
 
 
 @router.post("/seasons/{season_id}/ko-brackets/create-empty", status_code=201)

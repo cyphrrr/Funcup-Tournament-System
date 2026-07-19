@@ -381,6 +381,11 @@ class KOMatchResultUpdate(BaseModel):
     winner_id: Optional[int] = None
 
 
+class KORedrawRequest(BaseModel):
+    """Body für POST /seasons/{id}/ko-brackets/redraw"""
+    force: bool = False
+
+
 class KOBracketCreate(BaseModel):
     """Body für POST /seasons/{id}/ko-brackets/create-empty"""
     bracket_type: str = Field(..., pattern="^(meister|lucky_loser|loser)$")

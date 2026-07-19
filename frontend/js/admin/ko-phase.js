@@ -72,6 +72,7 @@ async function loadKOStatus() {
       }
       html += '</div>';
       html += '<div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1.5rem">';
+      html += `<button class="btn btn-primary" onclick="redrawKOBrackets()">🎲 Neu auslosen</button>`;
       html += `<button class="btn btn-danger" onclick="resetKOBrackets()">⚠️ Brackets zurücksetzen</button>`;
     }
     html += '</div>';
@@ -142,6 +143,40 @@ async function createEmptyBracket(bracketType) {
       body: JSON.stringify({ bracket_type: bracketType, team_count: teamCount })
     });
     toast(`${KO_TAB_LABELS[bracketType]} Gerüst erstellt!`);
+    loadKOStatus();
+  } catch (e) {
+    toast('Fehler: ' + e.message, 'error');
+  }
+}
+
+async function redrawKOBrackets() {
+  if (!confirm('KO-Runde neu auslosen? Bestehende Brackets werden gelöscht und neu generiert.')) return;
+  const seasonId = document.getElementById('ko-season').value;
+  if (!seasonId) return;
+
+  async function callRedraw(force) {
+    return authFetch(`${API_URL}/api/seasons/${seasonId}/ko-brackets/redraw`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ force })
+    });
+  }
+
+  try {
+    let res = await callRedraw(false);
+    if (res.status === 409) {
+      const data = await res.json();
+      const played = data.detail?.played_matches ?? '?';
+      if (!confirm(`Achtung: ${played} KO-Ergebnis(se) bereits eingetragen — diese gehen verloren. Trotzdem neu auslosen?`)) return;
+      res = await callRedraw(true);
+    }
+    if (!res.ok) {
+      const err = await res.json().catch(() => null);
+      throw new Error(typeof err?.detail === 'string' ? err.detail : `HTTP ${res.status}`);
+    }
+    toast('KO-Runde neu ausgelost!');
+    koBracketsCache = null;
+    koActiveTab = 'meister';
     loadKOStatus();
   } catch (e) {
     toast('Fehler: ' + e.message, 'error');

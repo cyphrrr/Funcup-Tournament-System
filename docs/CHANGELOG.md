@@ -4,6 +4,16 @@
 
 ---
 
+## 2026-07-19 — Admin: „KO-Runde neu auslosen" (One-Click)
+
+- Neuer Endpoint `POST /api/seasons/{id}/ko-brackets/redraw` (auth): löscht bestehende KO-Brackets/-Matches und generiert sie **in einer Transaktion** neu — schlägt die Generierung fehl, bleibt das alte Bracket unangetastet
+- **Guard:** bei bereits eingetragenen KO-Ergebnissen antwortet der Endpoint mit 409 (`{"error":"results_exist","played_matches":N}`); erst `{"force":true}` überschreibt
+- Admin-Panel: neuer Button **„🎲 Neu auslosen"** neben „Brackets zurücksetzen" — mit Bestätigungsdialog und zweiter Warnstufe, falls Ergebnisse verloren gehen würden
+- Hintergrund: Neu auslosen war bisher nur zweistufig (Reset → Generieren) und ohne Schutz vor Ergebnisverlust möglich
+- Tests: neues `test_ko_redraw.py` (6 Tests); Design: `docs/superpowers/specs/2026-07-19-ko-redraw-design.md`
+
+---
+
 ## 2026-07-19 — KO-Auslosung: keine Same-Group-Paarungen in Runde 1
 
 - **Fix:** Teams aus derselben Gruppe konnten in Runde 1 direkt wieder aufeinandertreffen (Saison 54: JungeFohlen88 [E1] vs FC Wissel 2020 [E2], die am letzten Gruppenspieltag gegeneinander spielten). Ursache: `seed_teams()` spiegelt rein positionell ohne Gruppen-Trennung; ein Aufrücker konnte auf den eigenen Gruppensieger gelost werden
